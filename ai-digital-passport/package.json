@@ -1,0 +1,38 @@
+{
+  "name": "ai-digital-passport",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @ai-digital-passport/database run migrate",
+    "db:seed": "pnpm --filter @ai-digital-passport/database run seed",
+    "db:studio": "pnpm --filter @ai-digital-passport/database exec prisma studio",
+    "env:sync": "node scripts/sync-env.mjs",
+    "ota:publish": "node scripts/ota-publish.mjs",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.16",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "turbo": "^2.1.3",
+    "typescript": "^5.5.4"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ],
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  }
+}

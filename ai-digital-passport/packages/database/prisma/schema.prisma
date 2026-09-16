@@ -1,0 +1,1088 @@
+// AI Digital Passport — Prisma schema
+//
+// Data model per spec file 03 (Section 8): baseline tables use the exact
+// field names given there (level_id, level_name, min_points,
+// unlocked_privilege / user_id, email, full_name, register_num,
+// department, cohort_year, current_level_id, total_points,
+// gpu_credit_balance / claim_id, user_id, category, proof_type, proof_url,
+// points_requested, status, mentor_feedback, reviewed_by / project_id,
+// lead_student_id, title, current_stage, gpu_validated). Extension tables
+// (Section 8.2) are designed to support every workflow in spec file 03 and
+// every endpoint/business rule in spec file 04.
+//
+// Configurable-by-design per spec file 05 Section 16 "Open Decisions" —
+// see inline notes:
+//   - Level 6 "High Impact" (#1): `levels.requires_high_impact` + a
+//     per-user `users.high_impact_flag` an admin sets manually (via the
+//     points/level correction tool) until a numeric rule is defined.
+//   - GPU credit rules (#2): `gpu_credit_balance` is admin-adjustable only
+//     (via an audited correction), no auto-accrual/expiry logic invented.
+//   - Mentor assignment (#3): no assignment table — `activity_claims` has
+//     no `assigned_to`, so the mentor queue is a shared pool by default;
+//     `reviewed_by` is only set once a mentor actually reviews it.
+//   - Duplicate claims (#4): `scoring_rules.max_claims_per_user` is
+//     nullable (= unlimited) so a cap can be configured later per
+//     category without a schema change.
+//   - Startup stage transitions (#5): `startup_milestones` uses the same
+//     PENDING/APPROVED/REJECTED review pattern as activity claims.
+//   - Annual audit timing (#6): `annual_audit_runs` is admin-triggered
+//     (labelled with a free-text academic_year), not cron-scheduled on a
+//     guessed date.
+//   - Notification provider (#7): `notifications` is a plain internal
+//     table; no external push integration.
+//   - Problem Bank content model (#8): title, description, status
+//     (draft/published/archived), level_requirement — the spec's stated
+//     minimum.
+//   - Leaderboard tie-break (#9): NOT modeled here — the API layer ranks
+//     by total_points desc, tie-break created_at asc (earliest to reach
+//     the score wins), documented as an assumption pending product-owner
+//     confirmation, not hard-coded as "the" rule.
+//   - Data retention (#10): out of scope — no automated purge logic.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums — must stay in sync with packages/shared-types/src/enums.ts
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  STUDENT
+  MENTOR
+  ADMIN
+  INDUSTRY_PARTNER
+  EVALUATOR
+}
+
+// Section 11.4
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Section 11.5
+enum ProofType {
+  TOTP_QR
+  PDF_FILE
+  GITHUB_LINK
+  DOI_LINK
+}
+
+// Open decision #8 — spec's stated minimum schema.
+enum ProblemStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationType {
+  CLAIM_APPROVED
+  CLAIM_REJECTED
+  MENTOR_REVIEW_REMINDER
+  LEVEL_UP
+  AWARD_RESULT
+  SYSTEM
+}
+
+enum NominationStatus {
+  NOMINATED
+  CONFIRMED
+  DECLINED
+}
+
+// Assigned Courses feature (additive to spec files 01-05, added post-launch
+// at product-owner request). Continues the existing enum-mirroring
+// convention with packages/shared-types/src/enums.ts.
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum CourseTaskType {
+  STANDARD
+  LIVE_PROCTORED
+}
+
+enum ProctoringStatus {
+  ACTIVE
+  COMPLETED
+  LOCKED
+}
+
+enum ViolationType {
+  FULLSCREEN_EXIT
+  TAB_SWITCH
+  WINDOW_BLUR
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  MENTOR_RECOMMENDED
+  APPROVED
+  REJECTED
+  ALLOCATED
+  COMPLETED
+}
+
+enum HackathonStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_OPEN
+  SUBMISSION_OPEN
+  EVALUATION
+  COMPLETED
+  ARCHIVED
+}
+
+// ---------------------------------------------------------------------------
+// Baseline tables (spec 03, Section 8.1) — exact field names
+// ---------------------------------------------------------------------------
+
+model Level {
+  level_id             Int      @id
+  level_name           String   @unique
+  min_points           Int
+  unlocked_privilege   String
+  // Open decision #1 — only true for the one level whose threshold isn't
+  // points-sufficient alone (Level 6 in the seeded data).
+  requires_high_impact Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  users User[]
+
+  @@map("levels")
+}
+
+model User {
+  user_id            String   @id @default(uuid())
+  email              String   @unique
+  full_name          String
+  register_num       String   @unique
+  department         String
+  cohort_year        Int
+  current_level_id   Int      @default(1)
+  total_points       Int      @default(0)
+  gpu_credit_balance Int      @default(0)
+  // Additive beyond the spec's minimal listing (Section 8.2 invites this):
+  // stable Google identity + avatar, needed once Phase 3 wires real OAuth.
+  google_id          String?  @unique
+  avatar_url         String?
+  // Open decision #1 — admin-settable pending a numeric Level 6 rule.
+  high_impact_flag   Boolean  @default(false)
+  // Assigned Courses feature: one mentor is assigned responsibility for a
+  // given department's course-submission and proctoring-violation
+  // notifications (product-owner request — "one dept, one mentor"), set by
+  // an Admin. Only meaningful for users holding the MENTOR role; nullable
+  // because not every mentor need own a department, and there's
+  // deliberately no schema-level constraint capping one mentor per
+  // department (an Admin could assign two) — kept simple as a routing
+  // hint rather than a hard invariant, matching the spec's existing
+  // "no assignment table, shared pool by default" pattern for claim
+  // review (open decision #3) which this extends rather than replaces.
+  mentor_department  String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  current_level Level @relation(fields: [current_level_id], references: [level_id])
+
+  user_roles              UserRole[]
+  claims_made             ActivityClaim[]        @relation("ActivityClaimant")
+  claims_reviewed         ActivityClaim[]        @relation("ActivityReviewer")
+  claim_reviews           ClaimReview[]
+  startup_projects        StartupProject[]
+  milestones_reviewed     StartupMilestone[]
+  points_transactions     PointsTransaction[]
+  attendances             Attendance[]
+  notifications           Notification[]
+  problem_submissions     ProblemSubmission[]
+  problems_created        IndustryProblem[]
+  user_badges             UserBadge[]
+  award_nominations       AwardNomination[]
+  fellowship_candidacies  FellowshipCandidate[]
+  audit_logs              AuditLog[]
+  events_created          Event[]
+  audit_runs_triggered    AnnualAuditRun[]
+  ota_bundles_published   OtaBundle[]
+  courses_created         Course[]
+  course_enrollments      CourseEnrollment[]     @relation("CourseEnrollee")
+  course_reviews          CourseEnrollment[]     @relation("CourseReviewer")
+  course_task_completions CourseTaskCompletion[]
+  proctoring_sessions     ProctoringSession[]    @relation("ProctoringSessionUser")
+  proctoring_unlocks      ProctoringSession[]    @relation("ProctoringSessionUnlocker")
+  stored_files            StoredFile[]
+  gpu_requests            GpuRequest[]           @relation("GpuRequestStudent")
+  gpu_requests_reviewed   GpuRequest[]           @relation("GpuRequestReviewer")
+  hackathon_teams_led     HackathonTeam[]
+  hackathon_team_members  HackathonTeamMember[]
+  hackathon_evaluations   HackathonEvaluation[]  @relation("HackathonEvaluationEvaluator")
+  industry_partner        IndustryPartner?
+  evaluator_profile       EvaluatorProfile?
+  project_records_led     ProjectRecord[]
+  project_milestones_reviewed ProjectMilestone[]
+  certificates            GeneratedCertificate[]
+
+  @@index([current_level_id])
+  @@index([mentor_department])
+  @@map("users")
+}
+
+model ActivityClaim {
+  claim_id         String      @id @default(uuid())
+  user_id          String
+  category         String
+  proof_type       ProofType
+  proof_url        String?
+  points_requested Int
+  points_awarded   Int?
+  status           ClaimStatus @default(PENDING)
+  mentor_feedback  String?
+  reviewed_by      String?
+  reviewed_at      DateTime?
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+
+  claimant     User               @relation("ActivityClaimant", fields: [user_id], references: [user_id])
+  reviewer     User?              @relation("ActivityReviewer", fields: [reviewed_by], references: [user_id])
+  scoring_rule ScoringRule        @relation(fields: [category], references: [category])
+  attachments  ClaimAttachment[]
+  reviews      ClaimReview[]
+  transaction  PointsTransaction?
+
+  @@index([user_id])
+  @@index([status])
+  @@index([category])
+  @@map("activity_claims")
+}
+
+model StartupProject {
+  project_id      String   @id @default(uuid())
+  lead_student_id String
+  title           String
+  // 1-6, validated at the application layer (Section 11.3 stage names).
+  current_stage   Int      @default(1)
+  gpu_validated   Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  lead       User               @relation(fields: [lead_student_id], references: [user_id])
+  milestones StartupMilestone[]
+
+  @@index([lead_student_id])
+  @@map("startup_projects")
+}
+
+// ---------------------------------------------------------------------------
+// Extension tables (spec 03, Section 8.2)
+// ---------------------------------------------------------------------------
+
+model Role {
+  role_id String   @id @default(uuid())
+  name    RoleName @unique
+
+  user_roles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  user_role_id String   @id @default(uuid())
+  user_id      String
+  role_id      String
+  granted_at   DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id])
+  role Role @relation(fields: [role_id], references: [role_id])
+
+  @@unique([user_id, role_id])
+  @@map("user_roles")
+}
+
+model Event {
+  event_id    String   @id @default(uuid())
+  title       String
+  description String?
+  location    String?
+  // Which scoring-matrix category a QR check-in for this event's sessions
+  // awards (e.g. a GPU Friday Lab event maps to "gpu_friday_lab", +30) —
+  // so the live-QR point value is configured data, not a hard-coded
+  // assumption that every live event is worth the same amount.
+  category    String
+  starts_at   DateTime
+  ends_at     DateTime
+  created_by  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  creator      User?          @relation(fields: [created_by], references: [user_id])
+  scoring_rule ScoringRule    @relation(fields: [category], references: [category])
+  sessions     EventSession[]
+
+  @@index([category])
+  @@map("events")
+}
+
+model EventSession {
+  session_id        String   @id @default(uuid())
+  event_id          String
+  title             String
+  starts_at         DateTime
+  ends_at           DateTime
+  // TOTP-backed live QR (FR-VERIF-01): secret only present once a session
+  // is activated; window defaults to the spec's 15-second refresh.
+  qr_secret         String?
+  qr_active         Boolean  @default(false)
+  qr_window_seconds Int      @default(15)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  event       Event        @relation(fields: [event_id], references: [event_id])
+  qr_tokens   QrToken[]
+  attendances Attendance[]
+
+  @@index([event_id])
+  @@map("event_sessions")
+}
+
+// One row logged per generated QR code window, for audit (SEC-09) —
+// validation itself is stateless TOTP against `event_sessions.qr_secret`,
+// this table is metadata, not the source of truth for validity.
+model QrToken {
+  qr_token_id  String   @id @default(uuid())
+  session_id   String
+  token        String
+  window_start DateTime
+  window_end   DateTime
+  generated_at DateTime @default(now())
+
+  session     EventSession @relation(fields: [session_id], references: [session_id])
+  attendances Attendance[]
+
+  @@index([session_id, token])
+  @@map("qr_tokens")
+}
+
+model Attendance {
+  attendance_id String   @id @default(uuid())
+  user_id       String
+  session_id    String
+  qr_token_id   String?
+  checked_in_at DateTime @default(now())
+
+  user     User         @relation(fields: [user_id], references: [user_id])
+  session  EventSession @relation(fields: [session_id], references: [session_id])
+  qr_token QrToken?     @relation(fields: [qr_token_id], references: [qr_token_id])
+
+  // BR-05 / SEC-08: no duplicate attendance for the same event by the same
+  // student.
+  @@unique([user_id, session_id])
+  @@map("attendance")
+}
+
+// Append-only points ledger (BR-12 traceability). `claim_id` is unique so
+// at most one transaction can ever exist per claim — this is what makes
+// point allocation idempotent (BR-04/BR-06, NFR reliability) regardless of
+// whether the claim came from a QR scan or a mentor approval.
+model PointsTransaction {
+  transaction_id String   @id @default(uuid())
+  user_id        String
+  claim_id       String?  @unique
+  // Assigned Courses feature: a second, independent idempotency key —
+  // mirrors claim_id's unique-constraint trick (BR-04/BR-06) so course
+  // approvals reuse the exact same "unique violation = already applied,
+  // no-op" pattern as PointsService.awardForClaim, rather than a new
+  // approval pipeline.
+  enrollment_id  String?  @unique
+  points         Int
+  reason         String
+  created_at     DateTime @default(now())
+
+  user       User              @relation(fields: [user_id], references: [user_id])
+  claim      ActivityClaim?    @relation(fields: [claim_id], references: [claim_id])
+  enrollment CourseEnrollment? @relation(fields: [enrollment_id], references: [enrollment_id])
+
+  @@index([user_id])
+  @@map("points_transactions")
+}
+
+// Mentor review history — separate from the claim's current state so a
+// re-review doesn't lose prior history (spec 03 Section 8.2).
+model ClaimReview {
+  review_id   String      @id @default(uuid())
+  claim_id    String
+  reviewer_id String
+  decision    ClaimStatus
+  comment     String?
+  created_at  DateTime    @default(now())
+
+  claim    ActivityClaim @relation(fields: [claim_id], references: [claim_id])
+  reviewer User          @relation(fields: [reviewer_id], references: [user_id])
+
+  @@index([claim_id])
+  @@map("claim_reviews")
+}
+
+model ClaimAttachment {
+  attachment_id String   @id @default(uuid())
+  claim_id      String
+  file_key      String
+  file_name     String
+  mime_type     String
+  size_bytes    Int
+  created_at    DateTime @default(now())
+
+  claim ActivityClaim @relation(fields: [claim_id], references: [claim_id])
+
+  @@index([claim_id])
+  @@map("claim_attachments")
+}
+
+model Notification {
+  notification_id String           @id @default(uuid())
+  user_id         String
+  type            NotificationType
+  title           String
+  message         String
+  read_at         DateTime?
+  created_at      DateTime         @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id])
+
+  @@index([user_id, read_at])
+  @@map("notifications")
+}
+
+// Open decision #8 — minimum schema per spec: title, description, status,
+// level_requirement.
+model IndustryProblem {
+  problem_id        String        @id @default(uuid())
+  title             String
+  description       String
+  organization      String?
+  status            ProblemStatus @default(DRAFT)
+  level_requirement Int           @default(3)
+  created_by        String?
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  creator     User?               @relation(fields: [created_by], references: [user_id])
+  submissions ProblemSubmission[]
+  project_records ProjectRecord[]
+
+  @@index([status])
+  @@map("industry_problems")
+}
+
+model GpuRequest {
+  gpu_request_id      String        @id @default(uuid())
+  student_id          String
+  purpose             String
+  title               String
+  justification       String
+  requested_credits   Int
+  allocated_credits   Int?
+  status              RequestStatus @default(DRAFT)
+  mentor_comment      String?
+  admin_comment       String?
+  reviewed_by         String?
+  reviewed_at         DateTime?
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+
+  student  User  @relation("GpuRequestStudent", fields: [student_id], references: [user_id])
+  reviewer User? @relation("GpuRequestReviewer", fields: [reviewed_by], references: [user_id])
+
+  @@index([student_id])
+  @@index([status])
+  @@map("gpu_requests")
+}
+
+model IndustryPartner {
+  partner_id     String   @id @default(uuid())
+  user_id        String   @unique
+  company_name   String
+  contact_person String
+  website        String?
+  status         String   @default("ACTIVE")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [user_id])
+
+  @@map("industry_partners")
+}
+
+model EvaluatorProfile {
+  evaluator_id String   @id @default(uuid())
+  user_id      String   @unique
+  expertise    String[] @default([])
+  status       String   @default("ACTIVE")
+  created_at   DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id])
+
+  @@map("evaluator_profiles")
+}
+
+model Hackathon {
+  hackathon_id        String          @id @default(uuid())
+  title               String
+  description         String
+  theme               String?
+  starts_at           DateTime
+  ends_at             DateTime
+  registration_deadline DateTime?
+  team_size_min       Int             @default(1)
+  team_size_max       Int             @default(4)
+  status              HackathonStatus @default(DRAFT)
+  points_participation Int            @default(100)
+  points_winner       Int             @default(250)
+  created_by          String?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  problems    HackathonProblem[]
+  teams       HackathonTeam[]
+  submissions HackathonSubmission[]
+
+  @@index([status])
+  @@map("hackathons")
+}
+
+model HackathonProblem {
+  problem_id   String   @id @default(uuid())
+  hackathon_id String
+  title        String
+  description  String
+  created_at   DateTime @default(now())
+
+  hackathon Hackathon @relation(fields: [hackathon_id], references: [hackathon_id])
+  teams     HackathonTeam[]
+
+  @@index([hackathon_id])
+  @@map("hackathon_problems")
+}
+
+model HackathonTeam {
+  team_id      String   @id @default(uuid())
+  hackathon_id String
+  problem_id   String?
+  name         String
+  lead_id      String
+  created_at   DateTime @default(now())
+
+  hackathon   Hackathon             @relation(fields: [hackathon_id], references: [hackathon_id])
+  problem     HackathonProblem?     @relation(fields: [problem_id], references: [problem_id])
+  lead        User                  @relation(fields: [lead_id], references: [user_id])
+  members     HackathonTeamMember[]
+  submissions HackathonSubmission[]
+
+  @@index([hackathon_id])
+  @@index([lead_id])
+  @@map("hackathon_teams")
+}
+
+model HackathonTeamMember {
+  member_id String   @id @default(uuid())
+  team_id   String
+  user_id   String
+  role      String   @default("MEMBER")
+  joined_at DateTime @default(now())
+
+  team HackathonTeam @relation(fields: [team_id], references: [team_id])
+  user User          @relation(fields: [user_id], references: [user_id])
+
+  @@unique([team_id, user_id])
+  @@map("hackathon_team_members")
+}
+
+model HackathonSubmission {
+  submission_id String   @id @default(uuid())
+  hackathon_id  String
+  team_id       String
+  title         String
+  summary       String
+  github_url    String?
+  demo_url      String?
+  file_key      String?
+  submitted_at  DateTime @default(now())
+
+  hackathon   Hackathon              @relation(fields: [hackathon_id], references: [hackathon_id])
+  team        HackathonTeam          @relation(fields: [team_id], references: [team_id])
+  evaluations HackathonEvaluation[]
+
+  @@index([hackathon_id])
+  @@index([team_id])
+  @@map("hackathon_submissions")
+}
+
+model HackathonEvaluation {
+  evaluation_id String   @id @default(uuid())
+  submission_id String
+  evaluator_id  String
+  innovation    Int
+  technical     Int
+  impact        Int
+  presentation  Int
+  completeness  Int
+  comments      String?
+  total_score   Int
+  created_at    DateTime @default(now())
+
+  submission HackathonSubmission @relation(fields: [submission_id], references: [submission_id])
+  evaluator  User                @relation("HackathonEvaluationEvaluator", fields: [evaluator_id], references: [user_id])
+
+  @@unique([submission_id, evaluator_id])
+  @@index([evaluator_id])
+  @@map("hackathon_evaluations")
+}
+
+model ProjectRecord {
+  project_id          String   @id @default(uuid())
+  lead_student_id     String
+  title               String
+  problem_statement   String
+  project_type        String
+  status              String   @default("DRAFT")
+  mentor_id           String?
+  industry_problem_id String?
+  github_url          String?
+  demo_url            String?
+  report_file_key     String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  lead             User             @relation(fields: [lead_student_id], references: [user_id])
+  industry_problem IndustryProblem? @relation(fields: [industry_problem_id], references: [problem_id])
+  milestones       ProjectMilestone[]
+
+  @@index([lead_student_id])
+  @@index([status])
+  @@map("project_records")
+}
+
+model ProjectMilestone {
+  milestone_id String        @id @default(uuid())
+  project_id   String
+  title        String
+  description  String
+  due_at       DateTime?
+  evidence_url String?
+  status       RequestStatus @default(DRAFT)
+  feedback     String?
+  reviewed_by  String?
+  reviewed_at  DateTime?
+  created_at   DateTime      @default(now())
+
+  project  ProjectRecord @relation(fields: [project_id], references: [project_id])
+  reviewer User?         @relation(fields: [reviewed_by], references: [user_id])
+
+  @@index([project_id])
+  @@index([status])
+  @@map("project_milestones")
+}
+
+model GeneratedCertificate {
+  certificate_id String   @id @default(uuid())
+  user_id        String
+  title          String
+  certificate_type String
+  file_key       String?
+  issued_by      String?
+  issued_at      DateTime @default(now())
+  metadata       Json?
+
+  user User @relation(fields: [user_id], references: [user_id])
+
+  @@index([user_id])
+  @@map("generated_certificates")
+}
+
+model BadgeRule {
+  rule_id     String   @id @default(uuid())
+  badge_id    String
+  trigger     String
+  threshold   Int
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  badge Badge @relation(fields: [badge_id], references: [badge_id])
+
+  @@index([trigger])
+  @@map("badge_rules")
+}
+
+model ProblemSubmission {
+  submission_id String   @id @default(uuid())
+  problem_id    String
+  user_id       String
+  summary       String
+  file_key      String?
+  created_at    DateTime @default(now())
+
+  problem IndustryProblem @relation(fields: [problem_id], references: [problem_id])
+  user    User            @relation(fields: [user_id], references: [user_id])
+
+  @@index([problem_id])
+  @@map("problem_submissions")
+}
+
+// Open decision #5 — same approve/reject-with-feedback pattern as claim
+// review, reusing ClaimStatus.
+model StartupMilestone {
+  milestone_id String      @id @default(uuid())
+  project_id   String
+  target_stage Int
+  evidence_url String?
+  status       ClaimStatus @default(PENDING)
+  feedback     String?
+  reviewed_by  String?
+  reviewed_at  DateTime?
+  created_at   DateTime    @default(now())
+
+  project  StartupProject @relation(fields: [project_id], references: [project_id])
+  reviewer User?          @relation(fields: [reviewed_by], references: [user_id])
+
+  @@index([project_id])
+  @@map("startup_milestones")
+}
+
+model Badge {
+  badge_id    String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon_key    String?
+  created_at  DateTime @default(now())
+
+  user_badges UserBadge[]
+  rules       BadgeRule[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  user_badge_id String   @id @default(uuid())
+  user_id       String
+  badge_id      String
+  awarded_at    DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [user_id])
+  badge Badge @relation(fields: [badge_id], references: [badge_id])
+
+  @@unique([user_id, badge_id])
+  @@map("user_badges")
+}
+
+model Award {
+  award_id    String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+
+  nominations AwardNomination[]
+
+  @@map("awards")
+}
+
+model AwardNomination {
+  nomination_id String           @id @default(uuid())
+  award_id      String
+  nominee_id    String
+  audit_run_id  String?
+  status        NominationStatus @default(NOMINATED)
+  created_at    DateTime         @default(now())
+
+  award     Award           @relation(fields: [award_id], references: [award_id])
+  nominee   User            @relation(fields: [nominee_id], references: [user_id])
+  audit_run AnnualAuditRun? @relation(fields: [audit_run_id], references: [audit_run_id])
+
+  @@map("award_nominations")
+}
+
+model FellowshipCandidate {
+  candidate_id String   @id @default(uuid())
+  user_id      String
+  audit_run_id String?
+  rank         Int?
+  total_points Int
+  notes        String?
+  created_at   DateTime @default(now())
+
+  user      User            @relation(fields: [user_id], references: [user_id])
+  audit_run AnnualAuditRun? @relation(fields: [audit_run_id], references: [audit_run_id])
+
+  @@index([audit_run_id])
+  @@map("fellowship_candidates")
+}
+
+// Open decision #6 — admin-triggered, labelled with a free-text academic
+// year, rather than cron-scheduled on a guessed date.
+model AnnualAuditRun {
+  audit_run_id    String   @id @default(uuid())
+  triggered_by    String?
+  academic_year   String
+  candidate_count Int
+  run_at          DateTime @default(now())
+
+  triggerer   User?                 @relation(fields: [triggered_by], references: [user_id])
+  candidates  FellowshipCandidate[]
+  nominations AwardNomination[]
+
+  @@map("annual_audit_runs")
+}
+
+model AuditLog {
+  audit_log_id String   @id @default(uuid())
+  actor_id     String?
+  action       String
+  entity_type  String
+  entity_id    String?
+  metadata     Json?
+  created_at   DateTime @default(now())
+
+  actor User? @relation(fields: [actor_id], references: [user_id])
+
+  @@index([entity_type, entity_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+// Configurable points-per-activity-category matrix (Section 11.1) — stored
+// as data so FR-GAME-01/Section 24 Maintainability ("keep points rules
+// configurable rather than hard-coded") holds. `category` is the natural
+// key both the seed data and `activity_claims.category` use.
+model ScoringRule {
+  category            String   @id
+  label               String
+  points              Int
+  // Open decision #4 — nullable = unlimited until a cap is configured.
+  max_claims_per_user Int?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  claims ActivityClaim[]
+  events Event[]
+
+  @@map("scoring_rules")
+}
+
+// Phase 8 — OTA updates (Capacitor, @capgo/capacitor-updater, self-hosted).
+// One row per published JS/HTML/CSS bundle. The native app polls
+// GET-latest against this table's data (apps/api's OtaController) using
+// the plugin's own wire format — see apps/api/src/ota/ota.service.ts for
+// the exact request/response contract, reverse-verified from the
+// plugin's Android source rather than guessed.
+enum OtaPlatform {
+  ANDROID
+  IOS
+}
+
+model OtaBundle {
+  bundle_id  String      @id @default(uuid())
+  app_id     String
+  platform   OtaPlatform
+  channel    String      @default("production")
+  version    String
+  s3_key     String
+  size_bytes Int
+  checksum   String?
+  active     Boolean     @default(true)
+  notes      String?
+  created_by String?
+  created_at DateTime    @default(now())
+
+  creator User? @relation(fields: [created_by], references: [user_id])
+
+  @@unique([app_id, platform, channel, version])
+  @@index([app_id, platform, channel, active])
+  @@map("ota_bundles")
+}
+
+// ---------------------------------------------------------------------------
+// Assigned Courses feature (additive — Admin/Mentor-assigned courses with
+// an optional Proctored Live Session task type). Reuses PointsTransaction,
+// Notification, AuditLog rather than parallel tables for those concerns.
+// BR numbering continues the spec's scheme:
+//   BR-13: courses are created/edited only by Admin or Mentor.
+//   BR-14: an enrollment can only move to APPROVED once proof is submitted
+//          AND every required task is COMPLETED (not LOCKED) for that
+//          student (apps/api/src/courses/courses.service.ts).
+//   BR-15: proctoring violations 1-3 notify the department mentor (or all
+//          mentors if the department has none assigned) and allow the
+//          session to continue; violation 4 locks it.
+//   BR-16: a LOCKED proctoring session can only be reopened by a mentor's
+//          explicit "grant access" action — never by the student.
+//   BR-17: every lock and every mentor-granted unlock is audit-logged
+//          (SEC-09 pattern), in addition to the timestamps/actor columns
+//          kept directly on the row for fast display.
+// ---------------------------------------------------------------------------
+
+model Course {
+  course_id         String       @id @default(uuid())
+  title             String
+  description       String
+  short_description String       @default("")
+  category          String       @default("AI Foundation")
+  difficulty        String       @default("Beginner")
+  duration_hours    Int          @default(0)
+  duration_weeks    Int?
+  delivery_mode     String       @default("Online")
+  enrollment_type   String       @default("Open")
+  certificate_available Boolean  @default(true)
+  is_featured       Boolean      @default(false)
+  skills_covered    String[]     @default([])
+  prerequisites     String[]     @default([])
+  learning_outcomes String[]     @default([])
+  tools_required    String[]     @default([])
+  target_audience   String       @default("")
+  // Free text by design (spec request: "Coursera", "Udemy", "NPTEL", ...)
+  // — not an enum, since the set of providers isn't fixed or spec-defined.
+  provider          String
+  external_url      String
+  points_value      Int
+  // Nullable = no minimum level (open-decision style: don't invent a
+  // default floor the product owner didn't ask for).
+  level_requirement Int?
+  status            CourseStatus @default(DRAFT)
+  created_by        String?
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+
+  creator     User?              @relation(fields: [created_by], references: [user_id])
+  tasks       CourseTask[]
+  enrollments CourseEnrollment[]
+
+  @@index([status])
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  enrollment_id       String           @id @default(uuid())
+  course_id           String
+  user_id             String
+  status              EnrollmentStatus @default(NOT_STARTED)
+  submitted_proof_url String?
+  submitted_at        DateTime?
+  reviewed_by         String?
+  review_feedback     String?
+  reviewed_at         DateTime?
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+
+  course      Course             @relation(fields: [course_id], references: [course_id])
+  student     User               @relation("CourseEnrollee", fields: [user_id], references: [user_id])
+  reviewer    User?              @relation("CourseReviewer", fields: [reviewed_by], references: [user_id])
+  transaction PointsTransaction?
+
+  // One enrollment per student per course — resubmission after rejection
+  // reuses the same row rather than creating a second one.
+  @@unique([course_id, user_id])
+  @@index([status])
+  @@map("course_enrollments")
+}
+
+model CourseTask {
+  task_id        String         @id @default(uuid())
+  course_id      String
+  title          String
+  type           CourseTaskType @default(STANDARD)
+  instructions   String?
+  sequence_order Int            @default(0)
+  is_required    Boolean        @default(true)
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+
+  course              Course                 @relation(fields: [course_id], references: [course_id])
+  completions         CourseTaskCompletion[]
+  proctoring_sessions ProctoringSession[]
+
+  @@index([course_id])
+  @@map("course_tasks")
+}
+
+// STANDARD tasks have no proctoring — this is the whole "student marks
+// complete" record for them. LIVE_PROCTORED tasks are instead considered
+// complete once their latest ProctoringSession.status is COMPLETED; see
+// CoursesService.isTaskComplete.
+model CourseTaskCompletion {
+  completion_id String   @id @default(uuid())
+  task_id       String
+  user_id       String
+  completed_at  DateTime @default(now())
+
+  task CourseTask @relation(fields: [task_id], references: [task_id])
+  user User       @relation(fields: [user_id], references: [user_id])
+
+  @@unique([task_id, user_id])
+  @@map("course_task_completions")
+}
+
+model ProctoringSession {
+  session_id      String           @id @default(uuid())
+  task_id         String
+  user_id         String
+  status          ProctoringStatus @default(ACTIVE)
+  violation_count Int              @default(0)
+  started_at      DateTime         @default(now())
+  ended_at        DateTime?
+  locked_at       DateTime?
+  unlocked_by     String?
+  unlocked_at     DateTime?
+
+  task       CourseTask            @relation(fields: [task_id], references: [task_id])
+  user       User                  @relation("ProctoringSessionUser", fields: [user_id], references: [user_id])
+  unlocker   User?                 @relation("ProctoringSessionUnlocker", fields: [unlocked_by], references: [user_id])
+  violations ProctoringViolation[]
+
+  @@index([task_id, user_id])
+  @@index([status])
+  @@map("proctoring_sessions")
+}
+
+model ProctoringViolation {
+  violation_id    String        @id @default(uuid())
+  session_id      String
+  violation_type  ViolationType
+  occurred_at     DateTime      @default(now())
+  mentor_notified Boolean       @default(false)
+
+  session ProctoringSession @relation(fields: [session_id], references: [session_id])
+
+  @@index([session_id])
+  @@map("proctoring_violations")
+}
+
+model StoredFile {
+  file_id       String   @id @default(uuid())
+  original_name String
+  mime_type     String
+  size_bytes    Int
+  file_data     Bytes
+  entity_type   String?
+  entity_id     String?
+  uploaded_by   String?
+  created_at    DateTime @default(now())
+
+  uploader User? @relation(fields: [uploaded_by], references: [user_id])
+
+  @@index([entity_type, entity_id])
+  @@index([uploaded_by])
+  @@map("stored_files")
+}

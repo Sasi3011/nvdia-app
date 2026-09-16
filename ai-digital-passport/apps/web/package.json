@@ -1,0 +1,49 @@
+{
+  "name": "@ai-digital-passport/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 1001",
+    "build": "next build",
+    "start": "next start --port 1001",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "cap:sync": "next build && cap sync",
+    "cap:android:open": "cap open android",
+    "cap:android:build": "pnpm cap:sync && cd android && ./gradlew assembleDebug",
+    "cap:android:release": "pnpm cap:sync && cd android && ./gradlew bundleRelease",
+    "cap:ios:open": "cap open ios"
+  },
+  "dependencies": {
+    "@ai-digital-passport/shared-types": "workspace:*",
+    "@capacitor-mlkit/barcode-scanning": "^6.2.0",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capgo/capacitor-updater": "^6.51.16",
+    "@tanstack/react-query": "^5.56.2",
+    "clsx": "^2.1.1",
+    "jsqr": "^1.4.0",
+    "lucide-react": "^1.46.0",
+    "next": "14.2.13",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@ai-digital-passport/config": "workspace:*",
+    "@capacitor/cli": "^6.1.2",
+    "@types/node": "^22.5.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.8",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.13",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.12",
+    "typescript": "^5.5.4"
+  }
+}

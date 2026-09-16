@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    font-family: var(--font-poppins), 'Poppins', sans-serif;
+  }
+
+  body {
+    @apply bg-surface-muted text-ink antialiased;
+    background: #FFFFFF;
+    font-family: var(--font-poppins), 'Poppins', sans-serif;
+  }
+
+  /* Accessibility baseline: visible keyboard focus on every interactive element */
+  :focus-visible {
+    outline: 2px solid #76B900;
+    outline-offset: 2px;
+  }
+
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom scrollbars for NVIDIA Green theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #FAFAFA;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #C4E587;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #76B900;
+  }
+}
+
+@layer components {
+  input,
+  textarea,
+  select {
+    @apply rounded-card border border-border bg-white text-ink shadow-[0_2px_2.7px_rgba(0,0,0,0.12)] transition duration-150 placeholder:text-text-muted;
+    font-family: var(--font-poppins), 'Poppins', sans-serif;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

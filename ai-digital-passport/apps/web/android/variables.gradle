@@ -1,0 +1,20 @@
+ext {
+    // 22 (the Capacitor template default) is incompatible with
+    // com.google.android.gms:play-services-tasks, a transitive dependency
+    // of @capgo/capacitor-updater (Phase 8) — the manifest merger fails
+    // below 23. Android 6.0 (API 23, 2015) is a reasonable modern floor.
+    minSdkVersion = 23
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    androidxActivityVersion = '1.8.0'
+    androidxAppCompatVersion = '1.6.1'
+    androidxCoordinatorLayoutVersion = '1.2.0'
+    androidxCoreVersion = '1.12.0'
+    androidxFragmentVersion = '1.6.2'
+    coreSplashScreenVersion = '1.0.1'
+    androidxWebkitVersion = '1.9.0'
+    junitVersion = '4.13.2'
+    androidxJunitVersion = '1.1.5'
+    androidxEspressoCoreVersion = '3.5.1'
+    cordovaAndroidVersion = '10.1.1'
+}

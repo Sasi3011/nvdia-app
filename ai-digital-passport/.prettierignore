@@ -1,0 +1,6 @@
+.next/
+out/
+dist/
+node_modules/
+packages/database/prisma/generated/
+pnpm-lock.yaml
