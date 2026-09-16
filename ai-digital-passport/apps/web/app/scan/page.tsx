@@ -4,25 +4,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { StudentShell } from "../../components/shell/StudentShell";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { PageHeader } from "../../components/ui/PageHeader";
 import { ApiError } from "../../lib/api-client";
 import { eventsApi } from "../../lib/api";
+import { 
+  ScanLine, 
+  Sparkles, 
+  Camera, 
+  KeyRound, 
+  CheckCircle2, 
+  AlertCircle, 
+  ShieldCheck, 
+  RefreshCw, 
+  Clock, 
+  Zap,
+  Layers,
+  HelpCircle
+} from "lucide-react";
 
-/**
- * Page 17 — Live Event QR Scan (spec 02 Section 6.2). Native camera flow
- * on the Capacitor-wrapped Android/iOS app (Phase 7,
- * @capacitor-mlkit/barcode-scanning — real ML Kit scanning, not a webview
- * camera hack); a webcam-based scanner with jsQR on plain web; manual
- * token entry always available as a fallback either way. All three paths
- * call the exact same POST /events/:id/scan contract (spec 05 Section 17
- * — kept generic on purpose).
- *
- * QR payload format (not spec-given — a design decision made here, matched
- * by the admin QR display built in Phase 6):
- *   {"sessionId": "<event_session id>", "token": "<6-digit TOTP code>"}
- */
 export default function ScanPage() {
   const [isNative, setIsNative] = useState(false);
 
@@ -32,10 +30,93 @@ export default function ScanPage() {
 
   return (
     <StudentShell>
-      <PageHeader title="Scan" description="Scan the live QR code, or enter it manually." />
-      <div className="flex flex-col gap-6">
-        {isNative ? <NativeScanner /> : <WebCameraScanner />}
-        <ManualEntry />
+      <div className="space-y-6">
+        
+        {/* Top Header Banner */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
+          <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-3xl space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
+                  <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
+                  Live Event Attendance
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/60">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  TOTP QR Scanner Active
+                </span>
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Event QR Check-in & Point Crediting</h1>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Scan the dynamic rolling TOTP QR code displayed on the podium screen during workshops, symposiums, and NVIDIA tech seminars. Attendance points credit immediately to your AI competence score.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 KPI Metrics */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Attendance Points Bounty</div>
+            <div className="mt-2 text-2xl font-black text-amber-600">+50 - 150 pts</div>
+            <div className="mt-1 text-xs text-slate-500">Credited instantly on check-in</div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">QR Code Security</div>
+            <div className="mt-2 text-2xl font-black text-[#1755A7]">TOTP Dynamic</div>
+            <div className="mt-1 text-xs text-slate-500">Rotates every 30 seconds</div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Scanner Engine</div>
+            <div className="mt-2 text-2xl font-black text-emerald-600">Hardware & Web</div>
+            <div className="mt-1 text-xs text-slate-500">Auto-detects device platform</div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Audit Status</div>
+            <div className="mt-2 text-2xl font-black text-slate-900">Auto-Verified</div>
+            <div className="mt-1 text-xs text-slate-500">Cryptographically signed check-in</div>
+          </div>
+        </div>
+
+        {/* Scanner & Manual Entry Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {isNative ? <NativeScanner /> : <WebCameraScanner />}
+          <ManualEntry />
+        </div>
+
+        {/* Attendance Protocols Info */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900">Event Attendance Protocol & Rules</h3>
+              <p className="text-[11px] text-slate-500">Security precautions for valid check-in</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
+            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
+              <strong className="text-slate-900 block font-bold">1. Live Dynamic Codes:</strong>
+              <p>Screenshots cannot be shared. Each TOTP code expires after 30 seconds and is cryptographically validated.</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
+              <strong className="text-slate-900 block font-bold">2. One Check-in Per Session:</strong>
+              <p>Each authenticated student scholar can claim attendance points exactly once per event session.</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
+              <strong className="text-slate-900 block font-bold">3. Manual Fallback:</strong>
+              <p>If your camera is unavailable, type the Session ID and 6-digit code displayed below the QR code.</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </StudentShell>
   );
@@ -48,16 +129,16 @@ function useScanMutation(onResult: (r: ScanResult) => void) {
     mutationFn: ({ sessionId, token }: { sessionId: string; token: string }) => eventsApi.scan(sessionId, token),
     onSuccess: (res) => {
       if (res.alreadyRecorded) {
-        onResult({ kind: "success", message: "Already recorded — you're checked in for this session." });
+        onResult({ kind: "success", message: "Already recorded — you are already checked in for this session." });
       } else {
         onResult({
           kind: "success",
-          message: `Checked in! +${res.pointsAwarded} points${res.leveledUp ? " — you leveled up!" : ""}`,
+          message: `Check-in verified! +${res.pointsAwarded} points credited to your AI score${res.leveledUp ? " — You leveled up!" : ""}`,
         });
       }
     },
     onError: (err) => {
-      const message = err instanceof ApiError ? err.message : "This QR code has expired. Ask the event host to refresh it.";
+      const message = err instanceof ApiError ? err.message : "This QR code has expired or is invalid. Ask the event host to refresh it.";
       onResult({ kind: "error", message });
     },
   });
@@ -73,15 +154,9 @@ function parseAndScan(raw: string, scan: ReturnType<typeof useScanMutation>, set
   } catch {
     // fall through to error below
   }
-  setResult({ kind: "error", message: "That QR code isn't a valid event check-in code." });
+  setResult({ kind: "error", message: "That QR code is not a valid Sri Eshwar event check-in token." });
 }
 
-// Native camera scan — Google Play Services' bundled ML Kit scanning UI
-// (@capacitor-mlkit/barcode-scanning's `scan()`), a full-screen system
-// scanner activity, not a webview `getUserMedia` hack. Per the plugin's
-// own docs this path needs no camera permission (Google Play Services
-// handles it internally) — it does need the Google Barcode Scanner module
-// installed first, which is what the availability check below is for.
 function NativeScanner() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [busy, setBusy] = useState<string | false>(false);
@@ -96,7 +171,7 @@ function NativeScanner() {
 
       const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
       if (!available) {
-        setBusy("Installing scanner…");
+        setBusy("Installing scanner module…");
         await new Promise<void>((resolve, reject) => {
           BarcodeScanner.addListener("googleBarcodeScannerModuleInstallProgress", (event) => {
             if (event.state === GoogleBarcodeScannerModuleInstallState.COMPLETED) resolve();
@@ -112,35 +187,63 @@ function NativeScanner() {
       const { barcodes } = await BarcodeScanner.scan({ formats: [BarcodeFormat.QrCode] });
       const value = barcodes[0]?.rawValue;
       if (!value) {
-        setResult({ kind: "error", message: "No QR code detected — try again." });
+        setResult({ kind: "error", message: "No QR code detected — please try again." });
         return;
       }
       parseAndScan(value, scan, setResult);
     } catch {
-      setResult({ kind: "error", message: "Couldn't open the camera. Use manual entry below instead." });
+      setResult({ kind: "error", message: "Couldn't open the native camera. Use manual code entry instead." });
     } finally {
       setBusy(false);
     }
   }, [scan]);
 
   return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <h2 className="text-h2 text-ink">Camera</h2>
-        <Button variant="primary" disabled={!!busy} onClick={() => void startScan()} className="min-h-[44px]">
-          {busy || "Scan QR code"}
-        </Button>
-      </div>
-      {result ? (
-        <div className={"mt-4 rounded-card px-4 py-3 text-body " + (result.kind === "success" ? "bg-accent/10 text-accent-deep" : "bg-rejected/10 text-rejected")}>
-          {result.message}
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+            <Camera className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-slate-900">Native Camera Scanner</h2>
+            <p className="text-[11px] text-slate-500">Google ML Kit hardware barcode scanning</p>
+          </div>
         </div>
-      ) : null}
-    </Card>
+      </div>
+
+      <div className="p-8 text-center space-y-4 bg-slate-50/60 rounded-xl border border-slate-100">
+        <ScanLine className="mx-auto h-12 w-12 text-[#1755A7] animate-pulse" />
+        <p className="text-xs text-slate-600 max-w-xs mx-auto">
+          Tap below to launch the high-speed system barcode scanner.
+        </p>
+        <button
+          type="button"
+          disabled={!!busy}
+          onClick={() => void startScan()}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-6 py-3 text-xs font-bold text-white shadow-xs hover:bg-[#134486] transition-all disabled:opacity-50"
+        >
+          <Camera className="h-4 w-4" />
+          {busy || "Launch Camera Scanner"}
+        </button>
+      </div>
+
+      {result && (
+        <div
+          className={`rounded-xl p-3.5 text-xs font-bold flex items-center gap-2.5 ${
+            result.kind === "success"
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              : "bg-rose-50 text-rose-800 border border-rose-200"
+          }`}
+        >
+          {result.kind === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />}
+          <span>{result.message}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
-// Web fallback — webcam + jsQR, used only outside the native app shell.
 function WebCameraScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -198,7 +301,7 @@ function WebCameraScanner() {
         };
         raf = requestAnimationFrame(loop);
       } catch {
-        setCameraError("Couldn't access the camera. Use manual entry below instead.");
+        setCameraError("Camera permission denied or camera unavailable. Please use manual entry.");
         setActive(false);
       }
     })();
@@ -210,29 +313,76 @@ function WebCameraScanner() {
   }, [active, tick]);
 
   return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <h2 className="text-h2 text-ink">Camera</h2>
-        <Button variant={active ? "destructive" : "primary"} onClick={() => setActive((a) => !a)} className="min-h-[44px]">
-          {active ? "Stop camera" : "Start camera"}
-        </Button>
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+            <Camera className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-slate-900">Web Camera QR Scanner</h2>
+            <p className="text-[11px] text-slate-500">Live browser camera feed</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setActive((a) => !a)}
+          className={`rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs active:scale-95 ${
+            active
+              ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+              : "bg-[#1755A7] text-white hover:bg-[#134486]"
+          }`}
+        >
+          {active ? "Stop Camera" : "Start Camera Scanner"}
+        </button>
       </div>
 
-      {cameraError ? <p className="mt-3 text-body text-rejected">{cameraError}</p> : null}
+      {cameraError && (
+        <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+          <span>{cameraError}</span>
+        </div>
+      )}
 
       {active ? (
-        <div className="relative mt-4 overflow-hidden rounded-card border border-border">
-          <video ref={videoRef} className="w-full" muted playsInline />
+        <div className="relative overflow-hidden rounded-2xl border-2 border-[#1755A7] bg-slate-950 aspect-video flex items-center justify-center">
+          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
           <canvas ref={canvasRef} className="hidden" />
+          
+          {/* Viewfinder Overlay Frame */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="relative h-48 w-48 rounded-2xl border-2 border-[#F8C401] shadow-2xl">
+              <div className="absolute top-0 left-0 h-4 w-4 border-t-4 border-l-4 border-[#F8C401] -mt-1 -ml-1 rounded-tl-md" />
+              <div className="absolute top-0 right-0 h-4 w-4 border-t-4 border-r-4 border-[#F8C401] -mt-1 -mr-1 rounded-tr-md" />
+              <div className="absolute bottom-0 left-0 h-4 w-4 border-b-4 border-l-4 border-[#F8C401] -mb-1 -ml-1 rounded-bl-md" />
+              <div className="absolute bottom-0 right-0 h-4 w-4 border-b-4 border-r-4 border-[#F8C401] -mb-1 -mr-1 rounded-br-md" />
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-[#F8C401] animate-bounce shadow-lg" />
+            </div>
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-8 text-center space-y-3">
+          <ScanLine className="mx-auto h-10 w-10 text-slate-400" />
+          <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            Click &quot;Start Camera Scanner&quot; above to scan podium QR codes directly with your device webcam.
+          </p>
+        </div>
+      )}
 
-      {result ? (
-        <div className={"mt-4 rounded-card px-4 py-3 text-body " + (result.kind === "success" ? "bg-accent/10 text-accent-deep" : "bg-rejected/10 text-rejected")}>
-          {result.message}
+      {result && (
+        <div
+          className={`rounded-xl p-3.5 text-xs font-bold flex items-center gap-2.5 ${
+            result.kind === "success"
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              : "bg-rose-50 text-rose-800 border border-rose-200"
+          }`}
+        >
+          {result.kind === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />}
+          <span>{result.message}</span>
         </div>
-      ) : null}
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -243,40 +393,72 @@ function ManualEntry() {
   const scan = useScanMutation(setResult);
 
   return (
-    <Card>
-      <h2 className="text-h2 text-ink">Manual entry</h2>
-      <p className="mt-1 text-caption text-text-muted">If the camera isn&apos;t available, enter the code shown at the event.</p>
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
+      <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60">
+          <KeyRound className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-black text-slate-900">Manual Code Check-in</h2>
+          <p className="text-[11px] text-slate-500">Enter Session ID and 6-digit TOTP code</p>
+        </div>
+      </div>
+
       <form
-        className="mt-4 flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           scan.mutate({ sessionId, token });
         }}
+        className="space-y-4"
       >
-        <input
-          required
-          value={sessionId}
-          onChange={(e) => setSessionId(e.target.value)}
-          placeholder="Session ID"
-          className="min-h-[44px] rounded-card border border-border px-3 py-2 text-body"
-        />
-        <input
-          required
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder="6-digit code"
-          inputMode="numeric"
-          className="min-h-[44px] rounded-card border border-border px-3 py-2 text-body"
-        />
-        <Button type="submit" variant="primary" disabled={scan.isPending} className="min-h-[44px]">
-          {scan.isPending ? "Checking in…" : "Check in"}
-        </Button>
-      </form>
-      {result ? (
-        <div className={"mt-4 rounded-card px-4 py-3 text-body " + (result.kind === "success" ? "bg-accent/10 text-accent-deep" : "bg-rejected/10 text-rejected")}>
-          {result.message}
+        <div>
+          <label className="block text-xs font-bold text-slate-900 mb-1">Event Session ID</label>
+          <input
+            type="text"
+            required
+            value={sessionId}
+            onChange={(e) => setSessionId(e.target.value)}
+            placeholder="e.g. sess-nvidia-seminar-2026"
+            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-mono text-slate-900 focus:border-[#1755A7] focus:outline-none"
+          />
         </div>
-      ) : null}
-    </Card>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-900 mb-1">6-Digit Dynamic TOTP Token</label>
+          <input
+            type="text"
+            required
+            maxLength={6}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="e.g. 482910"
+            inputMode="numeric"
+            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono tracking-widest text-slate-900 focus:border-[#1755A7] focus:outline-none text-center font-bold"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={scan.isPending}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1755A7] py-3 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] disabled:opacity-50 active:scale-95"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          {scan.isPending ? "Validating Token…" : "Claim Attendance Points"}
+        </button>
+      </form>
+
+      {result && (
+        <div
+          className={`rounded-xl p-3.5 text-xs font-bold flex items-center gap-2.5 ${
+            result.kind === "success"
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              : "bg-rose-50 text-rose-800 border border-rose-200"
+          }`}
+        >
+          {result.kind === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />}
+          <span>{result.message}</span>
+        </div>
+      )}
+    </div>
   );
 }

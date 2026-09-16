@@ -1,33 +1,34 @@
 import type { Config } from "tailwindcss";
 
-// Design tokens from spec 05 Section 18 (UI/UX Design System) — exact
-// values, not generic component-library defaults. Usage rule (18.2):
-// navy is structural, green is active/success, amber is waiting, red is
-// stop. Do not introduce additional accent hues.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ink: "#111827", // Dark for text
+        ink: "#0F172A", // Dark slate for clean readable text
         "ink-inverse": "#FFFFFF",
-        "navy-900": "#111827", 
-        "navy-700": "#374151", 
+        "navy-900": "#0F172A", 
+        "navy-700": "#1E293B", 
         surface: "#FFFFFF", 
-        "surface-muted": "#F3F4F6", // Very light grey background
-        border: "#E5E7EB", 
-        "text-muted": "#6B7280", 
-        accent: "#1A56DB", // Primary Blue from image
-        "accent-deep": "#1E429F", // Deep Blue
-        "accent-light": "#E1EFFE", // Light Blue
-        "nvidia-green": "#1A56DB",
-        "nvidia-dark": "#1E429F",
-        pending: "#D97706",
+        "surface-muted": "#F8FAFC", // Clean light surface
+        border: "#E2E8F0", 
+        "text-muted": "#64748B", 
+        accent: "#1755A7", // Exact Primary Blue from user
+        "accent-deep": "#103E7E", // Deep Blue
+        "accent-light": "#EAF2FC", // Light Blue
+        gold: "#F8C401", // Exact Brand Gold from user
+        "gold-deep": "#D4A700",
+        "gold-light": "#FEF8E3",
+        "nvidia-green": "#1755A7",
+        "nvidia-dark": "#103E7E",
+        pending: "#F8C401",
         rejected: "#DC2626",
-        info: "#1A56DB",
+        info: "#1755A7",
       },
       backgroundImage: {
-        'multi-color': 'linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)',
+        'multi-color': 'linear-gradient(135deg, #1755A7 0%, #F8C401 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #1755A7 0%, #103E7E 100%)',
+        'gold-gradient': 'linear-gradient(135deg, #F8C401 0%, #D4A700 100%)',
       },
       fontFamily: {
         sans: ["Mazzard", "var(--font-inter)", "Inter", "sans-serif"],

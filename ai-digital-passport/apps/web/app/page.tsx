@@ -1,35 +1,41 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Spinner } from "../components/ui/Spinner";
-import { useSession } from "../lib/session";
+import { useState } from "react";
+import { LandingHeader } from "../components/landing/LandingHeader";
+import { HeroSection } from "../components/landing/HeroSection";
+import { ModulesGrid } from "../components/landing/ModulesGrid";
+import { LevelProgression } from "../components/landing/LevelProgression";
+import { ProgrammeCalendarPreview } from "../components/landing/ProgrammeCalendarPreview";
+import { LearningPartners } from "../components/landing/LearningPartners";
+import { VerificationArchitecture } from "../components/landing/VerificationArchitecture";
+import { LeaderboardPreview } from "../components/landing/LeaderboardPreview";
+import { FaqSection } from "../components/landing/FaqSection";
+import { LandingFooter } from "../components/landing/LandingFooter";
+import { LoginModal } from "../components/auth/LoginModal";
 
 export default function Home() {
-  const router = useRouter();
-  const session = useSession();
-
-  useEffect(() => {
-    if (session.isLoading) return;
-    if (!session.data?.authenticated) {
-      router.replace("/login");
-    } else if (!session.data.onboarded) {
-      router.replace("/onboarding");
-    } else {
-      const roles = session.data.roles ?? [];
-      if (roles.includes("ADMIN")) {
-        router.replace("/admin");
-      } else if (roles.includes("MENTOR")) {
-        router.replace("/mentor");
-      } else {
-        router.replace("/dashboard");
-      }
-    }
-  }, [session.isLoading, session.data, router]);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Spinner />
+    <div className="min-h-screen bg-surface font-sans text-ink selection:bg-accent-light selection:text-accent">
+      <LandingHeader onOpenLogin={() => setLoginModalOpen(true)} />
+      <main>
+        <HeroSection onOpenLogin={() => setLoginModalOpen(true)} />
+        <ModulesGrid />
+        <LevelProgression />
+        <ProgrammeCalendarPreview />
+        <LearningPartners />
+        <VerificationArchitecture />
+        <LeaderboardPreview />
+        <FaqSection />
+      </main>
+      <LandingFooter />
+
+      {/* Login Popup Modal */}
+      <LoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+      />
     </div>
   );
 }

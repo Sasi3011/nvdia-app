@@ -1,15 +1,19 @@
 import clsx from "clsx";
 import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "tertiary" | "destructive";
+type Variant = "primary" | "secondary" | "tertiary" | "destructive" | "success";
 
-// Design system 18.6: one primary style (filled accent) per screen;
-// everything else secondary (outline) or tertiary (text link).
 const VARIANTS: Record<Variant, string> = {
-  primary: "border border-accent bg-accent text-white shadow-sm hover:bg-accent-deep hover:border-accent-deep disabled:bg-accent/40 disabled:shadow-none font-semibold transition-all",
-  secondary: "border border-border bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:border-text-muted hover:bg-surface-muted disabled:bg-white disabled:text-text-muted disabled:border-border font-medium",
-  tertiary: "text-accent underline-offset-2 hover:underline hover:text-accent-deep disabled:opacity-40",
-  destructive: "border border-rejected text-rejected hover:bg-rejected/10 hover:shadow-[0_0_10px_#B3261E/20] disabled:opacity-40",
+  primary:
+    "bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:via-[#1755A7] hover:to-[#1D4ED8] active:scale-95 disabled:opacity-50 disabled:pointer-events-none font-bold",
+  secondary:
+    "border border-slate-200 bg-white text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 active:scale-95 disabled:bg-slate-50 disabled:text-slate-400 font-bold",
+  tertiary:
+    "text-[#1755A7] hover:text-[#124282] hover:underline underline-offset-4 active:scale-95 disabled:opacity-40 font-semibold",
+  destructive:
+    "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-300 active:scale-95 disabled:opacity-40 font-bold",
+  success:
+    "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 disabled:opacity-40 font-bold",
 };
 
 export function Button({
@@ -20,7 +24,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        "inline-flex min-h-14 items-center justify-center gap-2 rounded-card px-5 py-3 text-body font-semibold transition-fast disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs transition-all duration-150 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#1755A7]/30",
         VARIANTS[variant],
         className,
       )}
@@ -28,3 +32,4 @@ export function Button({
     />
   );
 }
+

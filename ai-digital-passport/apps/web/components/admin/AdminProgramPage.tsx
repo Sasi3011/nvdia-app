@@ -29,7 +29,7 @@ export function AdminProgramPage({
       <div className="mb-8 grid grid-cols-1 gap-4 tablet:grid-cols-3">
         {metrics.map((metric, i) => (
           <div key={metric.label} className="flex flex-col rounded-2xl border border-border bg-white p-6 shadow-sm">
-            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-[#1A56DB]/10 text-[#1A56DB]">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-[#1755A7]/10 text-[#1755A7]">
               {i === 0 ? <Target className="h-5 w-5" /> : i === 1 ? <Activity className="h-5 w-5" /> : <ListTodo className="h-5 w-5" />}
             </div>
             <div className="text-[13px] font-bold uppercase tracking-wider text-text-muted">{metric.label}</div>
@@ -45,7 +45,7 @@ export function AdminProgramPage({
             <ul className="flex flex-col gap-3">
               {section.items.map((item) => (
                 <li key={item} className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#1A56DB]" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#1755A7]" />
                   <span className="text-[14px] font-medium text-text-muted">{item}</span>
                 </li>
               ))}

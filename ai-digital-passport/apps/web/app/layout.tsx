@@ -11,19 +11,23 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NVIDIA AI Digital Passport",
-  description: "NVIDIA AI Supercomputing & Competency Centre digital passport",
+  title: "NVIDIA AI Supercomputing & Competency Centre | Sri Eshwar",
+  description: "Sri Eshwar NVIDIA AI Supercomputing & Competency Centre platform for AI learning, GPU compute, and research credentials",
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico" },
-    ],
+    icon: "/Eswar.png?v=2",
+    shortcut: "/Eswar.png?v=2",
+    apple: "/Eswar.png?v=2",
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <link rel="icon" href="/Eswar.png?v=2" type="image/png" sizes="any" />
+        <link rel="shortcut icon" href="/Eswar.png?v=2" type="image/png" />
+        <link rel="apple-touch-icon" href="/Eswar.png?v=2" />
+      </head>
       <body className="font-sans antialiased">
         <OtaBootstrap />
         <Providers>{children}</Providers>

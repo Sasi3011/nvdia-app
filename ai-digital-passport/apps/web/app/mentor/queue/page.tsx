@@ -4,113 +4,176 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
-import { ConsoleCard } from "../../../components/console/ConsoleCard";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
-import { Button } from "../../../components/ui/Button";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { StatusChip, type Status } from "../../../components/ui/StatusChip";
 import { mentorApi } from "../../../lib/api";
+import { 
+  FileCheck, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  Search, 
+  ExternalLink, 
+  ChevronRight, 
+  ArrowLeft,
+  Filter,
+  UserCircle
+} from "lucide-react";
 
 const STATUS_FILTERS: { value: Status | ""; label: string }[] = [
-  { value: "PENDING", label: "Pending" },
+  { value: "PENDING", label: "Pending Review" },
   { value: "APPROVED", label: "Approved" },
   { value: "REJECTED", label: "Rejected" },
-  { value: "", label: "All" },
+  { value: "", label: "All Submissions" },
 ];
 
-// Page 21 — Mentor Review Queue (spec 02 Section 6.3). Shared-pool model
-// (open decision #3) — any mentor can open and review any pending claim,
-// paginated per the API Design Rules (spec 04 Section 9).
 export default function MentorQueuePage() {
   const [status, setStatus] = useState<Status | "">("PENDING");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+
   const queue = useQuery({
     queryKey: ["mentor", "queue", status, page],
-    queryFn: () => mentorApi.queue({ page, pageSize: 20, status: status || undefined }),
+    queryFn: () => mentorApi.queue({ page, pageSize: 50, status: status || undefined }),
+  });
+
+  const allItems = queue.data?.items ?? [];
+  const filteredItems = allItems.filter((item) => {
+    return (
+      item.student.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      item.category.toLowerCase().includes(search.toLowerCase()) ||
+      item.student.userId.toLowerCase().includes(search.toLowerCase())
+    );
   });
 
   return (
     <ConsoleShell role="MENTOR">
       <ConsolePageHeader
-        title={`Queue: ${status ? status[0] + status.slice(1).toLowerCase() : "All"} Claims (${queue.data?.total ?? "…"})`}
-        description="Open a claim to review its evidence."
+        title="Evidence Review Queue"
+        description="Audit student submissions, verify code deliverables & certificates, and allocate competency points."
+        actions={
+          <Link
+            href="/mentor"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all active:scale-95"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Dashboard</span>
+          </Link>
+        }
       />
 
-      <div className="mb-4 flex gap-2">
-        {STATUS_FILTERS.map((f) => (
-          <Button
-            key={f.value}
-            variant={status === f.value ? "primary" : "secondary"}
-            onClick={() => {
-              setStatus(f.value);
-              setPage(1);
-            }}
-          >
-            {f.label}
-          </Button>
-        ))}
+      {/* Filter Tabs & Search */}
+      <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => {
+                setStatus(f.value);
+                setPage(1);
+              }}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all active:scale-95 ${
+                status === f.value
+                  ? "bg-gradient-to-r from-[#1755A7] to-[#2563EB] text-white shadow-sm shadow-[#1755A7]/25"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search student or category..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]"
+          />
+        </div>
       </div>
 
+      {/* Queue Table */}
       {queue.isLoading ? (
-        <Spinner />
+        <div className="mt-8 flex h-64 items-center justify-center">
+          <Spinner label="Loading review queue..." />
+        </div>
       ) : queue.isError ? (
-        <ErrorBanner error={queue.error} />
-      ) : !queue.data || queue.data.items.length === 0 ? (
-        <p className="text-body text-text-muted">Nothing here — the queue is clear.</p>
+        <div className="mt-6">
+          <ErrorBanner error={queue.error} />
+        </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-400">
+          <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500 mb-2" />
+          <p className="font-bold text-slate-700">No submissions found.</p>
+          <p className="text-xs text-slate-400 mt-1">There are no claims matching the current status filter.</p>
+        </div>
       ) : (
-        <>
-          <ConsoleCard className="overflow-x-auto p-0">
-            <table className="w-full text-left">
-              <thead className="sticky top-0 border-b border-border bg-surface text-caption text-text-muted">
-                <tr>
-                  <th className="px-6 py-3 font-normal">Student</th>
-                  <th className="px-6 py-3 font-normal">Category</th>
-                  <th className="px-6 py-3 font-normal">Proof</th>
-                  <th className="px-6 py-3 font-normal">Submitted</th>
-                  <th className="px-6 py-3 font-normal">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-navy-700">
-                {queue.data.items.map((c, i) => (
-                  <tr key={c.claimId} className={i % 2 === 1 ? "bg-surface-muted/60" : undefined}>
-                    <td className="px-6 py-3">
-                      <Link href={`/mentor/queue/detail?id=${c.claimId}`} className="text-body text-ink hover:underline">
-                        {c.student.fullName}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-3 text-body text-text-muted">{c.category.replace(/_/g, " ")}</td>
-                    <td className="px-6 py-3 font-mono text-caption text-text-muted">{c.proofType.replace(/_/g, " ")}</td>
-                    <td className="px-6 py-3 font-mono text-caption text-text-muted">
-                      {new Date(c.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-3">
-                      <StatusChip status={c.status as Status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ConsoleCard>
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="px-6 py-3.5">Student Scholar</th>
+                <th className="px-6 py-3.5">Submission Category</th>
+                <th className="px-6 py-3.5">Evidence Type</th>
+                <th className="px-6 py-3.5">Submitted Date</th>
+                <th className="px-6 py-3.5 text-center">Status</th>
+                <th className="px-6 py-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredItems.map((c) => (
+                <tr key={c.claimId} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7] font-bold text-xs">
+                        {c.student.fullName.charAt(0)}
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 text-xs">{c.student.fullName}</span>
+                        <span className="text-[11px] text-slate-500 font-mono block">ID: {c.student.userId.slice(0, 12)}…</span>
+                      </div>
+                    </div>
+                  </td>
 
-          {queue.data.total > queue.data.pageSize ? (
-            <div className="mt-4 flex items-center justify-between">
-              <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Previous
-              </Button>
-              <span className="text-caption text-text-muted">
-                Page {queue.data.page} of {Math.ceil(queue.data.total / queue.data.pageSize)}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={page * queue.data.pageSize >= queue.data.total}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          ) : null}
-        </>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+                      {c.category.replace(/_/g, " ")}
+                    </span>
+                  </td>
+
+                  <td className="px-6 py-4">
+                    <span className="font-mono text-slate-600 text-xs">
+                      {c.proofType.replace(/_/g, " ")}
+                    </span>
+                  </td>
+
+                  <td className="px-6 py-4 font-mono text-slate-600">
+                    {new Date(c.createdAt).toLocaleDateString()}
+                  </td>
+
+                  <td className="px-6 py-4 text-center">
+                    <StatusChip status={c.status as Status} />
+                  </td>
+
+                  <td className="px-6 py-4 text-right">
+                    <Link
+                      href={`/mentor/queue/detail?id=${c.claimId}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1755A7] to-[#2563EB] px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:from-[#124282] hover:to-[#1D4ED8] transition-all active:scale-95"
+                    >
+                      <span>Review</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </ConsoleShell>
   );

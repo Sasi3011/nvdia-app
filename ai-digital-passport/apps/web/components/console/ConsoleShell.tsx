@@ -8,48 +8,68 @@ import {
   LayoutDashboard, Inbox, Library, FileCheck, Lock, Briefcase, 
   Calendar, BookOpen, Server, Flag, Microscope, FileQuestion, 
   Building, Medal, Users, Calculator, PieChart, ClipboardList, Activity,
-  LogOut, Hexagon
+  LogOut, Shield, ChevronRight, UserCheck, Sparkles
 } from "lucide-react";
 import { authApi } from "../../lib/api";
 import { useMe, useSession } from "../../lib/session";
 import { Spinner } from "../ui/Spinner";
 
-export interface ConsoleNavItem {
-  href: string;
-  label: string;
-  icon?: typeof LayoutDashboard;
+export interface ConsoleNavGroup {
+  label?: string;
+  items: {
+    href: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    badge?: string;
+  }[];
 }
 
-const MENTOR_NAV: ConsoleNavItem[] = [
-  { href: "/mentor", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/mentor/queue", label: "Queue", icon: Inbox },
-  { href: "/mentor/course-catalog", label: "Course Catalog", icon: Library },
-  { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },
-  { href: "/mentor/proctoring-locks", label: "Proctoring Locks", icon: Lock },
-  { href: "/mentor/startups", label: "Startups", icon: Briefcase },
+const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
+  {
+    label: "Supercomputing & Operations",
+    items: [
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/gpu", label: "GPU Supercluster", icon: Server, badge: "Live" },
+      { href: "/admin/events", label: "Events & QR", icon: Calendar },
+      { href: "/admin/courses", label: "Courses & Curricula", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Programs & Research",
+    items: [
+      { href: "/admin/hackathons", label: "Hackathons", icon: Flag },
+      { href: "/admin/research", label: "Research & Fellowships", icon: Microscope, badge: "₹52L" },
+      { href: "/admin/problems", label: "Industry Problems", icon: FileQuestion },
+      { href: "/admin/industry", label: "Industry Partners", icon: Building },
+      { href: "/admin/awards", label: "Awards & Rosters", icon: Medal },
+    ],
+  },
+  {
+    label: "Governance & Analytics",
+    items: [
+      { href: "/admin/users", label: "User Management", icon: Users },
+      { href: "/admin/scoring", label: "Scoring Matrix", icon: Calculator },
+      { href: "/admin/reports", label: "Reports & Analytics", icon: PieChart },
+      { href: "/admin/audit", label: "Annual Audit", icon: ClipboardList },
+      { href: "/admin/logs", label: "Security & Logs", icon: Activity },
+    ],
+  },
 ];
 
-const ADMIN_NAV: ConsoleNavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/events", label: "Events", icon: Calendar },
-  { href: "/admin/courses", label: "Courses", icon: BookOpen },
-  { href: "/admin/gpu", label: "GPU", icon: Server },
-  { href: "/admin/hackathons", label: "Hackathons", icon: Flag },
-  { href: "/admin/research", label: "Research", icon: Microscope },
-  { href: "/admin/problems", label: "Problems", icon: FileQuestion },
-  { href: "/admin/industry", label: "Industry", icon: Building },
-  { href: "/admin/awards", label: "Awards", icon: Medal },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/scoring", label: "Scoring", icon: Calculator },
-  { href: "/admin/reports", label: "Reports", icon: PieChart },
-  { href: "/admin/audit", label: "Audit", icon: ClipboardList },
-  { href: "/admin/logs", label: "Logs", icon: Activity },
+const MENTOR_NAV_GROUPS: ConsoleNavGroup[] = [
+  {
+    label: "Mentor Operations",
+    items: [
+      { href: "/mentor", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/mentor/queue", label: "Verification Queue", icon: Inbox },
+      { href: "/mentor/course-catalog", label: "Course Catalog", icon: Library },
+      { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },
+      { href: "/mentor/proctoring-locks", label: "Proctoring Locks", icon: Lock },
+      { href: "/mentor/startups", label: "Student Startups", icon: Briefcase },
+    ],
+  },
 ];
 
-/**
- * Mentor/Admin shell — sidebar + dense table layout. Both roles share
- * this shell; only the sidebar nav and required role differ.
- */
 export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,7 +77,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
   const session = useSession();
   const onboarded = session.data?.authenticated && session.data.onboarded;
   const me = useMe(!!onboarded);
-  const nav = role === "MENTOR" ? MENTOR_NAV : ADMIN_NAV;
+  const groups = role === "ADMIN" ? ADMIN_NAV_GROUPS : MENTOR_NAV_GROUPS;
 
   async function handleLogout() {
     await authApi.logout();
@@ -82,7 +102,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
 
   if (session.isLoading || !onboarded || me.isLoading || !me.data || !me.data.roles.includes(role)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-muted">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <Spinner label="Loading console…" />
       </div>
     );
@@ -91,61 +111,116 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
   const otherRoles = me.data.roles.filter((r) => r !== role);
 
   return (
-    <div className="min-h-screen bg-surface-muted font-sans text-ink">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 antialiased selection:bg-[#1755A7] selection:text-white">
       {/* Sidebar Navigation */}
-      <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-border bg-white py-4 pl-4 shadow-sm">
-        <div className="mb-6 flex shrink-0 items-center gap-3 pr-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white">
-            <Hexagon className="h-6 w-6" />
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-slate-200/90 bg-white shadow-xs">
+        
+        {/* Header Branding */}
+        <div className="flex items-center gap-3.5 border-b border-slate-100 px-5 py-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-1 border border-slate-200/80 shadow-2xs">
+            <img src="/Eswar.png" alt="Sri Eshwar Logo" className="h-full w-full object-contain" />
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-[16px] font-bold text-ink">Sri Eshwar NVIDIA</span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">Portal</span>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-[14px] font-black tracking-tight text-slate-900">Sri Eshwar NVIDIA</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#1755A7]/10 px-2 py-0.5 text-[10px] font-bold text-[#1755A7]">
+                <Shield className="h-2.5 w-2.5" />
+                {role === "ADMIN" ? "Admin Console" : "Mentor Console"}
+              </span>
+            </div>
           </div>
         </div>
         
-        {/* Scrollable Navigation Area */}
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pr-4 minute-scrollbar">
-          {nav.map((item) => {
-            const active = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={
-                  "inline-flex shrink-0 items-center gap-3 rounded-lg px-4 py-3 text-[14px] transition-all " +
-                  (active ? "bg-accent font-semibold text-white shadow-sm" : "font-medium text-text-muted hover:bg-surface-muted hover:text-ink")
-                }
-              >
-                {Icon ? <Icon className="h-5 w-5 shrink-0" /> : null}
-                <span className="truncate">{item.label}</span>
-              </Link>
-            );
-          })}
+        {/* Navigation Links Grouped */}
+        <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6 minute-scrollbar">
+          {groups.map((group, idx) => (
+            <div key={idx} className="space-y-1">
+              {group.label && (
+                <div className="px-3 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  {group.label}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = pathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={
+                        "group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all " +
+                        (active
+                          ? "bg-[#1755A7] text-white shadow-sm shadow-[#1755A7]/25"
+                          : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900")
+                      }
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className={`h-4 w-4 shrink-0 transition-colors ${active ? "text-[#F8C401]" : "text-slate-400 group-hover:text-[#1755A7]"}`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+
+                      {item.badge && (
+                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${
+                          active 
+                            ? "bg-[#F8C401] text-slate-900" 
+                            : "bg-[#1755A7]/10 text-[#1755A7]"
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+
+                      {/* Active Left Indicator Bar */}
+                      {active && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[#F8C401]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* Anchored Bottom Profile / Actions */}
-        <div className="mt-4 flex shrink-0 flex-col gap-2 border-t border-border pt-4 pr-4">
-          {otherRoles.includes("ADMIN") && role !== "ADMIN" ? (
-            <Link href="/admin" className="px-3 text-[13px] font-medium text-text-muted hover:text-accent">
-              Admin console
-            </Link>
-          ) : null}
-          {otherRoles.includes("MENTOR") && role !== "MENTOR" ? (
-            <Link href="/mentor" className="px-3 text-[13px] font-medium text-text-muted hover:text-accent">
-              Mentor console
-            </Link>
-          ) : null}
-          <div className="mt-2 flex items-center justify-between px-3">
-             <div className="flex flex-col overflow-hidden pr-2">
-               <span className="truncate text-[13px] font-bold text-ink">{me.data.fullName}</span>
-             </div>
-             <button
+        {/* Anchored Bottom User Profile & Console Switcher */}
+        <div className="border-t border-slate-100 bg-slate-50/50 p-3.5">
+          {otherRoles.length > 0 && (
+            <div className="mb-3 flex items-center gap-1.5 rounded-lg bg-white p-1 border border-slate-200/80 text-[11px] font-bold">
+              <span className="px-2 text-slate-400 text-[10px] uppercase">Switch:</span>
+              {otherRoles.includes("ADMIN") && role !== "ADMIN" && (
+                <Link href="/admin" className="flex-1 rounded-md px-2 py-1 text-center text-[#1755A7] hover:bg-[#1755A7]/10 transition-colors">
+                  Admin
+                </Link>
+              )}
+              {otherRoles.includes("MENTOR") && role !== "MENTOR" && (
+                <Link href="/mentor" className="flex-1 rounded-md px-2 py-1 text-center text-[#1755A7] hover:bg-[#1755A7]/10 transition-colors">
+                  Mentor
+                </Link>
+              )}
+              <Link href="/dashboard" className="flex-1 rounded-md px-2 py-1 text-center text-slate-600 hover:bg-slate-100 transition-colors">
+                Student View
+              </Link>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2.5 rounded-xl bg-white p-2.5 border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1755A7] font-bold text-white text-xs">
+                {me.data.fullName.charAt(0)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="truncate text-xs font-bold text-slate-900 leading-tight">{me.data.fullName}</span>
+                <span className="truncate text-[10px] font-medium text-slate-400">{me.data.email}</span>
+              </div>
+            </div>
+
+            <button
               type="button"
               onClick={handleLogout}
-              className="flex shrink-0 h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-text-muted transition-colors hover:bg-accent hover:text-white"
-              title="Log out"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-red-50 hover:text-red-600"
+              title="Sign out"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -153,9 +228,9 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
         </div>
       </aside>
 
-      {/* Main Content Area (Offset by sidebar width) */}
-      <main className="w-full pl-64 min-h-screen">
-        <div className="mx-auto w-full max-w-[1400px] p-6 desktop:p-8">
+      {/* Main Content Area (Offset by sidebar width 72 -> 18rem) */}
+      <main className="w-full pl-72 min-h-screen">
+        <div className="mx-auto w-full max-w-[1440px] p-6 lg:p-8">
           {children}
         </div>
       </main>

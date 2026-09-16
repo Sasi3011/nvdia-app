@@ -38,7 +38,7 @@
 
   /* Accessibility baseline: visible keyboard focus on every interactive element */
   :focus-visible {
-    outline: 2px solid #1A56DB;
+    outline: 2px solid #1755A7;
     outline-offset: 2px;
   }
 
@@ -46,20 +46,20 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Custom scrollbars for NVIDIA Green theme */
+  /* Slim, elegant modern scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: #F8FAFC;
+    background: #F1F5F9;
   }
   ::-webkit-scrollbar-thumb {
-    background: #93C5FD;
+    background: #CBD5E1;
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #1A56DB;
+    background: #1755A7;
   }
 
   /* Minute, subtle scrollbar for sidebars */
@@ -70,11 +70,11 @@
     background: transparent;
   }
   .minute-scrollbar::-webkit-scrollbar-thumb {
-    background: #D1D5DB;
+    background: #E2E8F0;
     border-radius: 999px;
   }
   .minute-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #9CA3AF;
+    background: #94A3B8;
   }
 }
 
