@@ -2,20 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Mazzard';
+  src: url('/fonts/Mazzard%20Font/MazzardH-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Mazzard';
+  src: url('/fonts/Mazzard%20Font/MazzardH-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Mazzard';
+  src: url('/fonts/Mazzard%20Font/MazzardH-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   * {
-    font-family: var(--font-poppins), 'Poppins', sans-serif;
+    font-family: 'Mazzard', sans-serif;
   }
 
   body {
     @apply bg-surface-muted text-ink antialiased;
-    background: #FFFFFF;
-    font-family: var(--font-poppins), 'Poppins', sans-serif;
+    font-family: 'Mazzard', sans-serif;
   }
 
   /* Accessibility baseline: visible keyboard focus on every interactive element */
   :focus-visible {
-    outline: 2px solid #76B900;
+    outline: 2px solid #1A56DB;
     outline-offset: 2px;
   }
 
@@ -29,14 +52,29 @@
     height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: #FAFAFA;
+    background: #F8FAFC;
   }
   ::-webkit-scrollbar-thumb {
-    background: #C4E587;
+    background: #93C5FD;
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #76B900;
+    background: #1A56DB;
+  }
+
+  /* Minute, subtle scrollbar for sidebars */
+  .minute-scrollbar::-webkit-scrollbar {
+    width: 3px;
+  }
+  .minute-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .minute-scrollbar::-webkit-scrollbar-thumb {
+    background: #D1D5DB;
+    border-radius: 999px;
+  }
+  .minute-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9CA3AF;
   }
 }
 
@@ -44,8 +82,8 @@
   input,
   textarea,
   select {
-    @apply rounded-card border border-border bg-white text-ink shadow-[0_2px_2.7px_rgba(0,0,0,0.12)] transition duration-150 placeholder:text-text-muted;
-    font-family: var(--font-poppins), 'Poppins', sans-serif;
+    @apply rounded-md border border-border bg-white text-ink shadow-sm transition duration-150 placeholder:text-text-muted;
+    font-family: 'Mazzard', sans-serif;
   }
 }
 

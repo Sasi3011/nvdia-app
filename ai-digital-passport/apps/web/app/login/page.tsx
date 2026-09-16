@@ -3,15 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, ArrowRight, Shield, User, GraduationCap, BrainCircuit } from "lucide-react";
 import { authApi } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 
 const DEMO_ACCOUNTS = [
-  { label: "Admin", email: "admin@sece.ac.in", name: "Admin User" },
-  { label: "Mentor", email: "mentor@sece.ac.in", name: "Mentor User" },
-  { label: "Student", email: "student@sece.ac.in", name: "Student User" },
+  { label: "Admin", email: "admin@sece.ac.in", name: "Admin User", icon: Shield },
+  { label: "Mentor", email: "mentor@sece.ac.in", name: "Mentor User", icon: User },
+  { label: "Student", email: "student@sece.ac.in", name: "Student User", icon: GraduationCap },
 ];
 
 export default function LoginPage() {
@@ -58,45 +58,50 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-[#FFFFFF] px-5 py-8 font-poppins text-[#1D1B20]">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-surface px-5 py-8 font-sans text-ink">
       <div className="w-full max-w-[370px] flex flex-col">
         
         {/* Title */}
-        <h1 className="mb-8 text-center text-[26px] font-bold leading-tight tracking-[0.01em] text-[#EA580C]">
-          Sign In
-        </h1>
+        <div className="mb-8 flex flex-col items-center justify-center gap-3 text-ink">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-multi-color shadow-sm text-white">
+            <BrainCircuit size={28} strokeWidth={1.5} />
+          </div>
+          <h1 className="text-center text-display font-bold">
+            Sign In
+          </h1>
+        </div>
 
         {/* Form */}
         <form onSubmit={handleLogin} className="flex flex-col gap-3.5">
           {devError ? <ErrorBanner error={devError} /> : null}
 
           {/* Email Input */}
-          <div className="relative flex h-14 w-full items-center rounded-[26px] border border-[#EBEBEB] bg-[#FFFFFF] px-5 shadow-[0px_2px_2.7px_rgba(0,0,0,0.15)] transition-all focus-within:border-[#F97316] focus-within:ring-2 focus-within:ring-[#F97316]/20">
-            <Mail className="h-5 w-5 shrink-0 text-[#6E6D6D]" />
+          <div className="relative flex h-14 w-full items-center rounded-card border border-border bg-white px-5 shadow-sm transition-all focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
+            <Mail className="h-5 w-5 shrink-0 text-text-muted" />
             <input
               type="email"
               required
               placeholder="Enter Your Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="ml-3.5 h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#1D1B20] placeholder:text-[#6E6D6D] focus:outline-none"
+              className="ml-3.5 h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-ink placeholder:text-text-muted focus:outline-none"
             />
           </div>
 
           {/* Password Input */}
-          <div className="relative flex h-14 w-full items-center rounded-[26px] border border-[#EBEBEB] bg-[#FFFFFF] px-5 shadow-[0px_2px_2.7px_rgba(0,0,0,0.15)] transition-all focus-within:border-[#F97316] focus-within:ring-2 focus-within:ring-[#F97316]/20">
-            <LockKeyhole className="h-5 w-5 shrink-0 text-[#6E6D6D]" />
+          <div className="relative flex h-14 w-full items-center rounded-card border border-border bg-white px-5 shadow-sm transition-all focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
+            <LockKeyhole className="h-5 w-5 shrink-0 text-text-muted" />
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password (optional in dev)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="ml-3.5 h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-[#1D1B20] placeholder:text-[#6E6D6D] focus:outline-none"
+              className="ml-3.5 h-full w-full border-0 bg-transparent p-0 text-[16px] font-normal text-ink placeholder:text-text-muted focus:outline-none"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="ml-2 shrink-0 text-[#6E6D6D] hover:text-[#1D1B20]"
+              className="ml-2 shrink-0 text-text-muted hover:text-ink"
               aria-label="Toggle password visibility"
             >
               {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
@@ -107,17 +112,18 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={devLoading}
-            className="flex h-14 w-full items-center justify-center rounded-[26px] border border-[#EA580C]/20 bg-[#F97316] text-[16px] font-semibold text-[#FFFFFF] shadow-[inset_0px_1px_4px_rgba(255,255,255,0.15),0px_6px_18px_rgba(249,115,22,0.30)] transition-all hover:bg-[#EA580C] hover:shadow-[inset_0px_1px_4px_rgba(255,255,255,0.2),0px_8px_22px_rgba(249,115,22,0.40)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="group flex h-14 w-full items-center justify-center gap-2 rounded-card border border-accent-deep/20 bg-accent text-[16px] font-semibold text-white shadow-md transition-all hover:bg-accent-deep hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {devLoading ? "Signing in..." : "Login"}
+            {!devLoading && <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />}
           </button>
         </form>
 
         {/* Divider */}
         <div className="my-4 flex items-center justify-center gap-2">
-          <span className="h-[1px] flex-1 bg-[rgba(221,221,221,0.5)]" />
-          <span className="px-2 text-[16px] font-medium text-[rgba(118,118,118,0.7)]">Or</span>
-          <span className="h-[1px] flex-1 bg-[rgba(221,221,221,0.5)]" />
+          <span className="h-[1px] flex-1 bg-border" />
+          <span className="px-2 text-[16px] font-medium text-text-muted">Or</span>
+          <span className="h-[1px] flex-1 bg-border" />
         </div>
 
         {/* Social Buttons */}
@@ -125,7 +131,7 @@ export default function LoginPage() {
           {/* Continue with Google */}
           <a
             href={authApi.googleLoginUrl()}
-            className="flex h-14 w-full items-center justify-center gap-3.5 rounded-[26px] border border-[#EFEFEF] bg-[#FAFAFA] text-[14px] font-medium text-[#3B3B3B] shadow-[inset_0px_1px_4px_rgba(255,255,255,0.05)] transition-all hover:bg-[#F2F2F2] hover:border-[#E0E0E0] active:scale-[0.99]"
+            className="flex h-14 w-full items-center justify-center gap-3.5 rounded-card border border-border bg-white text-[14px] font-medium text-ink shadow-sm transition-all hover:bg-surface-muted hover:border-border active:scale-[0.99]"
           >
             <GoogleIcon />
             <span>Continue with Google</span>
@@ -135,7 +141,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => handleLogin(undefined, { email: "apple.student@sece.ac.in", name: "Apple User" })}
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-[26px] border border-[#3F3F3F] bg-[#1A1A1A] text-[14px] font-medium text-[#ECECEC] shadow-[inset_0px_1px_4px_rgba(255,255,255,0.05)] transition-all hover:bg-[#252525] active:scale-[0.99]"
+            className="flex h-14 w-full items-center justify-center gap-3 rounded-card border border-navy-700 bg-navy-900 text-[14px] font-medium text-ink-inverse shadow-sm transition-all hover:bg-navy-700 active:scale-[0.99]"
           >
             <AppleIcon />
             <span>Continue with Apple</span>
@@ -144,25 +150,29 @@ export default function LoginPage() {
 
         {/* Dev Quick Accounts */}
         {process.env.NODE_ENV !== "production" ? (
-          <div className="mt-4 rounded-[18px] border border-dashed border-[#DDDDDD] bg-[#FAFAFA] p-3 text-center">
-            <p className="text-[12px] font-semibold text-[#8C8C8C]">DEV FAST PASS (1-Click Login)</p>
+          <div className="mt-4 rounded-card border border-dashed border-border bg-white p-3 text-center">
+            <p className="text-[12px] font-semibold text-text-muted">DEV FAST PASS (1-Click Login)</p>
             <div className="mt-2 grid grid-cols-3 gap-2">
-              {DEMO_ACCOUNTS.map((account) => (
-                <button
-                  key={account.email}
-                  type="button"
-                  onClick={() => handleLogin(undefined, account)}
-                  className="rounded-[14px] border border-[#EBEBEB] bg-white py-2 text-[12px] font-semibold text-[#6E6D6D] shadow-sm transition-all hover:border-[#F97316] hover:text-[#EA580C]"
-                >
-                  {account.label}
-                </button>
-              ))}
+              {DEMO_ACCOUNTS.map((account) => {
+                const Icon = account.icon;
+                return (
+                  <button
+                    key={account.email}
+                    type="button"
+                    onClick={() => handleLogin(undefined, account)}
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-md border border-border bg-white py-2.5 text-[12px] font-semibold text-text-muted shadow-sm transition-all hover:border-accent hover:text-accent"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {account.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
 
         {/* Footer info */}
-        <p className="mt-6 text-center text-[13px] font-normal text-[#848484]">
+        <p className="mt-6 text-center text-[13px] font-normal text-text-muted">
           NVIDIA AI Digital Passport &bull; SECE
         </p>
       </div>

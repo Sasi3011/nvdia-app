@@ -6,8 +6,8 @@ type Variant = "primary" | "secondary" | "tertiary" | "destructive";
 // Design system 18.6: one primary style (filled accent) per screen;
 // everything else secondary (outline) or tertiary (text link).
 const VARIANTS: Record<Variant, string> = {
-  primary: "border border-[#76B900] bg-accent text-[#FCFCFC] shadow-[inset_0_1px_4px_rgba(255,255,255,0.25),0_6px_18px_rgba(118,185,0,0.30)] hover:bg-accent-deep hover:border-accent-deep disabled:bg-accent/40 disabled:shadow-none font-semibold",
-  secondary: "border border-[#EFEFEF] bg-[#FAFAFA] text-ink shadow-[inset_0_1px_4px_rgba(255,255,255,0.05)] hover:border-accent hover:text-accent disabled:opacity-40 disabled:shadow-none",
+  primary: "border border-accent bg-accent text-white shadow-sm hover:bg-accent-deep hover:border-accent-deep disabled:bg-accent/40 disabled:shadow-none font-semibold transition-all",
+  secondary: "border border-border bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:border-text-muted hover:bg-surface-muted disabled:bg-white disabled:text-text-muted disabled:border-border font-medium",
   tertiary: "text-accent underline-offset-2 hover:underline hover:text-accent-deep disabled:opacity-40",
   destructive: "border border-rejected text-rejected hover:bg-rejected/10 hover:shadow-[0_0_10px_#B3261E/20] disabled:opacity-40",
 };

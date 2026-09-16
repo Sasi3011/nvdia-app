@@ -63,8 +63,6 @@ function Content() {
   if (queue.isError) return <ErrorBanner error={queue.error} />;
   if (!item) return <p className="text-body text-text-muted">This submission isn&apos;t in the pending queue (already reviewed, or not found).</p>;
 
-  const isExternalLink = item.submittedProofUrl && /^https?:\/\//.test(item.submittedProofUrl);
-
   return (
     <div className="flex flex-col gap-6">
       <ConsolePageHeader title={item.student.fullName} description={`${item.student.department} · ${item.courseTitle} · +${item.pointsValue} points`} />
@@ -72,16 +70,26 @@ function Content() {
       <div className="grid grid-cols-1 gap-6 desktop:grid-cols-2">
         <ConsoleCard>
           <h2 className="text-h2 text-ink">Proof</h2>
-          <div className="mt-4">
-            {isExternalLink ? (
-              <a href={item.submittedProofUrl!} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">
-                {item.submittedProofUrl}
-              </a>
-            ) : (
-              <Button variant="secondary" disabled={loadDownload.isPending} onClick={() => loadDownload.mutate()}>
+          <div className="mt-4 flex flex-col gap-4">
+            {item.submittedProofUrl && (
+              <div className="flex flex-col gap-1">
+                <span className="text-caption text-text-muted">Provided Link / Text:</span>
+                <a 
+                  href={item.submittedProofUrl.startsWith("http") ? item.submittedProofUrl : `https://${item.submittedProofUrl}`} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="break-all text-accent underline underline-offset-2"
+                >
+                  {item.submittedProofUrl}
+                </a>
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              <span className="text-caption text-text-muted">Attachment:</span>
+              <Button variant="secondary" disabled={loadDownload.isPending} onClick={() => loadDownload.mutate()} className="self-start">
                 {loadDownload.isPending ? "Opening…" : "View uploaded file"}
               </Button>
-            )}
+            </div>
           </div>
         </ConsoleCard>
 

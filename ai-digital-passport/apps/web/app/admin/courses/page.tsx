@@ -4,17 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
-import { ConsoleCard } from "../../../components/console/ConsoleCard";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
 import { CourseForm } from "../../../components/admin/CourseForm";
 import { Button } from "../../../components/ui/Button";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { adminCoursesApi } from "../../../lib/api";
+import { BookOpen, Briefcase, Clock, Layers, Award, ShieldCheck, MapPin } from "lucide-react";
 
-// Course Management (Admin/Mentor) — Assigned Courses feature, BR-13: only
-// Admin/Mentor can create/edit/publish. Task management lives on the
-// per-course detail page (/admin/courses/detail?id=).
 export default function AdminCoursesPage() {
   const queryClient = useQueryClient();
   const courses = useQuery({ queryKey: ["admin", "courses"], queryFn: adminCoursesApi.list });
@@ -44,37 +41,76 @@ export default function AdminCoursesPage() {
       ) : courses.isError ? (
         <ErrorBanner error={courses.error} />
       ) : !courses.data || courses.data.length === 0 ? (
-        <p className="text-body text-text-muted">No courses yet.</p>
+        <p className="text-[14px] text-text-muted">No courses yet.</p>
       ) : (
-        <ConsoleCard className="divide-y divide-navy-700 p-0">
-          {courses.data.map((c) => (
-            <Link key={c.courseId} href={`/admin/courses/detail?id=${c.courseId}`} className="grid gap-4 px-6 py-4 hover:bg-surface-muted tablet:grid-cols-[1fr_auto] tablet:items-center">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-body text-ink">{c.title}</div>
-                  {c.isFeatured ? <span className="rounded-full bg-accent/10 px-2 py-0.5 text-caption text-accent">Featured</span> : null}
-                  {c.certificateAvailable ? <span className="rounded-full bg-surface-muted px-2 py-0.5 text-caption text-text-muted">Certificate</span> : null}
-                </div>
-                <div className="mt-1 text-caption text-text-muted">
-                  {c.provider} · {c.category} · {c.difficulty} · {c.durationHours}h{c.durationWeeks ? ` / ${c.durationWeeks} weeks` : ""} · {c.deliveryMode}
-                </div>
-                <div className="mt-1 line-clamp-1 text-caption text-text-muted">
-                  {c.shortDescription || `${c.pointsValue} pts · ${c.taskCount} task(s)${c.levelRequirement ? ` · Requires Level ${c.levelRequirement}` : ""}`}
-                </div>
-              </div>
-              <div className="flex items-center gap-3 tablet:justify-end">
-                <span className="font-mono text-caption text-accent">+{c.pointsValue}</span>
-                <StatusBadge status={c.status} />
-              </div>
-            </Link>
-          ))}
-        </ConsoleCard>
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
+          <table className="w-full text-left text-[14px]">
+            <thead className="bg-surface-muted text-[12px] font-bold uppercase tracking-wider text-text-muted">
+              <tr>
+                <th className="px-6 py-4">Course Name</th>
+                <th className="px-6 py-4">Provider & Category</th>
+                <th className="px-6 py-4">Duration & Level</th>
+                <th className="px-6 py-4 text-right">Points</th>
+                <th className="px-6 py-4 text-right">Status</th>
+                <th className="px-6 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {courses.data.map((c) => (
+                <tr key={c.courseId} className="group transition-colors hover:bg-blue-50/30">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-ink">{c.title}</span>
+                        <div className="mt-1 flex items-center gap-2">
+                          {c.isFeatured ? <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-700">Featured</span> : null}
+                          {c.certificateAvailable ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Cert</span> : null}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="flex items-center gap-1.5 font-medium text-ink"><Briefcase className="h-4 w-4 text-gray-400" /> {c.provider}</span>
+                      <span className="text-[12px] text-text-muted">{c.category}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="flex items-center gap-1.5 font-medium text-ink"><Clock className="h-4 w-4 text-gray-400" /> {c.durationHours}h {c.durationWeeks ? `(${c.durationWeeks}w)` : ""}</span>
+                      <span className="flex items-center gap-1.5 text-[12px] text-text-muted"><Layers className="h-3.5 w-3.5" /> {c.difficulty} {c.levelRequirement ? `(Lvl ${c.levelRequirement}+)` : ""}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-accent"><Award className="h-4 w-4" /> +{c.pointsValue}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <StatusBadge status={c.status} />
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <Link href={`/admin/courses/detail?id=${c.courseId}`} className="inline-flex items-center justify-center rounded-lg bg-surface-muted px-4 py-2 text-[13px] font-bold text-ink transition-colors hover:bg-gray-200">
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </ConsoleShell>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = { DRAFT: "text-text-muted", PUBLISHED: "text-accent", ARCHIVED: "text-rejected" };
-  return <span className={"font-mono text-caption " + (colors[status] ?? "text-text-muted")}>{status}</span>;
+  if (status === "PUBLISHED") {
+    return <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700">Published</span>;
+  }
+  if (status === "ARCHIVED") {
+    return <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-600">Archived</span>;
+  }
+  return <span className="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">Draft</span>;
 }

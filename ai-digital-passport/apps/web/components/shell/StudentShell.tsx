@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Award, Bell, BookOpen, Cpu, Gauge, GraduationCap, LogOut, ScanLine, Trophy, Users } from "lucide-react";
+import { Award, Bell, BookOpen, Cpu, Gauge, GraduationCap, LogOut, ScanLine, Trophy, Users, Hexagon, FileCheck } from "lucide-react";
 import { authApi } from "../../lib/api";
 import { useMe, useSession } from "../../lib/session";
 import { Spinner } from "../ui/Spinner";
@@ -15,16 +15,14 @@ const NAV_LINKS = [
   { href: "/gpu", label: "GPU", icon: Cpu },
   { href: "/industry", label: "Industry", icon: Users },
   { href: "/awards", label: "Awards", icon: Award },
-  { href: "/claims", label: "Claims" },
+  { href: "/claims", label: "Claims", icon: FileCheck },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/scan", label: "Scan", icon: ScanLine },
 ];
 
-// Student shell — card-forward, personal (design system 18.1/18.5). The
-// header/passport strip is "always visible once logged in" (spec 01
-// Section 4): name, level, points, GPU credits.
 export function StudentShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const session = useSession();
   const onboarded = session.data?.authenticated && session.data.onboarded;
@@ -67,58 +65,77 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const profile = me.data;
 
   return (
-    <div className="min-h-screen text-ink">
-      <header className="sticky top-0 z-50 border-b border-white/70 bg-white/80 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex max-w-student flex-wrap items-center justify-between gap-3 px-4 py-3 tablet:px-6">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-3 text-h2 text-ink">
-              <span className="flex h-10 w-10 items-center justify-center rounded-card bg-accent text-white shadow-[0_10px_28px_rgba(118,185,0,0.30)]">
-                <GraduationCap className="h-5 w-5" />
-              </span>
-              <span className="font-bold">AI Passport</span>
-            </Link>
-            <nav className="hidden items-center gap-4 tablet:flex">
-              {NAV_LINKS.map((link) => {
-                const Icon = link.icon;
-                return (
-                <Link key={link.href} href={link.href} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-caption text-text-muted hover:bg-surface-muted hover:text-ink">
-                  {Icon ? <Icon className="h-4 w-4" /> : null}
-                  {link.label}
-                </Link>
-              );
-              })}
-            </nav>
+    <div className="min-h-screen bg-surface-muted font-sans text-ink">
+      {/* Sidebar Navigation */}
+      <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-border bg-white py-4 pl-4 shadow-sm">
+        <div className="mb-6 flex shrink-0 items-center gap-3 pr-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white">
+            <Hexagon className="h-6 w-6" />
           </div>
-          <div className="flex items-center gap-4">
-            {profile ? (
-              <div className="hidden items-center gap-3 font-mono text-caption text-text-muted tablet:flex">
-                <span className="rounded-chip border border-accent/30 bg-accent/10 px-2 py-0.5 text-accent">Level {profile.level.levelId}</span>
-                <span aria-hidden>·</span>
-                <span><strong className="text-ink">{profile.totalPoints.toLocaleString()}</strong> pts</span>
-                <span aria-hidden>·</span>
-                <span><strong className="text-ink">{profile.gpuCreditBalance.toLocaleString()}</strong> GPU</span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-[15px] font-bold text-ink">Sri Eshwar NVIDIA</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">Student</span>
+          </div>
+        </div>
+        
+        {/* Scrollable Navigation Area */}
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pr-4 minute-scrollbar">
+          {NAV_LINKS.map((link) => {
+            const active = pathname === link.href;
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={
+                  "inline-flex shrink-0 items-center gap-3 rounded-lg px-4 py-3 text-[14px] transition-all " +
+                  (active ? "bg-accent font-semibold text-white shadow-sm" : "font-medium text-text-muted hover:bg-surface-muted hover:text-ink")
+                }
+              >
+                {Icon ? <Icon className="h-5 w-5 shrink-0" /> : null}
+                <span className="truncate">{link.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Anchored Bottom Profile / Actions */}
+        <div className="mt-4 flex shrink-0 flex-col gap-4 border-t border-border pt-4 pr-4">
+          {profile ? (
+            <div className="flex flex-col gap-1 px-3 text-[12px] font-medium text-text-muted">
+              <div className="flex items-center justify-between">
+                <span>Level {profile.level.levelId}</span>
+                <span className="font-bold text-ink">{profile.totalPoints.toLocaleString()} pts</span>
               </div>
-            ) : null}
-            <Link href="/notifications" aria-label="Notifications" className="rounded-full p-2 text-text-muted transition-fast hover:bg-accent/10 hover:text-accent">
-              <Bell className="h-5 w-5" />
-            </Link>
-            <Link href="/profile" className="flex items-center gap-2 text-body text-ink hover:text-accent">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-caption font-semibold text-accent">
-                {profile?.fullName?.[0]?.toUpperCase() ?? "?"}
-              </span>
-            </Link>
-            <button
+              <div className="flex items-center justify-between">
+                <span>GPU Credits</span>
+                <span className="font-bold text-ink">{profile.gpuCreditBalance.toLocaleString()}</span>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-2 flex items-center justify-between px-3">
+             <div className="flex flex-col overflow-hidden pr-2">
+               <span className="truncate text-[13px] font-bold text-ink">{profile?.fullName || "Student"}</span>
+             </div>
+             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-caption text-text-muted hover:bg-surface-muted hover:text-ink"
+              className="flex shrink-0 h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-text-muted transition-colors hover:bg-accent hover:text-white"
+              title="Log out"
             >
               <LogOut className="h-4 w-4" />
-              Log out
             </button>
           </div>
         </div>
-      </header>
-      <main className="mx-auto max-w-student px-4 py-8 tablet:px-6">{children}</main>
+      </aside>
+
+      {/* Main Content Area (Offset by sidebar width) */}
+      <main className="w-full pl-64 min-h-screen">
+        <div className="mx-auto w-full max-w-student p-6 desktop:p-8">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

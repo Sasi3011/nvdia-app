@@ -9,25 +9,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#1D1B20",
+        ink: "#111827", // Dark for text
         "ink-inverse": "#FFFFFF",
-        "navy-900": "#111827",
-        "navy-700": "#76B900",
-        surface: "#FFFFFF",
-        "surface-muted": "#FAFAFA",
-        border: "#EBEBEB",
-        "text-muted": "#6E6D6D",
-        accent: "#76B900",
-        "accent-deep": "#5D9500",
-        "nvidia-green": "#76B900",
-        "nvidia-dark": "#1A1A1A",
-        pending: "#B98900",
-        rejected: "#B3261E",
+        "navy-900": "#111827", 
+        "navy-700": "#374151", 
+        surface: "#FFFFFF", 
+        "surface-muted": "#F3F4F6", // Very light grey background
+        border: "#E5E7EB", 
+        "text-muted": "#6B7280", 
+        accent: "#1A56DB", // Primary Blue from image
+        "accent-deep": "#1E429F", // Deep Blue
+        "accent-light": "#E1EFFE", // Light Blue
+        "nvidia-green": "#1A56DB",
+        "nvidia-dark": "#1E429F",
+        pending: "#D97706",
+        rejected: "#DC2626",
+        info: "#1A56DB",
+      },
+      backgroundImage: {
+        'multi-color': 'linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)',
       },
       fontFamily: {
-        sans: ["var(--font-poppins)", "Poppins", "sans-serif"],
-        mono: ["var(--font-poppins)", "Poppins", "sans-serif"],
-        poppins: ["var(--font-poppins)", "Poppins", "sans-serif"],
+        sans: ["Mazzard", "var(--font-inter)", "Inter", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "monospace"],
+        inter: ["var(--font-inter)", "Inter", "sans-serif"],
       },
       fontSize: {
         display: ["34px", { lineHeight: "1.12", fontWeight: "700" }],
@@ -43,7 +48,7 @@ const config: Config = {
         console: "1280px",
       },
       borderRadius: {
-        card: "26px",
+        card: "12px",
         chip: "999px",
       },
       screens: {

@@ -28,8 +28,8 @@ export function LevelBadge({
           cy="32"
           r={radius}
           fill="none"
-          stroke="#76B900"
-          strokeWidth="4"
+          stroke="#1A56DB"
+          strokeWidth="3.5"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={dashOffset}
