@@ -84,9 +84,6 @@ export function LiveQrDisplay({ sessionId }: { sessionId: string }) {
       <div className="mt-6 flex flex-col items-center">
         <div className="relative p-4 rounded-2xl bg-white border-2 border-slate-200 shadow-md">
           <canvas ref={canvasRef} className="rounded-xl" />
-          <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[#1755A7] px-3 py-0.5 font-mono text-[10px] font-black text-white shadow-xs">
-            SCAN ON STUDENT PORTAL
-          </div>
         </div>
 
         {/* Dynamic Rotation Token */}

@@ -24,7 +24,9 @@ import {
   Sparkles,
   Edit3,
   Archive,
-  Trash2
+  Trash2,
+  Filter,
+  ChevronDown
 } from "lucide-react";
 
 export default function AdminCoursesPage() {
@@ -161,22 +163,6 @@ export default function AdminCoursesPage() {
 
       {/* Filter and Search Bar */}
       <div className="mt-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
-          {providers.map((p) => (
-            <button
-              key={p}
-              onClick={() => setSelectedProvider(p)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                selectedProvider === p
-                  ? "bg-[#1755A7] text-white shadow-2xs"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              {p === "ALL" ? "All Platforms" : p}
-            </button>
-          ))}
-        </div>
-
         <div className="relative w-full md:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
@@ -186,6 +172,22 @@ export default function AdminCoursesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]"
           />
+        </div>
+
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <select
+            value={selectedProvider}
+            onChange={(e) => setSelectedProvider(e.target.value)}
+            className="w-full md:w-48 appearance-none rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs font-bold text-slate-700 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] shadow-2xs cursor-pointer"
+          >
+            {providers.map((p) => (
+              <option key={p} value={p}>
+                {p === "ALL" ? "All Platforms" : p}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         </div>
       </div>
 
@@ -220,9 +222,6 @@ export default function AdminCoursesPage() {
                 <tr key={c.courseId} className="hover:bg-slate-50/70 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-start gap-3.5">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-                        <BookOpen className="h-5 w-5" />
-                      </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900 text-[13px]">{c.title}</span>
                         <div className="mt-1 flex items-center gap-2">
@@ -296,15 +295,6 @@ export default function AdminCoursesPage() {
                         <Edit3 className="h-3 w-3 text-slate-500" />
                         <span>Edit</span>
                       </button>
-
-                      <Link
-                        href={`/admin/courses/detail?id=${c.courseId}`}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-[#1755A7] transition-all active:scale-95"
-                        title="View Course Tasks & Setup"
-                      >
-                        <span>Tasks</span>
-                        <ExternalLink className="h-3 w-3 text-slate-400" />
-                      </Link>
 
                       {c.status === "PUBLISHED" ? (
                         <button
