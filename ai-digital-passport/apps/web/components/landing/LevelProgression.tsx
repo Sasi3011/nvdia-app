@@ -119,10 +119,10 @@ export function LevelProgression() {
 
   return (
     <section id="levels" className="py-20 bg-slate-50 border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
+        <div className="text-center w-full space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#1755A7]/10 px-3.5 py-1 text-xs font-bold text-[#1755A7] border border-[#1755A7]/20">
             <Award className="h-3.5 w-3.5" />
             <span>COMPETENCY PROGRESSION</span>

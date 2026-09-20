@@ -45,10 +45,10 @@ export function VerificationArchitecture() {
   return (
     <section className="py-20 bg-slate-50 border-b border-slate-200 relative overflow-hidden">
       
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative w-full px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
+        <div className="text-center w-full space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#1755A7]/10 px-3.5 py-1 text-xs font-bold text-[#1755A7] border border-[#1755A7]/20">
             <ShieldCheck className="h-3.5 w-3.5" />
             <span>TRUST & VERIFICATION INFRASTRUCTURE</span>

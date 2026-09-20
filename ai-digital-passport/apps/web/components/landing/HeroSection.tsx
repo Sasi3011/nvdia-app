@@ -24,7 +24,7 @@ export function HeroSection({ onOpenLogin }: { onOpenLogin?: () => void }) {
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-[#1755A7]/10 blur-[110px] rounded-full pointer-events-none" />
       <div className="absolute top-44 left-1/2 -translate-x-1/2 w-[500px] h-[220px] bg-[#F8C401]/15 blur-[95px] rounded-full pointer-events-none" />
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
+      <div className="relative w-full px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
         
         {/* Institutional Pill Badge */}
         <div className="inline-flex items-center gap-2 rounded-full border border-[#1755A7]/25 bg-[#1755A7]/5 px-4 py-1.5 text-xs font-extrabold text-[#1755A7] shadow-xs backdrop-blur-sm mb-6">

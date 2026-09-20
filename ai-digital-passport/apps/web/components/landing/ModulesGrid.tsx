@@ -141,10 +141,10 @@ const MODULES: ModuleInfo[] = [
 export function ModulesGrid() {
   return (
     <section id="features" className="py-24 bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
+        <div className="text-center w-full space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#1755A7]/10 px-3.5 py-1 text-xs font-bold text-[#1755A7] border border-[#1755A7]/20">
             <Cpu className="h-3.5 w-3.5" />
             <span>THE 9-GRID ARCHITECTURE</span>

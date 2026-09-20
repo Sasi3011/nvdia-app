@@ -56,7 +56,7 @@ export default function LoginPage() {
 
       queryClient.clear();
       const targetName = authCheck.entry?.fullName || targetEmail.split("@")[0] || "User";
-      await authApi.devLogin({ email: targetEmail, fullName: targetName });
+      await authApi.devLogin({ email: targetEmail, fullName: targetName, password });
       const refreshed = await authApi.session();
       queryClient.setQueryData(["auth", "session"], refreshed);
       routeBySession(refreshed.roles ?? [], !!refreshed.onboarded);

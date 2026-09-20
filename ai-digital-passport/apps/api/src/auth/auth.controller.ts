@@ -120,11 +120,15 @@ export class AuthController {
   @Post("dev-login")
   devLogin(
     @Res() res: Response,
-    @Body(new ZodValidationPipe(z.object({ email: z.string().trim().toLowerCase().email(), fullName: z.string().trim().min(1).max(200) })))
-    body: { email: string; fullName: string },
+    @Body(new ZodValidationPipe(z.object({ email: z.string().trim().toLowerCase().email(), fullName: z.string().trim().min(1).max(200), password: z.string().min(1) })))
+    body: { email: string; fullName: string; password: string },
   ) {
     if (process.env.NODE_ENV === "production") {
       res.status(404).send();
+      return;
+    }
+    if (body.password !== (process.env.DEV_LOGIN_PASSWORD || "password123")) {
+      res.status(401).send({ message: "Invalid email or password." });
       return;
     }
     this.sessionService.issueCookie(res, { googleId: `dev-${body.email}`, email: body.email, fullName: body.fullName });

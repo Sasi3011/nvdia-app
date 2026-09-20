@@ -44,7 +44,7 @@ export function FaqSection() {
 
   return (
     <section className="py-24 bg-slate-50 border-b border-slate-200">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
         <div className="text-center space-y-3">

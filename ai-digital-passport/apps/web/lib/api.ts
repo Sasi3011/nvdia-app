@@ -43,7 +43,7 @@ export const authApi = {
       input,
     ),
   logout: () => apiClient.post<void>("/auth/logout"),
-  devLogin: (input: { email: string; fullName: string }) => apiClient.post<void>("/auth/dev-login", input),
+  devLogin: (input: { email: string; fullName: string; password: string }) => apiClient.post<void>("/auth/dev-login", input),
   googleLoginUrl: () => `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:1002"}/auth/google`,
 };
 

@@ -9,7 +9,7 @@ export function LandingFooter() {
       
       {/* Pre-footer Call to Action Banner */}
       <div className="border-b border-slate-200 bg-gradient-to-r from-[#1755A7]/10 via-[#F8C401]/10 to-[#1755A7]/10 py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
+        <div className="w-full px-4 sm:px-6 lg:px-8 text-center space-y-5">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#1755A7]/10 px-3.5 py-1 text-xs font-bold text-[#1755A7] border border-[#1755A7]/20">
             <Cpu className="h-3.5 w-3.5" />
             <span>ACCELERATE YOUR AI JOURNEY</span>
@@ -42,7 +42,7 @@ export function LandingFooter() {
       </div>
 
       {/* Main Footer Links */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-14">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           
           {/* Brand Info */}
