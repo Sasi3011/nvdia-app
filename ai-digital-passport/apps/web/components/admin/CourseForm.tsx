@@ -19,6 +19,7 @@ import {
   GraduationCap,
   X
 } from "lucide-react";
+import { TaskCreationModal } from "./TaskCreationModal";
 
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] transition-colors";
 const labelClass = "flex flex-col gap-1.5 text-xs font-bold text-slate-700";
@@ -54,6 +55,7 @@ export function CourseForm({
   onCancel: () => void;
   isModal?: boolean;
 }) {
+  const [showTaskCreation, setShowTaskCreation] = useState(false);
   const [title, setTitle] = useState(course?.title ?? "");
   const [shortDescription, setShortDescription] = useState(course?.shortDescription ?? "");
   const [description, setDescription] = useState(course?.description ?? "");
@@ -113,7 +115,9 @@ export function CourseForm({
       };
       return course?.courseId ? adminCoursesApi.update(course.courseId, input) : adminCoursesApi.create(input);
     },
-    onSuccess: onDone,
+    onSuccess: () => {
+      setShowTaskCreation(true);
+    },
   });
 
   const formContent = (
@@ -321,6 +325,22 @@ export function CourseForm({
       </form>
     </div>
   );
+
+  if (showTaskCreation) {
+    return (
+      <TaskCreationModal 
+        courseTitle={title}
+        onClose={() => {
+          setShowTaskCreation(false);
+          onDone();
+        }}
+        onFinish={() => {
+          setShowTaskCreation(false);
+          onDone();
+        }}
+      />
+    );
+  }
 
   if (isModal) {
     return (
