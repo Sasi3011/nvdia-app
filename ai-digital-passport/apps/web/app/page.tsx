@@ -1,22 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "../lib/session";
-import { LandingHeader } from "../components/landing/LandingHeader";
-import { HeroSection } from "../components/landing/HeroSection";
-import { ModulesGrid } from "../components/landing/ModulesGrid";
-import { LevelProgression } from "../components/landing/LevelProgression";
-import { ProgrammeCalendarPreview } from "../components/landing/ProgrammeCalendarPreview";
-import { LearningPartners } from "../components/landing/LearningPartners";
-import { VerificationArchitecture } from "../components/landing/VerificationArchitecture";
-import { LeaderboardPreview } from "../components/landing/LeaderboardPreview";
-import { FaqSection } from "../components/landing/FaqSection";
-import { LandingFooter } from "../components/landing/LandingFooter";
+// import { LandingHeader } from "../components/landing/LandingHeader";
+// import { HeroSection } from "../components/landing/HeroSection";
+// import { ModulesGrid } from "../components/landing/ModulesGrid";
+// import { LevelProgression } from "../components/landing/LevelProgression";
+// import { ProgrammeCalendarPreview } from "../components/landing/ProgrammeCalendarPreview";
+// import { LearningPartners } from "../components/landing/LearningPartners";
+// import { VerificationArchitecture } from "../components/landing/VerificationArchitecture";
+// import { LeaderboardPreview } from "../components/landing/LeaderboardPreview";
+// import { FaqSection } from "../components/landing/FaqSection";
+// import { LandingFooter } from "../components/landing/LandingFooter";
 import { LoginModal } from "../components/auth/LoginModal";
 
 export default function Home() {
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const router = useRouter();
   const session = useSession();
 
@@ -51,27 +50,37 @@ export default function Home() {
   // ── If authenticated, hold render until redirect fires ──
   if (session.data?.authenticated) return null;
 
-  return (
-    <div className="min-h-screen bg-surface font-sans text-ink selection:bg-accent-light selection:text-accent">
-      <LandingHeader onOpenLogin={() => setLoginModalOpen(true)} />
-      <main>
-        <HeroSection onOpenLogin={() => setLoginModalOpen(true)} />
-        <ModulesGrid />
-        <LevelProgression />
-        <ProgrammeCalendarPreview />
-        <LearningPartners />
-        <VerificationArchitecture />
-        <LeaderboardPreview />
-        <FaqSection />
-      </main>
-      <LandingFooter />
+  // LANDING PAGE DISABLED — kept here for reference, the app now opens on the login page.
+  // return (
+  //   <div className="min-h-screen bg-surface font-sans text-ink selection:bg-accent-light selection:text-accent">
+  //     <LandingHeader onOpenLogin={() => setLoginModalOpen(true)} />
+  //     <main>
+  //       <HeroSection onOpenLogin={() => setLoginModalOpen(true)} />
+  //       <ModulesGrid />
+  //       <LevelProgression />
+  //       <ProgrammeCalendarPreview />
+  //       <LearningPartners />
+  //       <VerificationArchitecture />
+  //       <LeaderboardPreview />
+  //       <FaqSection />
+  //     </main>
+  //     <LandingFooter />
+  //     <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
+  //   </div>
+  // );
 
-      {/* Login Popup Modal */}
-      <LoginModal
-        isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-      />
+  return (
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url(/Login.png)" }}
+    >
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative">
+        <LoginModal isOpen standalone onClose={() => undefined} />
+      </div>
+      <footer className="absolute inset-x-0 bottom-0 px-4 py-3 text-center text-[11px] font-medium text-white/80">
+        &copy; {new Date().getFullYear()} Sri Eshwar College of Engineering &middot; NVIDIA AI Digital Passport. All rights reserved.
+      </footer>
     </div>
   );
 }
-

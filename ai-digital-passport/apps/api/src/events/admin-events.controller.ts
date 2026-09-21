@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import type { Event, EventSession } from "@ai-digital-passport/database";
-import { CreateEventSchema, CreateEventSessionSchema, UserRole } from "@ai-digital-passport/shared-types";
+import { Body, Controller, Get, Param, Patch, Post, Delete } from "@nestjs/common";
+import type { Event, EventSession, ScoringRule } from "@ai-digital-passport/database";
+import { CreateEventSchema, CreateEventSessionSchema, UpdateEventSchema, UserRole } from "@ai-digital-passport/shared-types";
 import { CurrentUser } from "../common/auth/current-user.decorator";
 import { Roles } from "../common/auth/roles.decorator";
 import type { RequestUser } from "../common/auth/types";
@@ -14,18 +14,23 @@ function sessionDto(s: EventSession) {
     title: s.title,
     startsAt: s.starts_at,
     endsAt: s.ends_at,
-    qrActive: s.qr_active,
+    qrActive: Date.now() >= s.starts_at.getTime() && Date.now() <= s.ends_at.getTime(),
     qrWindowSeconds: s.qr_window_seconds,
   };
 }
 
-function eventDto(e: Event & { sessions?: EventSession[] }) {
+function eventDto(e: Event & { sessions?: EventSession[]; scoring_rule?: ScoringRule; check_ins?: number }) {
   return {
     eventId: e.event_id,
     title: e.title,
     description: e.description,
     location: e.location,
     category: e.category,
+    year: e.year,
+    department: e.department,
+    sessionType: e.session_type,
+    checkIns: e.check_ins ?? 0,
+    points: e.scoring_rule?.points ?? null,
     startsAt: e.starts_at,
     endsAt: e.ends_at,
     createdAt: e.created_at,
@@ -45,9 +50,28 @@ export class AdminEventsController {
     return events.map(eventDto);
   }
 
+  @Get("stats")
+  async stats() {
+    return { totalCheckIns: await this.eventsService.totalCheckIns() };
+  }
+
+  @Get(":eventId/attendance")
+  async roster(@Param("eventId") eventId: string) {
+    return this.eventsService.eventRoster(eventId);
+  }
+
   @Get(":eventId")
   async getEvent(@Param("eventId") eventId: string) {
     return eventDto(await this.eventsService.getEvent(eventId));
+  }
+
+  @Delete(":eventId")
+  async deleteEvent(
+    @CurrentUser() user: RequestUser,
+    @Param("eventId") eventId: string,
+  ) {
+    await this.eventsService.deleteEvent(user.userId, eventId);
+    return { success: true };
   }
 
   @Post()
@@ -56,6 +80,15 @@ export class AdminEventsController {
     @Body(new ZodValidationPipe(CreateEventSchema)) body: ReturnType<typeof CreateEventSchema.parse>,
   ) {
     return eventDto(await this.eventsService.createEvent(user.userId, body));
+  }
+
+  @Patch(":eventId")
+  async updateEvent(
+    @CurrentUser() user: RequestUser,
+    @Param("eventId") eventId: string,
+    @Body(new ZodValidationPipe(UpdateEventSchema)) body: ReturnType<typeof UpdateEventSchema.parse>,
+  ) {
+    return eventDto(await this.eventsService.updateEvent(user.userId, eventId, body));
   }
 
   @Post(":eventId/sessions")

@@ -1,14 +1,26 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@ai-digital-passport/database";
 
-const ALLOWED_MIME_TYPES = new Set(["application/pdf"]);
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+]);
 const MAX_SIZE_BYTES = 15 * 1024 * 1024;
 
 @Injectable()
 export class UploadsService {
   validatePdf(params: { mimeType: string; sizeBytes: number }) {
     if (!ALLOWED_MIME_TYPES.has(params.mimeType)) {
-      throw new BadRequestException({ code: "UNSUPPORTED_FILE_TYPE", message: "Only PDF proof documents are accepted." });
+      throw new BadRequestException({ code: "UNSUPPORTED_FILE_TYPE", message: "Only PDF, image (PNG/JPG/WEBP), Excel/CSV, PPT/PPTX or DOC/DOCX files are accepted." });
     }
     if (params.sizeBytes <= 0 || params.sizeBytes > MAX_SIZE_BYTES) {
       throw new BadRequestException({ code: "FILE_TOO_LARGE", message: "File must be under 15MB." });

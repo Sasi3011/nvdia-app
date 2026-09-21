@@ -7,7 +7,8 @@ import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { ApiError } from "../../lib/api-client";
-import { problemsApi } from "../../lib/api";
+import { problemsApi, type FileAttachment } from "../../lib/api";
+import { AttachmentViewer } from "../../components/shared/AttachmentViewer";
 import { useMe } from "../../lib/session";
 import { 
   Lightbulb, 
@@ -34,6 +35,7 @@ interface ProblemItem {
   title: string;
   description: string;
   organization?: string | null;
+  attachment?: FileAttachment | null;
   domain?: string;
   difficulty?: "INTERMEDIATE" | "ADVANCED" | "EXPERT";
   points?: number;
@@ -88,6 +90,7 @@ export default function ProblemsPage() {
   const [search, setSearch] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("ALL");
   const [activeModalProblem, setActiveModalProblem] = useState<ProblemItem | null>(null);
+  const [fileProblem, setFileProblem] = useState<ProblemItem | null>(null);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
   const problemsQuery = useQuery({
@@ -118,6 +121,7 @@ export default function ProblemsPage() {
     title: p.title,
     description: p.description,
     organization: p.organization || "Sri Eshwar Industry Partner",
+    attachment: p.attachment,
     domain: "AI Engineering",
     difficulty: "ADVANCED",
     points: 350,
@@ -312,6 +316,15 @@ export default function ProblemsPage() {
                       Submit Evidence <ArrowUpRight className="h-3 w-3" />
                     </Link>
 
+                    {prob.attachment && (
+                      <button
+                        type="button"
+                        onClick={() => setFileProblem(prob)}
+                        className="text-xs font-bold text-slate-700 hover:underline"
+                      >
+                        View attached file
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setActiveModalProblem(prob)}
@@ -323,6 +336,22 @@ export default function ProblemsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {fileProblem?.attachment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setFileProblem(null)}>
+            <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 className="truncate text-sm font-black text-slate-900">{fileProblem.title}</h3>
+                <button type="button" onClick={() => setFileProblem(null)} className="rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100">
+                  Close
+                </button>
+              </div>
+              <div className="overflow-y-auto p-6">
+                <AttachmentViewer attachment={fileProblem.attachment} />
+              </div>
             </div>
           </div>
         )}

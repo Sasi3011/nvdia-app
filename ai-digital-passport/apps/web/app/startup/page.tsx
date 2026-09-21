@@ -6,7 +6,8 @@ import { STARTUP_STAGES } from "@ai-digital-passport/shared-types";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
-import { startupApi } from "../../lib/api";
+import { startupApi, uploadsApi, API_BASE_URL } from "../../lib/api";
+import { STARTUP_STAGE_FORMS, STARTUP_DOC_ACCEPT, STARTUP_DOC_HINT, STARTUP_REGISTRATION_GUIDE } from "../../lib/startup-stages";
 import { 
   Rocket, 
   Sparkles, 
@@ -38,20 +39,7 @@ export default function StartupPage() {
 function StartupContent() {
   const queryClient = useQueryClient();
   const projects = useQuery({ queryKey: ["startup", "projects"], queryFn: startupApi.list });
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [evidenceUrl, setEvidenceUrl] = useState("");
-  const [proposalNotes, setProposalNotes] = useState("");
-
-  const createProject = useMutation({
-    mutationFn: () => startupApi.create(newTitle),
-    onSuccess: () => {
-      setNewTitle("");
-      setCreateModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["startup", "projects"] });
-    },
-  });
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
   if (projects.isLoading) {
     return (
@@ -66,10 +54,10 @@ function StartupContent() {
   }
 
   const project = projects.data?.[0];
-  const currentStage = project?.currentStage ?? 1;
-  const nextStage = currentStage + 1;
+  const verifiedStage = project?.verifiedStage ?? 0;
+  const nextStage = verifiedStage + 1;
   const hasPendingMilestone = project?.milestones.some((m) => m.status === "PENDING") ?? false;
-  const atFinalStage = currentStage >= 6;
+  const atFinalStage = verifiedStage >= 6;
 
   return (
     <div className="space-y-6">
@@ -94,7 +82,7 @@ function StartupContent() {
               {project ? project.title : "AI Venture Incubation Pipeline"}
             </h1>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Transform your AI research and capstones into investable deep-tech startups. Progress through 6 incubation stages with seed grants, GPU compute clusters, and mentor advisory.
+              Transform your AI research and capstones into investable deep-tech startups. Every stage, from idea to registered startup, is submitted with documents and must be approved by your mentor before the next one unlocks.
             </p>
           </div>
 
@@ -102,18 +90,18 @@ function StartupContent() {
             {!project ? (
               <button
                 type="button"
-                onClick={() => setCreateModalOpen(true)}
+                onClick={() => setSubmitModalOpen(true)}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
               >
                 <Plus className="h-4 w-4" />
-                Incorporate AI Startup
+                Submit Your Idea
               </button>
             ) : (
               !atFinalStage && (
                 <button
                   type="button"
                   disabled={hasPendingMilestone}
-                  onClick={() => setAdvanceModalOpen(true)}
+                  onClick={() => setSubmitModalOpen(true)}
                   className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95 ${
                     hasPendingMilestone
                       ? "bg-slate-400 cursor-not-allowed"
@@ -121,7 +109,7 @@ function StartupContent() {
                   }`}
                 >
                   <Send className="h-3.5 w-3.5" />
-                  {hasPendingMilestone ? "Milestone Under Review" : `Request Stage ${nextStage} Advancement`}
+                  {hasPendingMilestone ? "Awaiting Mentor Approval" : `Submit Stage ${nextStage}: ${STARTUP_STAGES[nextStage - 1]?.name}`}
                 </button>
               )
             )}
@@ -134,10 +122,10 @@ function StartupContent() {
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Pipeline Stage</div>
           <div className="mt-2 text-2xl font-black text-[#1755A7]">
-            {project ? `Stage ${project.currentStage} / 6` : "Stage 0"}
+            {project ? `${verifiedStage} / 6 Approved` : "Stage 0"}
           </div>
           <div className="mt-1 text-xs text-slate-500">
-            {project ? STARTUP_STAGES[project.currentStage - 1]?.name : "Not Incorporated"}
+            {!project ? "Not started" : atFinalStage ? "All stages approved" : `Next: ${STARTUP_STAGES[nextStage - 1]?.name}`}
           </div>
         </div>
 
@@ -175,11 +163,11 @@ function StartupContent() {
           <div className="pt-2">
             <button
               type="button"
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => setSubmitModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#134486] transition-all"
             >
               <Plus className="h-4 w-4" />
-              Incorporate Venture Now
+              Submit Your Idea
             </button>
           </div>
         </div>
@@ -191,18 +179,17 @@ function StartupContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-black text-slate-900">6-Stage Venture Acceleration Roadmap</h3>
-                <p className="text-xs text-slate-500">Sequential milestone progression validated by faculty incubator mentors</p>
+                <p className="text-xs text-slate-500">Each stage is submitted, reviewed and approved by your mentor</p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                {currentStage} of 6 Complete
+                {verifiedStage} of 6 Approved
               </span>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {STARTUP_STAGES.map((s) => {
-                const isPassed = s.stage < currentStage;
-                const isCurrent = s.stage === currentStage;
-                const isLocked = s.stage > currentStage;
+                const isPassed = s.stage <= verifiedStage;
+                const isCurrent = !atFinalStage && s.stage === nextStage;
 
                 return (
                   <div
@@ -244,7 +231,7 @@ function StartupContent() {
                     </div>
 
                     <div className="mt-3 pt-2 border-t border-slate-200/60 text-[10px] font-bold text-slate-400">
-                      {isPassed ? "Verified" : isCurrent ? "Active Work" : "Locked"}
+                      {isPassed ? "Mentor Approved" : isCurrent ? (hasPendingMilestone ? "Under Review" : "Submit Now") : "Locked"}
                     </div>
                   </div>
                 );
@@ -259,7 +246,7 @@ function StartupContent() {
               <div className="text-xs">
                 <span className="font-bold text-amber-900">Milestone Review in Progress: </span>
                 <span className="text-amber-800">
-                  Your advancement request for Stage {nextStage} is currently being evaluated by the startup mentor panel.
+                  Your Stage {nextStage} submission is being evaluated by your mentor. You can submit the next stage once it is approved.
                 </span>
               </div>
             </div>
@@ -276,7 +263,7 @@ function StartupContent() {
 
             {project.milestones.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
-                No milestone submissions recorded yet. Click &quot;Request Stage Advancement&quot; above to submit stage deliverables.
+                No milestone submissions recorded yet. Submit your idea above to begin Stage 1.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -285,7 +272,7 @@ function StartupContent() {
                     <tr>
                       <th className="px-5 py-3">Target Stage</th>
                       <th className="px-5 py-3">Status</th>
-                      <th className="px-5 py-3">Submitted Evidence</th>
+                      <th className="px-5 py-3">Submitted On / Documents</th>
                       <th className="px-5 py-3">Mentor Feedback</th>
                     </tr>
                   </thead>
@@ -313,6 +300,11 @@ function StartupContent() {
                         </td>
                         <td className="px-5 py-3 font-mono text-slate-600">
                           {new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {m.details?.documents?.map((d) => (
+                            <a key={d.fileKey} href={`${API_BASE_URL}/uploads/files/${d.fileKey}`} target="_blank" rel="noreferrer" className="mt-1 block truncate font-sans font-semibold text-[#1755A7] hover:underline">
+                              {d.fileName}
+                            </a>
+                          ))}
                         </td>
                         <td className="px-5 py-3 text-slate-600">
                           {m.feedback || <span className="text-slate-400 italic">No feedback remarks</span>}
@@ -327,88 +319,13 @@ function StartupContent() {
         </div>
       )}
 
-      {/* Incorporate Startup Modal Popup */}
-      {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-                  <Rocket className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">Incorporate AI Startup Venture</h3>
-                  <p className="text-[11px] text-slate-500">Initiate Stage 1: Idea Incubation</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCreateModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {project && atFinalStage && <RegistrationGuide />}
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                createProject.mutate();
-              }}
-              className="space-y-4 text-xs font-medium text-slate-700"
-            >
-              {createProject.isError && <ErrorBanner error={createProject.error} />}
-
-              <div>
-                <label className="block font-bold text-slate-900 mb-1">Venture / Startup Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. NeuroSync Robotics"
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-900 mb-1">AI Domain & Problem Overview</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Describe the target customer problem and the foundational AI technology solution…"
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setCreateModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createProject.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 font-bold text-white hover:bg-[#134486] transition-all shadow-xs"
-                >
-                  <Rocket className="h-3.5 w-3.5" />
-                  {createProject.isPending ? "Creating…" : "Register Startup"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Request Stage Advancement Modal */}
-      {advanceModalOpen && project && (
-        <AdvancementModal
-          project={project}
+      {submitModalOpen && (
+        <StageSubmissionModal
+          project={project ?? null}
           targetStage={nextStage}
-          onClose={() => setAdvanceModalOpen(false)}
+          onClose={() => setSubmitModalOpen(false)}
         />
       )}
 
@@ -416,20 +333,40 @@ function StartupContent() {
   );
 }
 
-function AdvancementModal({
+function StageSubmissionModal({
   project,
   targetStage,
   onClose,
 }: {
-  project: { projectId: string; title: string };
+  project: { projectId: string; title: string } | null;
   targetStage: number;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const form = STARTUP_STAGE_FORMS[targetStage - 1] ?? STARTUP_STAGE_FORMS[0]!;
+  const [title, setTitle] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<File[]>([]);
 
   const submit = useMutation({
-    mutationFn: () => startupApi.submitMilestone(project.projectId, { targetStage, evidenceUrl: evidenceUrl || undefined }),
+    mutationFn: async () => {
+      if (form.documentRequired && files.length === 0) {
+        throw new Error(`Please upload the ${form.documentLabel}.`);
+      }
+      const documents = [];
+      for (const file of files) {
+        const uploaded = await uploadsApi.uploadPdf({
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          base64Data: await fileToBase64(file),
+          entityType: "startup_milestone",
+        });
+        documents.push({ fileKey: uploaded.fileKey, fileName: file.name });
+      }
+      const projectId = project?.projectId ?? (await startupApi.create(title)).projectId;
+      return startupApi.submitMilestone(projectId, { targetStage, details: values, documents });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["startup", "projects"] });
       onClose();
@@ -437,25 +374,21 @@ function AdvancementModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-6 pb-4">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
               <Send className="h-4 w-4" />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900">
-                Request Stage {targetStage} Advancement
+                Stage {targetStage}: {STARTUP_STAGES[targetStage - 1]?.name}
               </h3>
-              <p className="text-[11px] text-slate-500">{STARTUP_STAGES[targetStage - 1]?.name}</p>
+              <p className="text-[11px] text-slate-500">{form.intro}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-          >
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -465,56 +398,147 @@ function AdvancementModal({
             e.preventDefault();
             submit.mutate();
           }}
-          className="space-y-4 text-xs font-medium text-slate-700"
+          className="flex min-h-0 flex-1 flex-col text-xs font-medium text-slate-700"
         >
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
           {submit.isError && <ErrorBanner error={submit.error} />}
 
-          <div>
-            <label className="block font-bold text-slate-900 mb-1">Target Stage</label>
-            <input
-              type="text"
-              disabled
-              value={`Stage ${targetStage}: ${STARTUP_STAGES[targetStage - 1]?.name}`}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-slate-600 font-semibold"
-            />
-          </div>
+          {!project && (
+            <div>
+              <label className="mb-1 block font-bold text-slate-900">Startup / Idea Name</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. NeuroSync Robotics"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
+              />
+            </div>
+          )}
+
+          {form.fields.map((f) => {
+            const common = {
+              required: f.required,
+              value: values[f.key] ?? "",
+              placeholder: f.placeholder,
+              className: "w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none",
+            };
+            const set = (v: string) => setValues((prev) => ({ ...prev, [f.key]: v }));
+            return (
+              <div key={f.key}>
+                <label className="mb-1 block font-bold text-slate-900">
+                  {f.label} {f.required && <span className="text-rose-500">*</span>}
+                </label>
+                {f.type === "textarea" ? (
+                  <textarea rows={3} {...common} onChange={(e) => set(e.target.value)} />
+                ) : f.type === "select" ? (
+                  <select {...common} onChange={(e) => set(e.target.value)}>
+                    <option value="">Select…</option>
+                    {f.options?.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type={f.type === "url" ? "url" : "text"} {...common} onChange={(e) => set(e.target.value)} />
+                )}
+              </div>
+            );
+          })}
 
           <div>
-            <label className="block font-bold text-slate-900 mb-1">Evidence Deliverable URL (Pitch Deck, Demo Video, GitHub)</label>
+            <label className="mb-1 block font-bold text-slate-900">
+              {form.documentLabel} {form.documentRequired && <span className="text-rose-500">*</span>}
+            </label>
             <input
-              type="url"
-              required
-              value={evidenceUrl}
-              onChange={(e) => setEvidenceUrl(e.target.value)}
-              placeholder="https://drive.google.com/..."
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
+              type="file"
+              multiple
+              accept={STARTUP_DOC_ACCEPT}
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 5))}
+              className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-3"
             />
+            <p className="mt-1 text-[11px] text-slate-500">{STARTUP_DOC_HINT} · up to 5 files</p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600 space-y-1">
-            <strong className="text-slate-800">Review Criteria:</strong>
-            <p>Your faculty mentor will review customer validation metrics, technical MVP architecture, and pitch slides before advancing your stage.</p>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600">
+            <strong className="text-slate-800">Mentor approval required:</strong> your mentor will review this submission.
+            The next stage unlocks only after approval.
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600 hover:bg-slate-50"
-            >
+          </div>
+
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 p-4 px-6">
+            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600 hover:bg-slate-50">
               Cancel
             </button>
             <button
               type="submit"
               disabled={submit.isPending}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 font-bold text-white hover:bg-[#134486] transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 font-bold text-white shadow-xs hover:bg-[#134486] disabled:opacity-60"
             >
               <Send className="h-3.5 w-3.5" />
-              {submit.isPending ? "Submitting…" : "Submit Advancement Request"}
+              {submit.isPending ? "Submitting…" : "Submit for Mentor Review"}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
+}
+
+function RegistrationGuide() {
+  return (
+    <div className="space-y-4 rounded-2xl border border-emerald-200 bg-white p-6 shadow-xs">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+          <Building className="h-4 w-4" />
+        </div>
+        <div>
+          <h3 className="text-sm font-black text-slate-900">Congratulations — Register Your Startup</h3>
+          <p className="text-[11px] text-slate-500">
+            All 6 stages are mentor-approved. Follow these steps to make your venture a legally registered startup.
+            Rules and fees change, so confirm details on each official portal.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {STARTUP_REGISTRATION_GUIDE.map((r, i) => (
+          <div key={r.title} className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-xs">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-black text-slate-900">{i + 1}. {r.title}</div>
+                <div className="text-[11px] font-semibold text-[#1755A7]">{r.authority}</div>
+              </div>
+              <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">{r.cost}</span>
+            </div>
+            <p className="text-slate-600">{r.summary}</p>
+            <ol className="list-decimal space-y-0.5 pl-4 text-slate-700">
+              {r.steps.map((st) => <li key={st}>{st}</li>)}
+            </ol>
+            <div>
+              <span className="font-bold text-slate-800">Documents: </span>
+              <span className="text-slate-600">{r.documents.join(", ")}</span>
+            </div>
+            {r.link && (
+              <a href={r.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
+                Official portal <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

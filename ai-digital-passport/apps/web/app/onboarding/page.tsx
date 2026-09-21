@@ -27,7 +27,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (session.isLoading) return;
     if (!session.data?.authenticated) {
-      router.replace("/login");
+      router.replace("/");
     } else if (session.data.onboarded) {
       const roles = session.data.roles ?? [];
       if (roles.includes("ADMIN")) {

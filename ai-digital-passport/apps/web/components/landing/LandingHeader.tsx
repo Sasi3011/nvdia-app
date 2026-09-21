@@ -33,7 +33,7 @@ export function LandingHeader({ onOpenLogin }: { onOpenLogin?: () => void }) {
   const userRoles = session.data?.roles ?? [];
 
   const getTargetPortal = () => {
-    if (!isAuthenticated) return "/login";
+    if (!isAuthenticated) return "/";
     if (!session.data?.onboarded) return "/onboarding";
     if (userRoles.includes("ADMIN")) return "/admin";
     if (userRoles.includes("MENTOR")) return "/mentor";
@@ -125,7 +125,7 @@ export function LandingHeader({ onOpenLogin }: { onOpenLogin?: () => void }) {
             </button>
           ) : (
             <Link
-              href="/login"
+              href="/"
               className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-[#1755A7] hover:bg-[#103E7E] rounded-xl transition-all whitespace-nowrap shadow-sm shadow-[#1755A7]/20 hover:shadow-md active:scale-[0.98]"
             >
               <LogIn className="h-3.5 w-3.5" />
@@ -194,7 +194,7 @@ export function LandingHeader({ onOpenLogin }: { onOpenLogin?: () => void }) {
               </button>
             ) : (
               <Link
-                href="/login"
+                href="/"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] to-[#2563eb] py-3 text-xs font-bold text-white shadow-sm"
               >

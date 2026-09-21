@@ -21,6 +21,9 @@ export class EventsService {
     description?: string;
     location?: string;
     category: string;
+    year?: string;
+    department?: string;
+    sessionType?: string;
     startsAt: Date;
     endsAt: Date;
   }) {
@@ -34,20 +37,102 @@ export class EventsService {
         description: input.description,
         location: input.location,
         category: input.category,
+        year: input.year,
+        department: input.department,
+        session_type: input.sessionType,
         starts_at: input.startsAt,
         ends_at: input.endsAt,
         created_by: actorId,
+        // Every event needs at least one check-in session so its QR is
+        // available immediately after creation, without a separate
+        // "add session" step in the admin UI.
+        sessions: {
+          create: {
+            title: input.title,
+            starts_at: input.startsAt,
+            ends_at: input.endsAt,
+            qr_window_seconds: QR_REFRESH_SECONDS,
+            qr_active: true,
+            qr_secret: generateQrSecret(),
+          },
+        },
       },
+      include: { sessions: true },
     });
     await this.auditLogService.record({ actorId, action: "EVENT_CREATED", entityType: "event", entityId: event.event_id });
     return event;
   }
 
-  async listEvents() {
-    return prisma.event.findMany({
-      orderBy: { starts_at: "desc" },
+  async updateEvent(actorId: string, eventId: string, input: {
+    title?: string;
+    description?: string;
+    location?: string;
+    category?: string;
+    year?: string;
+    department?: string;
+    sessionType?: string;
+    startsAt?: Date;
+    endsAt?: Date;
+  }) {
+    const existing = await prisma.event.findUnique({ where: { event_id: eventId } });
+    if (!existing) throw new NotFoundException({ code: "EVENT_NOT_FOUND" });
+
+    if (input.category) {
+      const scoringRule = await prisma.scoringRule.findUnique({ where: { category: input.category } });
+      if (!scoringRule) {
+        throw new BadRequestException({ code: "UNKNOWN_CATEGORY", message: "No scoring rule for that category." });
+      }
+    }
+
+    const event = await prisma.event.update({
+      where: { event_id: eventId },
+      data: {
+        title: input.title,
+        description: input.description,
+        location: input.location,
+        category: input.category,
+        year: input.year,
+        department: input.department,
+        session_type: input.sessionType,
+        starts_at: input.startsAt,
+        ends_at: input.endsAt,
+      },
       include: { sessions: { orderBy: { starts_at: "asc" } } },
     });
+    await this.auditLogService.record({ actorId, action: "EVENT_UPDATED", entityType: "event", entityId: event.event_id });
+    return event;
+  }
+
+  async listEvents() {
+    const events = await prisma.event.findMany({
+      orderBy: { starts_at: "desc" },
+      include: { sessions: { orderBy: { starts_at: "asc" } }, scoring_rule: true },
+    });
+    const counts = await prisma.attendance.groupBy({ by: ["session_id"], _count: { _all: true } });
+    const bySession = new Map(counts.map((c) => [c.session_id, c._count._all]));
+    return events.map((e) => ({
+      ...e,
+      check_ins: e.sessions.reduce((n, s) => n + (bySession.get(s.session_id) ?? 0), 0),
+    }));
+  }
+
+  async eventRoster(eventId: string) {
+    const rows = await prisma.attendance.findMany({
+      where: { session: { event_id: eventId } },
+      orderBy: { checked_in_at: "asc" },
+      include: { user: { select: { user_id: true, full_name: true, register_num: true, department: true } } },
+    });
+    return rows.map((r) => ({
+      userId: r.user.user_id,
+      fullName: r.user.full_name,
+      registerNum: r.user.register_num,
+      department: r.user.department,
+      checkedInAt: r.checked_in_at,
+    }));
+  }
+
+  async totalCheckIns(): Promise<number> {
+    return prisma.attendance.count();
   }
 
   async getEvent(eventId: string) {
@@ -57,6 +142,23 @@ export class EventsService {
     });
     if (!event) throw new NotFoundException({ code: "EVENT_NOT_FOUND" });
     return event;
+  }
+
+  async deleteEvent(actorId: string, eventId: string) {
+    const existing = await prisma.event.findUnique({ where: { event_id: eventId } });
+    if (!existing) throw new NotFoundException({ code: "EVENT_NOT_FOUND" });
+
+    const sessions = await prisma.eventSession.findMany({ where: { event_id: eventId } });
+    const sessionIds = sessions.map((s) => s.session_id);
+
+    await prisma.$transaction([
+      prisma.attendance.deleteMany({ where: { session_id: { in: sessionIds } } }),
+      prisma.qrToken.deleteMany({ where: { session_id: { in: sessionIds } } }),
+      prisma.eventSession.deleteMany({ where: { event_id: eventId } }),
+      prisma.event.delete({ where: { event_id: eventId } }),
+    ]);
+
+    await this.auditLogService.record({ actorId, action: "EVENT_DELETED", entityType: "event", entityId: eventId });
   }
 
   async createSession(actorId: string, eventId: string, input: { title: string; startsAt: Date; endsAt: Date }) {
@@ -101,13 +203,19 @@ export class EventsService {
 
   // Meant to be polled by the venue display every ~window (Page 25).
   async currentQr(sessionId: string) {
-    const session = await prisma.eventSession.findUnique({ where: { session_id: sessionId } });
+    let session = await prisma.eventSession.findUnique({ where: { session_id: sessionId } });
     if (!session) throw new NotFoundException({ code: "SESSION_NOT_FOUND" });
-    if (!session.qr_active || !session.qr_secret) {
-      throw new BadRequestException({ code: "QR_NOT_ACTIVE", message: "This session's QR has not been activated." });
+    // The QR is live only between the session's start and end time.
+    this.assertQrWindowOpen(session);
+    if (!session.qr_secret) {
+      session = await prisma.eventSession.update({
+        where: { session_id: sessionId },
+        data: { qr_secret: generateQrSecret(), qr_active: true },
+      });
     }
+    const secret = session.qr_secret as string;
 
-    const { token, windowStart, windowEnd } = currentToken(session.qr_secret, session.qr_window_seconds);
+    const { token, windowStart, windowEnd } = currentToken(secret, session.qr_window_seconds);
 
     // Audit trail only (SEC-09) — not the source of validity, which is
     // stateless TOTP against qr_secret.
@@ -116,6 +224,20 @@ export class EventsService {
     });
 
     return { token, windowStart, windowEnd, refreshSeconds: session.qr_window_seconds };
+  }
+
+  // QR enables at the start time and disables at the end time automatically.
+  private assertQrWindowOpen(session: { starts_at: Date; ends_at: Date }) {
+    const now = Date.now();
+    if (now < session.starts_at.getTime()) {
+      throw new BadRequestException({
+        code: "QR_NOT_STARTED",
+        message: `QR check-in opens at ${session.starts_at.toISOString()}.`,
+      });
+    }
+    if (now > session.ends_at.getTime()) {
+      throw new BadRequestException({ code: "QR_ENDED", message: "This class has ended. QR check-in is closed." });
+    }
   }
 
   async liveAttendanceCount(sessionId: string): Promise<number> {
@@ -136,9 +258,12 @@ export class EventsService {
       include: { event: { include: { scoring_rule: true } } },
     });
     if (!session) throw new NotFoundException({ code: "SESSION_NOT_FOUND" });
-    if (!session.qr_active || !session.qr_secret) {
+    this.assertQrWindowOpen(session);
+    if (!session.qr_secret) {
       throw new BadRequestException({ code: "QR_EXPIRED_OR_INVALID", message: "This QR code has expired. Ask the event host to refresh it." });
     }
+    // Points always come from the scoring matrix, never a fixed number.
+    const points = session.event.scoring_rule.points;
 
     const valid = verifyToken(token, session.qr_secret, session.qr_window_seconds);
     if (!valid) {
@@ -160,8 +285,8 @@ export class EventsService {
             user_id: userId,
             category: session.event.category,
             proof_type: ProofType.TOTP_QR,
-            points_requested: 20,
-            points_awarded: 20,
+            points_requested: points,
+            points_awarded: points,
             status: ClaimStatus.APPROVED,
             reviewed_at: new Date(),
           },
@@ -183,10 +308,10 @@ export class EventsService {
     const award = await this.pointsService.awardForClaim({
       userId,
       claimId,
-      points: 20,
+      points,
       reason: `Live event attendance: ${session.title}`,
     });
 
-    return { alreadyRecorded: false, claimId, pointsAwarded: 20, ...award };
+    return { alreadyRecorded: false, claimId, pointsAwarded: points, ...award };
   }
 }

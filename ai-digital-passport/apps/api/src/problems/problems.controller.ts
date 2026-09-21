@@ -39,6 +39,14 @@ export class ProblemsController {
         description: p.description,
         organization: p.organization,
         levelRequirement: p.level_requirement,
+        attachment: p.attachment_file_key
+          ? {
+              fileKey: p.attachment_file_key,
+              fileName: p.attachment_file_name ?? "attachment",
+              mimeType: p.attachment_mime_type ?? "application/octet-stream",
+              sizeBytes: p.attachment_size_bytes ?? 0,
+            }
+          : null,
       })),
       total,
       query,

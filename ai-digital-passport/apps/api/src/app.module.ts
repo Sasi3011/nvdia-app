@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ActivitiesModule } from "./activities/activities.module";
 import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
+import { AwardsModule } from "./awards/awards.module";
 import { AuditLogModule } from "./common/audit-log/audit-log.module";
 import { SessionAuthGuard } from "./common/auth/session-auth.guard";
 import { RolesGuard } from "./common/auth/roles.guard";
@@ -23,10 +24,11 @@ import { PointsModule } from "./points/points.module";
 import { ProblemsModule } from "./problems/problems.module";
 import { ProgramModule } from "./program/program.module";
 import { ExternalHackathonsModule } from "./external-hackathons/external-hackathons.module";
-import { ProctoringModule } from "./proctoring/proctoring.module";
 import { StartupModule } from "./startup/startup.module";
+import { StudentProgressModule } from "./student-progress/student-progress.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { UsersModule } from "./users/users.module";
+import { WhitelistModule } from "./whitelist/whitelist.module";
 
 @Module({
   imports: [
@@ -35,6 +37,7 @@ import { UsersModule } from "./users/users.module";
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     RedisModule,
     AuditLogModule,
+    WhitelistModule,
     HealthModule,
     AuthModule,
     UsersModule,
@@ -48,13 +51,14 @@ import { UsersModule } from "./users/users.module";
     ProgramModule,
     ExternalHackathonsModule,
     StartupModule,
+    StudentProgressModule,
     NotificationsModule,
     UploadsModule,
     LeaderboardModule,
     AdminModule,
+    AwardsModule,
     OtaModule,
     CoursesModule,
-    ProctoringModule,
   ],
   providers: [
     // Order matters: rate limit first, then resolve identity, then check

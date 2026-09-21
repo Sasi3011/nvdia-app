@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { OtaBootstrap } from "../components/OtaBootstrap";
@@ -18,6 +18,12 @@ export const metadata: Metadata = {
     shortcut: "/Eswar.png?v=2",
     apple: "/Eswar.png?v=2",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

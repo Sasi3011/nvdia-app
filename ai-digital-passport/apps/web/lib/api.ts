@@ -180,9 +180,62 @@ export interface PendingMilestoneResponse {
   milestoneId: string;
   targetStage: number;
   evidenceUrl: string | null;
+  details?: StartupSubmissionDetails | null;
   createdAt: string;
   project: { projectId: string; title: string; leadName: string };
 }
+
+export interface AdminStartupListItem {
+  projectId: string;
+  title: string;
+  currentStage: number;
+  currentStageName: string;
+  gpuValidated: boolean;
+  lead: { userId: string; fullName: string; email: string; department: string; cohortYear: number };
+  milestones: { approved: number; pending: number; rejected: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminStartupSummary {
+  total: number;
+  stageCounts: Record<string, number>;
+  gpuValidated: number;
+  pendingReviews: number;
+  newLast30Days: number;
+}
+
+export interface AdminStartupMilestone {
+  milestoneId: string;
+  targetStage: number;
+  stageName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  evidenceUrl: string | null;
+  fields: Record<string, string>;
+  documents: { fileKey: string; fileName: string }[];
+  feedback: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  submittedAt: string;
+}
+
+export interface AdminStartupDetail {
+  projectId: string;
+  title: string;
+  currentStage: number;
+  currentStageName: string;
+  gpuValidated: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lead: { userId: string; fullName: string; email: string; registerNum: string; department: string; cohortYear: number };
+  milestones: AdminStartupMilestone[];
+}
+
+export const adminStartupsApi = {
+  list: (params: { page?: number; pageSize?: number; search?: string; stage?: number; status?: string } = {}) =>
+    apiClient.get<PaginatedResult<AdminStartupListItem> & { summary: AdminStartupSummary }>(`/admin/startups${toQueryString(params)}`),
+  detail: (projectId: string) => apiClient.get<AdminStartupDetail>(`/admin/startups/${projectId}`),
+};
 
 export const mentorStartupApi = {
   pending: (params: { page?: number; pageSize?: number } = {}) =>
@@ -214,12 +267,20 @@ export const pointsApi = {
 // Problem Bank (Page 11)
 // ---------------------------------------------------------------------------
 
+export interface FileAttachment {
+  fileKey: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface ProblemResponse {
   problemId: string;
   title: string;
   description: string;
   organization: string | null;
   levelRequirement: number;
+  attachment: FileAttachment | null;
 }
 
 export const problemsApi = {
@@ -241,7 +302,14 @@ export interface StartupMilestoneResponse {
   targetStage: number;
   status: "PENDING" | "APPROVED" | "REJECTED";
   feedback: string | null;
+  evidenceUrl?: string | null;
+  details?: StartupSubmissionDetails | null;
   createdAt: string;
+}
+
+export interface StartupSubmissionDetails {
+  fields: Record<string, string>;
+  documents: { fileKey: string; fileName: string }[];
 }
 
 export interface StartupProjectResponse {
@@ -250,13 +318,14 @@ export interface StartupProjectResponse {
   currentStage: number;
   currentStageName: string;
   gpuValidated: boolean;
+  verifiedStage: number;
   milestones: StartupMilestoneResponse[];
 }
 
 export const startupApi = {
   list: () => apiClient.get<StartupProjectResponse[]>("/startup/projects"),
   create: (title: string) => apiClient.post<{ projectId: string; title: string; currentStage: number }>("/startup/projects", { title }),
-  submitMilestone: (projectId: string, input: { targetStage: number; evidenceUrl?: string }) =>
+  submitMilestone: (projectId: string, input: { targetStage: number; evidenceUrl?: string; details?: Record<string, string>; documents?: { fileKey: string; fileName: string }[] }) =>
     apiClient.post<{ milestoneId: string; projectId: string; targetStage: number; status: string; createdAt: string }>(
       `/startup/projects/${projectId}/milestones`,
       input,
@@ -270,12 +339,23 @@ export const startupApi = {
 export interface LeaderboardEntryResponse {
   userId: string;
   fullName: string;
+  department: string;
   totalPoints: number;
   levelName: string;
 }
 
+export interface LeaderboardSummaryResponse {
+  totalStudents: number;
+  averagePoints: number;
+  topScore: number;
+  topLevelName: string | null;
+  topLevelMinPoints: number | null;
+  topLevelCount: number;
+}
+
 export const leaderboardApi = {
   top: (limit = 20) => apiClient.get<LeaderboardEntryResponse[]>(`/leaderboard?limit=${limit}`),
+  summary: () => apiClient.get<LeaderboardSummaryResponse>("/leaderboard/summary"),
 };
 
 // ---------------------------------------------------------------------------
@@ -317,6 +397,13 @@ export const eventsApi = {
 // Uploads (PostgreSQL-backed file storage, Page 14)
 // ---------------------------------------------------------------------------
 
+// Fetches a stored file through the session cookie and returns it as a Blob (used for in-page viewing).
+export async function fetchStoredFile(fileKey: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE_URL}/uploads/files/${fileKey}`, { credentials: "include" });
+  if (!res.ok) throw new Error(res.status === 404 ? "The file could not be found." : "The file could not be loaded.");
+  return res.blob();
+}
+
 export const uploadsApi = {
   uploadPdf: (input: { fileName: string; mimeType: string; sizeBytes: number; base64Data: string; entityType?: string; entityId?: string }) =>
     apiClient.post<{ fileKey: string; fileName: string; mimeType: string; sizeBytes: number }>("/uploads/files", input),
@@ -330,9 +417,19 @@ export const uploadsApi = {
 
 export interface AdminDashboardResponse {
   totalStudents: number;
+  newStudents30d: number;
+  activeStudents7d: number;
   pendingClaims: number;
   activeEvents: number;
-  levelDistribution: { levelId: number; count: number }[];
+  totalPoints: number;
+  avgPointsPerStudent: number;
+  avgReviewHours: number | null;
+  approvalRate7d: number | null;
+  levelDistribution: { levelId: number; levelName: string; count: number }[];
+  monthlyClaims: { month: string; approved: number; pending: number; rejected: number }[];
+  weeklyClaims: { day: string; approved: number; pending: number; rejected: number }[];
+  categoryPoints: { category: string; label: string; points: number; share: number }[];
+  recentActivity: { id: string; kind: "CLAIM_APPROVED" | "CLAIM_REJECTED" | "CLAIM_SUBMITTED" | "POINTS"; user: string; action: string; at: string }[];
 }
 
 export const adminDashboardApi = {
@@ -359,17 +456,41 @@ export interface AdminEventResponse {
   description: string | null;
   location: string | null;
   category: string;
+  year: string | null;
+  department: string | null;
+  sessionType: string | null;
+  checkIns: number;
+  points: number | null;
   startsAt: string;
   endsAt: string;
   createdAt: string;
   sessions: AdminEventSessionResponse[];
 }
 
+export interface EventRosterEntry {
+  userId: string;
+  fullName: string;
+  registerNum: string;
+  department: string;
+  checkedInAt: string;
+}
+
+export type AdminEventInput = {
+  title: string; description?: string; location?: string; category: string;
+  year?: string; department?: string; sessionType?: string; startsAt: string; endsAt: string;
+};
+
 export const adminEventsApi = {
   list: () => apiClient.get<AdminEventResponse[]>("/admin/events"),
   get: (eventId: string) => apiClient.get<AdminEventResponse>(`/admin/events/${eventId}`),
-  create: (input: { title: string; description?: string; location?: string; category: string; startsAt: string; endsAt: string }) =>
+  roster: (eventId: string) => apiClient.get<EventRosterEntry[]>(`/admin/events/${eventId}/attendance`),
+  delete: (eventId: string) => apiClient.delete<void>(`/admin/events/${eventId}`),
+  create: (input: AdminEventInput) =>
     apiClient.post<AdminEventResponse>("/admin/events", input),
+  update: (
+    eventId: string,
+    input: Partial<AdminEventInput>,
+  ) => apiClient.patch<AdminEventResponse>(`/admin/events/${eventId}`, input),
   createSession: (eventId: string, input: { title: string; startsAt: string; endsAt: string }) =>
     apiClient.post<AdminEventSessionResponse>(`/admin/events/${eventId}/sessions`, input),
   activate: (sessionId: string) => apiClient.post<AdminEventSessionResponse>(`/admin/events/sessions/${sessionId}/activate`),
@@ -392,6 +513,7 @@ export interface AdminProblemResponse {
   organization: string | null;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   levelRequirement: number;
+  attachment: FileAttachment | null;
   createdAt: string;
 }
 
@@ -401,13 +523,86 @@ export interface UpsertProblemInput {
   organization?: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   levelRequirement: number;
+  // undefined = leave as is, null = remove the attached file
+  attachment?: FileAttachment | null;
 }
+
+export type IndustryGpuStatus = "NEW" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "FULFILLED";
+
+export interface IndustryGpuRequestResponse {
+  requestId: string;
+  companyName: string;
+  contactPerson: string;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  website: string | null;
+  sector: string | null;
+  useCase: string;
+  gpuType: string | null;
+  gpuCount: number | null;
+  hoursNeeded: number | null;
+  duration: string | null;
+  status: IndustryGpuStatus;
+  adminNotes: string | null;
+  createdAt: string;
+}
+
+export const adminIndustryGpuApi = {
+  list: () => apiClient.get<IndustryGpuRequestResponse[]>("/admin/industry/gpu-requests"),
+  create: (input: Record<string, unknown>) => apiClient.post<IndustryGpuRequestResponse>("/admin/industry/gpu-requests", input),
+  update: (id: string, input: Record<string, unknown>) => apiClient.put<IndustryGpuRequestResponse>(`/admin/industry/gpu-requests/${id}`, input),
+  remove: (id: string) => apiClient.delete<void>(`/admin/industry/gpu-requests/${id}`),
+};
+
+export type WhitelistRole = "STUDENT" | "MENTOR" | "ADMIN";
+export type WhitelistStatus = "AUTHORIZED" | "SUSPENDED";
+
+export interface WhitelistEntryResponse {
+  email: string;
+  fullName: string | null;
+  role: WhitelistRole;
+  department: string;
+  year: string | null;
+  status: WhitelistStatus;
+  source: string;
+  addedAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface WhitelistListResponse {
+  items: WhitelistEntryResponse[];
+  summary: { total: number; students: number; mentors: number; admins: number; suspended: number };
+}
+
+export interface WhitelistRowInput {
+  email: string;
+  fullName?: string;
+  role?: WhitelistRole;
+  department?: string;
+  year?: string;
+  source?: string;
+}
+
+export const adminWhitelistApi = {
+  list: (params: { search?: string; role?: string; status?: string } = {}) =>
+    apiClient.get<WhitelistListResponse>(`/admin/whitelist${toQueryString(params)}`),
+  add: (input: WhitelistRowInput) =>
+    apiClient.post<{ addedCount: number; updatedCount: number; invalidCount: number }>("/admin/whitelist", input),
+  import: (input: { rows: WhitelistRowInput[]; role?: WhitelistRole; department?: string; source?: string }) =>
+    apiClient.post<{ addedCount: number; updatedCount: number; invalidCount: number }>("/admin/whitelist/import", input),
+  setStatus: (email: string, status: WhitelistStatus) =>
+    apiClient.patch<WhitelistEntryResponse>(`/admin/whitelist/${encodeURIComponent(email)}/status`, { status }),
+  remove: (email: string) => apiClient.delete<void>(`/admin/whitelist/${encodeURIComponent(email)}`),
+};
 
 export const adminProblemsApi = {
   list: (params: { page?: number; pageSize?: number } = {}) =>
     apiClient.get<PaginatedResult<AdminProblemResponse>>(`/admin/problems${toQueryString(params)}`),
   create: (input: UpsertProblemInput) => apiClient.post<AdminProblemResponse>("/admin/problems", input),
+  importFile: (input: { title: string; description?: string; organization: string; status: "PUBLISHED" | "DRAFT" | "ARCHIVED"; attachment: FileAttachment }) =>
+    apiClient.post<AdminProblemResponse>("/admin/problems/import", input),
   update: (id: string, input: UpsertProblemInput) => apiClient.put<AdminProblemResponse>(`/admin/problems/${id}`, input),
+  remove: (id: string) => apiClient.delete<{ success: true }>(`/admin/problems/${id}`),
 };
 
 // ---------------------------------------------------------------------------
@@ -469,20 +664,46 @@ export const adminScoringApi = {
 // Admin — Reports & Analytics Export (Page 29)
 // ---------------------------------------------------------------------------
 
+export type ReportRange = "7d" | "30d" | "90d" | "all";
+
 export interface AdminReportsSummaryResponse {
-  pointsByCategory: { category: string; approvedCount: number; totalPointsAwarded: number }[];
-  claimsByStatus: { status: string; count: number }[];
-  levelDistribution: { levelId: number; count: number }[];
-  startupStageDistribution: { stage: number; count: number }[];
-  problemBank: { submissionCount: number; distinctSubmitters: number };
+  range: ReportRange;
+  department: string | null;
+  generatedAt: string;
+  departmentOptions: string[];
+  overview: {
+    totalStudents: number;
+    activeStudents30d: number;
+    pointsAwarded: number;
+    averagePoints: number;
+    claims: { approved: number; pending: number; rejected: number; total: number };
+    approvalRatePct: number | null;
+    avgReviewHours: number | null;
+  };
+  levels: { levelId: number; levelName: string; minPoints: number; count: number }[];
+  pointsOverTime: { label: string; points: number }[];
+  claimsByCategory: { category: string; label: string; approved: number; pending: number; rejected: number; points: number }[];
+  departments: { name: string; students: number; averagePoints: number; claims: number; approvedClaims: number }[];
+  topStudents: { rank: number; userId: string; fullName: string; department: string; levelId: number; totalPoints: number }[];
+  courses: {
+    courseId: string; title: string; provider: string; status: string;
+    enrolled: number; completed: number; inReview: number; completionRatePct: number | null;
+  }[];
+  hackathons: {
+    external: { total: number; approved: number; pending: number; rejected: number };
+    internal: { byStatus: { status: string; count: number }[]; teams: number; submissions: number };
+  };
+  liveClasses: { eventId: string; title: string; startsAt: string; category: string; checkIns: number }[];
+  problemBank: { byStatus: { status: string; count: number }[]; submissions: number; distinctSubmitters: number };
+  startups: { stages: { stage: number; name: string; count: number }[]; projectsByStatus: { status: string; count: number }[] };
+  gpu: { total: number; requestedCredits: number; allocatedCredits: number; byStatus: { status: string; count: number }[] };
+  awards: { status: string; count: number }[];
+  certificates: { issuedCount: number };
 }
 
 export const adminReportsApi = {
-  summary: () => apiClient.get<AdminReportsSummaryResponse>("/admin/reports/summary"),
-  claimsExportUrl: () => `${API_BASE_URL}/admin/reports/claims/export.csv`,
-  gpuExportUrl: () => `${API_BASE_URL}/admin/reports/gpu/export.csv`,
-  projectsExportUrl: () => `${API_BASE_URL}/admin/reports/projects/export.csv`,
-  hackathonsExportUrl: () => `${API_BASE_URL}/admin/reports/hackathons/export.csv`,
+  summary: (params: { range: ReportRange; department?: string }) =>
+    apiClient.get<AdminReportsSummaryResponse>(`/admin/reports/summary${toQueryString(params)}`),
 };
 
 export interface GpuRequestResponse {
@@ -540,10 +761,35 @@ export interface ExternalHackathon {
   ends_at: string | null;
   deadline_at: string | null;
   register_points: number;
+  created_at: string;
   registered: boolean;
+  registrationStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+  registrationFeedback: string | null;
+}
+
+export interface HackathonApplicationsRow {
+  externalId: string;
+  title: string;
+  organizer: string | null;
+  deadlineAt: string | null;
+  total: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+  applicants: {
+    registrationId: string;
+    claimId: string | null;
+    studentName: string;
+    studentEmail: string;
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    feedback: string | null;
+    pointsAwarded: number;
+    appliedAt: string;
+  }[];
 }
 
 export const externalHackathonsApi = {
+  applications: () => apiClient.get<HackathonApplicationsRow[]>("/hackathons/external/applications"),
   list: () => apiClient.get<ExternalHackathon[]>("/hackathons/external"),
   sync: () => apiClient.post<{ fetched: number; saved: number; errors: string[] }>("/hackathons/external/sync"),
   add: (input: {
@@ -553,10 +799,12 @@ export const externalHackathonsApi = {
   remove: (id: string) => apiClient.delete<void>(`/hackathons/external/${id}`),
   update: (id: string, input: {
     title?: string; url?: string; description?: string; organizer?: string; location?: string; isOnline?: boolean;
-    prize?: string; tags?: string[]; deadlineAt?: string; registerPoints?: number;
+    prize?: string; tags?: string[]; deadlineAt?: string;
   }) => apiClient.patch<ExternalHackathon>(`/hackathons/external/${id}`, input),
-  register: (id: string) =>
-    apiClient.post<{ alreadyRegistered: boolean; pointsAwarded: number }>(`/hackathons/external/${id}/register`),
+  register: (
+    id: string,
+    proof: { proofType: "PDF_FILE" | "DOI_LINK"; proofUrl?: string; fileKey?: string; fileName?: string; mimeType?: string; sizeBytes?: number },
+  ) => apiClient.post<{ alreadyRegistered: boolean; status: string; pointsAwarded: number }>(`/hackathons/external/${id}/register`, proof),
 };
 
 export interface ProjectRecordResponse {
@@ -631,13 +879,10 @@ export interface AuditLogEntryResponse {
 
 // ---------------------------------------------------------------------------
 // Assigned Courses (additive feature) — student browse/submit, admin CRUD,
-// mentor review, proctoring.
+// mentor review.
 // ---------------------------------------------------------------------------
 
 export type EnrollmentStatusValue = "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "APPROVED" | "REJECTED";
-export type CourseTaskTypeValue = "STANDARD" | "LIVE_PROCTORED";
-export type ProctoringStatusValue = "ACTIVE" | "COMPLETED" | "LOCKED";
-export type ViolationTypeValue = "FULLSCREEN_EXIT" | "TAB_SWITCH" | "WINDOW_BLUR";
 
 export interface CourseListItemResponse {
   courseId: string;
@@ -666,26 +911,13 @@ export interface CourseListItemResponse {
   enrollmentStatus: EnrollmentStatusValue;
 }
 
-export interface CourseTaskResponse {
-  taskId: string;
-  title: string;
-  type: CourseTaskTypeValue;
-  instructions: string | null;
-  sequenceOrder: number;
-  isRequired: boolean;
-  completed: boolean;
-  proctoringStatus: ProctoringStatusValue | null;
-}
-
 export interface CourseDetailResponse extends Omit<CourseListItemResponse, "enrollmentStatus"> {
   enrollment: { enrollmentId: string; courseId: string; status: EnrollmentStatusValue; submittedProofUrl: string | null; submittedAt: string | null; reviewFeedback: string | null; reviewedAt: string | null };
-  tasks: CourseTaskResponse[];
 }
 
 export const coursesApi = {
   list: () => apiClient.get<CourseListItemResponse[]>("/courses"),
   detail: (id: string) => apiClient.get<CourseDetailResponse>(`/courses/${id}`),
-  completeTask: (courseId: string, taskId: string) => apiClient.post<{ taskId: string; completed: boolean }>(`/courses/${courseId}/tasks/${taskId}/complete`),
   submitProof: (courseId: string, input: { proofUrl?: string; fileKey?: string; fileName?: string; mimeType?: string; sizeBytes?: number }) =>
     apiClient.post(`/courses/${courseId}/proof`, input),
 };
@@ -704,10 +936,10 @@ export interface AdminCourseListItemResponse {
   isFeatured: boolean;
   skillsCovered: string[];
   provider: string;
+  externalUrl: string;
   pointsValue: number;
   levelRequirement: number | null;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
-  taskCount: number;
   createdAt: string;
 }
 
@@ -735,7 +967,6 @@ export interface AdminCourseDetailResponse {
   levelRequirement: number | null;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   createdAt: string;
-  tasks: { taskId: string; title: string; type: CourseTaskTypeValue; instructions: string | null; sequenceOrder: number; isRequired: boolean }[];
 }
 
 export interface UpsertCourseInput {
@@ -762,14 +993,6 @@ export interface UpsertCourseInput {
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
 }
 
-export interface UpsertCourseTaskInput {
-  title: string;
-  type: CourseTaskTypeValue;
-  instructions?: string;
-  sequenceOrder: number;
-  isRequired: boolean;
-}
-
 export const adminCoursesApi = {
   list: () => apiClient.get<AdminCourseListItemResponse[]>("/admin/courses"),
   get: (id: string) => apiClient.get<AdminCourseDetailResponse>(`/admin/courses/${id}`),
@@ -778,9 +1001,6 @@ export const adminCoursesApi = {
   publish: (id: string) => apiClient.post(`/admin/courses/${id}/publish`),
   archive: (id: string) => apiClient.post(`/admin/courses/${id}/archive`),
   delete: (id: string) => apiClient.delete(`/admin/courses/${id}`),
-  createTask: (id: string, input: UpsertCourseTaskInput) => apiClient.post(`/admin/courses/${id}/tasks`, input),
-  updateTask: (id: string, taskId: string, input: UpsertCourseTaskInput) => apiClient.put(`/admin/courses/${id}/tasks/${taskId}`, input),
-  deleteTask: (id: string, taskId: string) => apiClient.delete(`/admin/courses/${id}/tasks/${taskId}`),
 };
 
 export interface MentorCourseQueueItemResponse {
@@ -800,43 +1020,6 @@ export const mentorCoursesApi = {
   proofDownloadUrl: (enrollmentId: string) => apiClient.get<{ downloadUrl: string; expiresInSeconds: number }>(`/mentor/courses/${enrollmentId}/proof-download-url`),
 };
 
-export interface ProctoringSessionResponse {
-  sessionId: string;
-  taskId: string;
-  status: ProctoringStatusValue;
-  violationCount: number;
-  startedAt: string;
-  endedAt: string | null;
-}
-
-export interface ReportViolationResponse {
-  locked: boolean;
-  violationCount: number;
-  remaining: number;
-  session: ProctoringSessionResponse;
-}
-
-export const proctoringApi = {
-  start: (taskId: string) => apiClient.post<ProctoringSessionResponse>(`/proctoring/tasks/${taskId}/start`),
-  reportViolation: (sessionId: string, violationType: ViolationTypeValue) =>
-    apiClient.post<ReportViolationResponse>(`/proctoring/sessions/${sessionId}/violations`, { violationType }),
-  complete: (sessionId: string) => apiClient.post<ProctoringSessionResponse>(`/proctoring/sessions/${sessionId}/complete`),
-};
-
-export interface LockedProctoringSessionResponse {
-  sessionId: string;
-  violationCount: number;
-  lockedAt: string;
-  task: { taskId: string; title: string };
-  course: { courseId: string; title: string };
-  student: { userId: string; fullName: string; department: string };
-}
-
-export const mentorProctoringApi = {
-  listLocked: () => apiClient.get<LockedProctoringSessionResponse[]>("/mentor/proctoring/locks"),
-  grantAccess: (sessionId: string) => apiClient.post<ProctoringSessionResponse>(`/mentor/proctoring/locks/${sessionId}/grant-access`),
-};
-
 export const adminMentorDepartmentApi = {
   set: (userId: string, department: string | null) => apiClient.post<{ userId: string; mentorDepartment: string | null }>(`/admin/users/${userId}/mentor-department`, { department }),
 };
@@ -850,6 +1033,145 @@ export const adminAuditApi = {
   createAward: (name: string, description?: string) => apiClient.post<AwardResponse>("/admin/audit/awards", { name, description }),
   nominate: (awardId: string, nomineeId: string) =>
     apiClient.post<{ nominationId: string }>("/admin/audit/nominations", { awardId, nomineeId }),
-  logs: (params: { page?: number; pageSize?: number } = {}) =>
-    apiClient.get<PaginatedResult<AuditLogEntryResponse>>(`/admin/audit/logs${toQueryString(params)}`),
+};
+
+// ---------------------------------------------------------------------------
+// Awards — requests by students / staff, review by admin
+// ---------------------------------------------------------------------------
+
+export interface AwardCatalogEntry {
+  awardId: string;
+  name: string;
+  description: string;
+  audience: "STUDENT" | "STAFF";
+  order: number;
+  myRequests: { nominationId: string; status: "NOMINATED" | "CONFIRMED" | "DECLINED"; reason: string | null; adminNote: string | null; createdAt: string }[];
+}
+
+export interface AdminAwardRequest {
+  nominationId: string;
+  awardId: string;
+  awardName: string;
+  status: "NOMINATED" | "CONFIRMED" | "DECLINED";
+  reason: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  requester: { userId: string; fullName: string; email: string };
+  nominee: { userId: string; fullName: string; email: string };
+}
+
+export const awardsApi = {
+  list: () => apiClient.get<AwardCatalogEntry[]>("/awards"),
+  request: (input: { awardId: string; reason: string; nomineeEmail?: string }) =>
+    apiClient.post<{ nominationId: string; status: string }>("/awards/requests", input),
+  adminRequests: () => apiClient.get<AdminAwardRequest[]>("/admin/awards/requests"),
+  adminReview: (id: string, status: "CONFIRMED" | "DECLINED", note?: string) =>
+    apiClient.post<{ nominationId: string; status: string }>(`/admin/awards/requests/${id}/review`, { status, note }),
+};
+
+// ---------------------------------------------------------------------------
+// Staff — Student Progress (mentor + admin, read-only)
+// ---------------------------------------------------------------------------
+
+export interface StaffStudentRow {
+  userId: string;
+  fullName: string;
+  email: string;
+  registerNum: string;
+  department: string;
+  cohortYear: number;
+  totalPoints: number;
+  levelId: number;
+  levelName: string;
+  claims: { approved: number; pending: number; rejected: number };
+  lastActivityAt: string | null;
+}
+
+export interface StaffStudentList {
+  items: StaffStudentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: { totalStudents: number; averagePoints: number; pendingClaims: number; byLevel: { levelId: number; count: number }[] };
+  departments: string[];
+}
+
+export interface StudentProgressResponse {
+  profile: {
+    userId: string;
+    fullName: string;
+    email: string;
+    registerNum: string;
+    department: string;
+    cohortYear: number;
+    avatarUrl: string | null;
+    totalPoints: number;
+    gpuCreditBalance: number;
+    highImpactFlag: boolean;
+    joinedAt: string;
+    rank: number;
+    level: {
+      levelId: number;
+      levelName: string;
+      minPoints: number;
+      nextLevel: { levelId: number; levelName: string; minPoints: number; pointsNeeded: number } | null;
+    };
+  };
+  summary: {
+    pointsByCategory: { category: string; points: number }[];
+    claims: { approved: number; pending: number; rejected: number };
+    coursesCompleted: number;
+    coursesInProgress: number;
+    hackathonRegistrationsVerified: number;
+    classesAttended: number;
+    projects: number;
+    badges: number;
+    certificates: number;
+  };
+  pointsHistory: { transactionId: string; points: number; reason: string; source: string; createdAt: string }[];
+  claims: {
+    claimId: string; category: string; proofType: string; status: "PENDING" | "APPROVED" | "REJECTED";
+    pointsRequested: number; pointsAwarded: number | null; mentorFeedback: string | null; createdAt: string; reviewedAt: string | null;
+  }[];
+  courses: {
+    enrollmentId: string; title: string; provider: string; status: string; pointsEarned: number;
+    submittedAt: string | null; reviewedAt: string | null; reviewFeedback: string | null;
+  }[];
+  hackathons: {
+    external: { registrationId: string; title: string; organizer: string | null; url: string; status: string; feedback: string | null; registeredAt: string }[];
+    teams: {
+      teamId: string; teamName: string; hackathonTitle: string; hackathonStatus: string; role: string; joinedAt: string;
+      submissions: { submissionId: string; title: string; submittedAt: string }[];
+    }[];
+  };
+  attendance: { attendanceId: string; eventTitle: string; sessionTitle: string; category: string; classDate: string; checkedInAt: string }[];
+  projects: {
+    startups: {
+      projectId: string; title: string; currentStage: number; gpuValidated: boolean; createdAt: string;
+      milestones: { milestoneId: string; targetStage: number; status: string; feedback: string | null; createdAt: string }[];
+    }[];
+    records: {
+      projectId: string; title: string; projectType: string; status: string; githubUrl: string | null; demoUrl: string | null; createdAt: string;
+      milestones: { milestoneId: string; title: string; status: string; feedback: string | null; dueAt: string | null }[];
+    }[];
+    problemSubmissions: { submissionId: string; problemTitle: string; summary: string; createdAt: string }[];
+  };
+  achievements: {
+    certificates: { certificateId: string; title: string; type: string; issuedAt: string }[];
+    badges: { badgeId: string; name: string; description: string | null; awardedAt: string }[];
+    awards: {
+      nominationId: string; awardName: string; status: "NOMINATED" | "CONFIRMED" | "DECLINED";
+      relation: "NOMINEE" | "REQUESTER" | "SELF_REQUEST"; reason: string | null; adminNote: string | null; createdAt: string;
+    }[];
+  };
+  gpu: {
+    balance: number;
+    requests: { requestId: string; title: string; status: string; requestedCredits: number; allocatedCredits: number | null; createdAt: string }[];
+  };
+}
+
+export const staffStudentsApi = {
+  list: (params: { search?: string; department?: string; year?: number; level?: number; page?: number; pageSize?: number } = {}) =>
+    apiClient.get<StaffStudentList>(`/staff/students${toQueryString(params)}`),
+  progress: (userId: string) => apiClient.get<StudentProgressResponse>(`/staff/students/${userId}/progress`),
 };

@@ -289,7 +289,7 @@ export default function CoursesPage() {
                     </span>
 
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1755A7] group-hover:translate-x-0.5 transition-transform">
-                      <span>View Tasks</span>
+                      <span>View Course</span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </span>
                   </div>

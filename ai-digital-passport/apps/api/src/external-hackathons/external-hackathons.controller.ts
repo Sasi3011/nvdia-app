@@ -22,8 +22,20 @@ const AddExternalHackathonSchema = z.object({
   deadlineAt: z.string().optional(),
 });
 
+const RegisterProofSchema = z
+  .object({
+    proofType: z.enum(["PDF_FILE", "DOI_LINK"]),
+    proofUrl: z.string().trim().url().max(1000).optional(),
+    fileKey: z.string().trim().min(1).optional(),
+    fileName: z.string().trim().min(1).max(200).optional(),
+    mimeType: z.string().trim().min(1).optional(),
+    sizeBytes: z.coerce.number().int().positive().optional(),
+  })
+  .refine((d) => (d.proofType === "PDF_FILE" ? !!d.fileKey : !!d.proofUrl), {
+    message: "Proof of registration is required (a PDF/screenshot file or a link).",
+  });
+
 const UpdateExternalHackathonSchema = AddExternalHackathonSchema.partial().extend({
-  registerPoints: z.number().int().min(0).max(1000).optional(),
 });
 
 @Controller("hackathons/external")
@@ -35,10 +47,20 @@ export class ExternalHackathonsController {
     return this.service.list(user.userId);
   }
 
+  @Get("applications")
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
+  applications() {
+    return this.service.applications();
+  }
+
   @Post(":id/register")
   @HttpCode(200)
-  register(@CurrentUser() user: RequestUser, @Param("id") id: string) {
-    return this.service.register(user.userId, id);
+  register(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(RegisterProofSchema)) body: z.infer<typeof RegisterProofSchema>,
+  ) {
+    return this.service.register(user.userId, id, body);
   }
 
   @Patch(":id")

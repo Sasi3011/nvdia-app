@@ -6,7 +6,8 @@ import { STARTUP_STAGES } from "@ai-digital-passport/shared-types";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { Spinner } from "../../../components/ui/Spinner";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
-import { mentorStartupApi } from "../../../lib/api";
+import { mentorStartupApi, API_BASE_URL, type StartupSubmissionDetails } from "../../../lib/api";
+import { STARTUP_STAGE_FORMS } from "../../../lib/startup-stages";
 import { 
   Rocket, 
   Sparkles, 
@@ -174,6 +175,7 @@ function MilestoneCard({
     milestoneId: string;
     targetStage: number;
     evidenceUrl: string | null;
+    details?: StartupSubmissionDetails | null;
     createdAt: string;
     project: { title: string; leadName: string };
   };
@@ -211,6 +213,24 @@ function MilestoneCard({
           </div>
         </div>
       </div>
+
+      {milestone.details && (
+        <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3.5 text-xs">
+          {STARTUP_STAGE_FORMS[milestone.targetStage - 1]?.fields.map((f) =>
+            milestone.details?.fields?.[f.key] ? (
+              <div key={f.key}>
+                <span className="block font-bold text-slate-700">{f.label}</span>
+                <span className="whitespace-pre-wrap text-slate-600">{milestone.details.fields[f.key]}</span>
+              </div>
+            ) : null,
+          )}
+          {milestone.details.documents?.map((d) => (
+            <a key={d.fileKey} href={`${API_BASE_URL}/uploads/files/${d.fileKey}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
+              {d.fileName} <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ))}
+        </div>
+      )}
 
       {milestone.evidenceUrl && (
         <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 flex items-center justify-between gap-3 text-xs">

@@ -25,7 +25,7 @@ export function LandingFooter() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
             <Link
-              href="/login"
+              href="/"
               className="flex items-center gap-2 rounded-xl bg-[#1755A7] px-6 py-3 text-xs font-bold text-white shadow-md shadow-[#1755A7]/20 hover:bg-[#103E7E] transition-all"
             >
               <span>Launch AI Centre Portal</span>
@@ -110,7 +110,7 @@ export function LandingFooter() {
               <li><Link href="/dashboard" className="hover:text-[#1755A7] transition-colors">Student Dashboard</Link></li>
               <li><Link href="/mentor" className="hover:text-[#1755A7] transition-colors">Mentor Review Queue</Link></li>
               <li><Link href="/admin" className="hover:text-[#1755A7] transition-colors">Admin Console</Link></li>
-              <li><Link href="/login" className="hover:text-[#1755A7] transition-colors">Google OAuth Sign In</Link></li>
+              <li><Link href="/" className="hover:text-[#1755A7] transition-colors">Google OAuth Sign In</Link></li>
               <li><Link href="/profile" className="hover:text-[#1755A7] transition-colors">Account & Privacy</Link></li>
             </ul>
           </div>

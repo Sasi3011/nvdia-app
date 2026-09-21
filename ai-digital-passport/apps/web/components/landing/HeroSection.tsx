@@ -68,7 +68,7 @@ export function HeroSection({ onOpenLogin }: { onOpenLogin?: () => void }) {
             </button>
           ) : (
             <Link
-              href="/login"
+              href="/"
               className="group inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#1755A7] px-8 py-4 text-sm font-extrabold text-white shadow-lg shadow-[#1755A7]/25 hover:bg-[#103E7E] hover:shadow-xl active:scale-[0.99] transition-all whitespace-nowrap min-w-[210px]"
             >
               <span>Launch AI Centre Portal</span>

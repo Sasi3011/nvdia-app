@@ -327,6 +327,9 @@ model Event {
   // so the live-QR point value is configured data, not a hard-coded
   // assumption that every live event is worth the same amount.
   category    String
+  year         String?
+  department   String?
+  session_type String?
   starts_at   DateTime
   ends_at     DateTime
   created_by  String?
@@ -480,6 +483,11 @@ model IndustryProblem {
   organization      String?
   status            ProblemStatus @default(DRAFT)
   level_requirement Int           @default(3)
+  // Original file (PDF / Excel / Word ...) kept instead of parsed text; points at stored_files.file_id.
+  attachment_file_key   String?
+  attachment_file_name  String?
+  attachment_mime_type  String?
+  attachment_size_bytes Int?
   created_by        String?
   created_at        DateTime      @default(now())
   updated_at        DateTime      @updatedAt
@@ -529,6 +537,30 @@ model IndustryPartner {
   user User @relation(fields: [user_id], references: [user_id])
 
   @@map("industry_partners")
+}
+
+// GPU access requests raised by industry companies; entered/managed by admins.
+model IndustryGpuRequest {
+  request_id     String   @id @default(uuid())
+  company_name   String
+  contact_person String
+  contact_email  String?
+  contact_phone  String?
+  website        String?
+  sector         String?
+  use_case       String
+  gpu_type       String?
+  gpu_count      Int?
+  hours_needed   Int?
+  duration       String?
+  status         String   @default("NEW")
+  admin_notes    String?
+  created_by     String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([status])
+  @@map("industry_gpu_requests")
 }
 
 model EvaluatorProfile {
@@ -753,6 +785,8 @@ model StartupMilestone {
   project_id   String
   target_stage Int
   evidence_url String?
+  // Stage-specific form fields + uploaded document keys (JSON).
+  details      Json?
   status       ClaimStatus @default(PENDING)
   feedback     String?
   reviewed_by  String?
@@ -809,12 +843,16 @@ model AwardNomination {
   nominee_id    String
   audit_run_id  String?
   status        NominationStatus @default(NOMINATED)
+  requested_by  String?
+  reason        String?
+  admin_note    String?
   created_at    DateTime         @default(now())
 
   award     Award           @relation(fields: [award_id], references: [award_id])
   nominee   User            @relation(fields: [nominee_id], references: [user_id])
   audit_run AnnualAuditRun? @relation(fields: [audit_run_id], references: [audit_run_id])
 
+  @@index([requested_by])
   @@map("award_nominations")
 }
 
@@ -1130,6 +1168,7 @@ model ExternalHackathonRegistration {
   external_id     String
   user_id         String
   points_awarded  Int
+  claim_id        String?  @unique
   created_at      DateTime @default(now())
 
   hackathon ExternalHackathon @relation(fields: [external_id], references: [external_id], onDelete: Cascade)
@@ -1137,4 +1176,23 @@ model ExternalHackathonRegistration {
   @@unique([external_id, user_id])
   @@index([user_id])
   @@map("external_hackathon_registrations")
+}
+
+// Emails allowed to sign in (managed on the admin User Management page).
+model AccessWhitelist {
+  email         String    @id
+  full_name     String?
+  role          String    @default("STUDENT")
+  department    String    @default("")
+  year          String?
+  status        String    @default("AUTHORIZED")
+  source        String    @default("Manual Admin Entry")
+  added_by      String?
+  added_at      DateTime  @default(now())
+  last_login_at DateTime?
+  updated_at    DateTime  @default(now()) @updatedAt
+
+  @@index([role])
+  @@index([status])
+  @@map("access_whitelist")
 }

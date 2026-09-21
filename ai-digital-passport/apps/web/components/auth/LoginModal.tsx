@@ -18,12 +18,12 @@ import {
   AlertCircle
 } from "lucide-react";
 import { authApi } from "../../lib/api";
-import { isEmailAuthorized } from "../../lib/whitelist";
 import { ErrorBanner } from "../ui/ErrorBanner";
 
 export interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  standalone?: boolean;
 }
 
 const QUICK_ROLES = [
@@ -39,7 +39,7 @@ const QUICK_ROLES = [
     label: "Faculty Mentor",
     email: "mentor@sece.ac.in",
     icon: UserCheck,
-    desc: "Verification Queue & Proctoring",
+    desc: "Verification Queue",
   },
   {
     role: "Admin",
@@ -50,7 +50,7 @@ const QUICK_ROLES = [
   },
 ];
 
-export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, standalone = false }: LoginModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -87,15 +87,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     try {
       const targetEmail = email.trim();
-      const authCheck = isEmailAuthorized(targetEmail);
-      if (!authCheck.authorized) {
-        setError(new Error(authCheck.reason ?? "Access Denied: Your email is not whitelisted for portal access. Please contact the administrator."));
-        setLoading(false);
-        return;
-      }
-
       queryClient.clear();
-      const targetName = authCheck.entry?.fullName || targetEmail.split("@")[0] || "User";
+      // The server checks the access list (database) and rejects emails that are missing or suspended.
+      const targetName = targetEmail.split("@")[0] || "User";
       await authApi.devLogin({ email: targetEmail, fullName: targetName, password });
       const refreshed = await authApi.session();
       queryClient.setQueryData(["auth", "session"], refreshed);
@@ -115,10 +109,12 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+    <div className={standalone
+      ? "flex min-h-screen items-center justify-center p-4"
+      : "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"}>
       
       {/* Click outside backdrop */}
-      <div className="fixed inset-0" onClick={onClose} />
+      {!standalone && <div className="fixed inset-0" onClick={onClose} />}
 
       <div className="relative z-10 w-full max-w-[440px] rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
         
@@ -134,14 +130,16 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-            title="Close modal"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          {!standalone && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              title="Close modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
         {/* Quick Demo Role Selector Pills */}
@@ -231,11 +229,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
-
-        {/* Whitelist Security Notice */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center text-[10px] text-slate-500 font-medium">
-          🔒 Protected by Sri Eshwar Email Whitelist Governance Subsystem.
-        </div>
 
       </div>
     </div>

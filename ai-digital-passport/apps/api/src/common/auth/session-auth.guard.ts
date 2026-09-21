@@ -43,6 +43,14 @@ export class SessionAuthGuard implements CanActivate {
       include: { user_roles: { include: { role: true } } },
     });
 
+    const access = await prisma.accessWhitelist.findUnique({
+      where: { email: identity.email.toLowerCase() },
+      select: { status: true },
+    });
+    if (access?.status === "SUSPENDED") {
+      throw new ForbiddenException({ code: "ACCESS_SUSPENDED", message: "Your portal access has been suspended by the administrator." });
+    }
+
     const allowPending = this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_ONBOARDING_KEY, [
       context.getHandler(),
       context.getClass(),

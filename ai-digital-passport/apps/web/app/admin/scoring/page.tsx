@@ -7,8 +7,9 @@ import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader
 import { Button } from "../../../components/ui/Button";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
+import { LevelBadge } from "../../../components/ui/LevelBadge";
 import { adminScoringApi, type AdminScoringRuleResponse, type LevelResponse } from "../../../lib/api";
-import { Calculator, Award, Save, Sparkles } from "lucide-react";
+import { Calculator, Award, Pencil, Plus, Save } from "lucide-react";
 
 const inputClass = "w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]";
 
@@ -42,11 +43,25 @@ function ScoringRulesTable() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "scoring", "rules"] }),
   });
 
+  const [newLabel, setNewLabel] = useState("");
+  const [newPoints, setNewPoints] = useState(20);
+  const add = useMutation({
+    mutationFn: () => {
+      const key = newLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+      return adminScoringApi.upsertRule(key, { label: newLabel.trim(), points: newPoints });
+    },
+    onSuccess: () => {
+      setNewLabel("");
+      setNewPoints(20);
+      queryClient.invalidateQueries({ queryKey: ["admin", "scoring", "rules"] });
+    },
+  });
+
   if (rules.isLoading) return <Spinner label="Loading scoring matrix..." />;
   if (rules.isError) return <ErrorBanner error={rules.error} />;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center justify-between pb-4 border-b border-slate-100">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -59,8 +74,43 @@ function ScoringRulesTable() {
         </div>
       </div>
 
+      <form
+        className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add.mutate();
+        }}
+      >
+        <div className="flex w-full flex-1 flex-col gap-1 sm:min-w-[220px] sm:w-auto">
+          <label className="text-[11px] font-bold text-slate-600">New activity / category name</label>
+          <input
+            required
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            placeholder="e.g. CoE Class Attendance"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-[#1755A7] focus:outline-none"
+          />
+        </div>
+        <div className="flex w-full flex-col gap-1 sm:w-auto">
+          <label className="text-[11px] font-bold text-slate-600">Points</label>
+          <input type="number" min={0} required value={newPoints} onChange={(e) => setNewPoints(Number(e.target.value))} className={`${inputClass} min-h-10 w-full sm:w-24`} />
+        </div>
+        <button
+          type="submit"
+          disabled={add.isPending || !newLabel.trim() || !/[a-z0-9]/i.test(newLabel)}
+          className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white hover:bg-[#124282] disabled:opacity-50 sm:w-auto"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Category
+        </button>
+      </form>
+      {add.isError ? <div className="mt-3"><ErrorBanner error={add.error} /></div> : null}
+      <p className="mt-3 text-[11px] text-slate-500">
+        These values drive every page: QR class check-ins, hackathon registrations, courses and claims all read their points from here.
+      </p>
+
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[600px] text-left text-xs">
           <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
             <tr>
               <th className="px-4 py-3 rounded-l-lg">Category Key</th>
@@ -85,6 +135,7 @@ function ScoringRulesTable() {
                   <td className="px-4 py-3">
                     <input
                       type="number"
+                      min={0}
                       value={edit.points}
                       onChange={(e) => setEdits((prev) => ({ ...prev, [r.category]: { ...edit, points: Number(e.target.value) } }))}
                       className={inputClass}
@@ -116,6 +167,7 @@ function LevelsTable() {
   const queryClient = useQueryClient();
   const levels = useQuery({ queryKey: ["admin", "scoring", "levels"], queryFn: adminScoringApi.listLevels });
   const [edits, setEdits] = useState<Record<number, { minPoints: number; unlockedPrivilege: string }>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const save = useMutation({
     mutationFn: (level: LevelResponse) =>
@@ -123,14 +175,17 @@ function LevelsTable() {
         minPoints: edits[level.levelId]?.minPoints ?? level.minPoints,
         unlockedPrivilege: edits[level.levelId]?.unlockedPrivilege ?? level.unlockedPrivilege,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "scoring", "levels"] }),
+    onSuccess: () => {
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ["admin", "scoring", "levels"] });
+    },
   });
 
   if (levels.isLoading) return <Spinner label="Loading tier thresholds..." />;
   if (levels.isError) return <ErrorBanner error={levels.error} />;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center justify-between pb-4 border-b border-slate-100">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -149,13 +204,11 @@ function LevelsTable() {
             <tr>
               <th className="px-4 py-3 rounded-l-lg">Tier</th>
               <th className="px-4 py-3">Min Points</th>
-              <th className="px-4 py-3">Privileges & Supercomputing Quota</th>
-              <th className="px-4 py-3 text-center">High Impact?</th>
               <th className="px-4 py-3 text-right rounded-r-lg">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {(levels.data ?? [])
+            {[...(levels.data ?? [])]
               .sort((a, b) => a.levelId - b.levelId)
               .map((l) => {
                 const edit = edits[l.levelId] ?? { minPoints: l.minPoints, unlockedPrivilege: l.unlockedPrivilege };
@@ -163,46 +216,45 @@ function LevelsTable() {
                   <tr key={l.levelId} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1755A7]/10 font-mono font-bold text-[#1755A7]">
-                          L{l.levelId}
-                        </span>
+                        <LevelBadge levelId={l.levelId} size={52} />
                         <span className="font-bold text-slate-900">{l.levelName}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={edit.minPoints}
-                        onChange={(e) => setEdits((prev) => ({ ...prev, [l.levelId]: { ...edit, minPoints: Number(e.target.value) } }))}
-                        className={inputClass}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        value={edit.unlockedPrivilege}
-                        onChange={(e) => setEdits((prev) => ({ ...prev, [l.levelId]: { ...edit, unlockedPrivilege: e.target.value } }))}
-                        className="w-full max-w-md rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {l.requiresHighImpact ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                          <Sparkles className="h-3 w-3 text-amber-600" /> Yes (Fellowship)
-                        </span>
+                      {editingId === l.levelId ? (
+                        <input
+                          type="number"
+                          min={0}
+                          value={edit.minPoints}
+                          onChange={(e) => setEdits((prev) => ({ ...prev, [l.levelId]: { ...edit, minPoints: Number(e.target.value) } }))}
+                          className={inputClass}
+                        />
                       ) : (
-                        <span className="text-slate-400 font-mono text-[11px]">No</span>
+                        <span className="font-semibold text-slate-800">{l.minPoints}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        disabled={save.isPending}
-                        onClick={() => save.mutate(l)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#1755A7] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#124282] transition-colors disabled:opacity-50"
-                      >
-                        <Save className="h-3.5 w-3.5" />
-                        Save
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          title="Edit"
+                          aria-label={`Edit ${l.levelName}`}
+                          onClick={() => setEditingId(l.levelId)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#1755A7] hover:bg-slate-50 transition-colors sm:h-8 sm:w-8"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Save"
+                          aria-label={`Save ${l.levelName}`}
+                          disabled={save.isPending || editingId !== l.levelId}
+                          onClick={() => save.mutate(l)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#1755A7] text-white hover:bg-[#124282] transition-colors disabled:opacity-40 sm:h-8 sm:w-8"
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

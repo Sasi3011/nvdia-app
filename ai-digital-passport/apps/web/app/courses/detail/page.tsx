@@ -12,8 +12,7 @@ import { PageHeader } from "../../../components/ui/PageHeader";
 import { Spinner } from "../../../components/ui/Spinner";
 import { coursesApi, uploadsApi } from "../../../lib/api";
 
-// Course Detail (student) — external link + task list (STANDARD + optional
-// LIVE_PROCTORED) + proof submission, per the Assigned Courses spec.
+// Course Detail (student) — course info, external link and proof submission.
 export default function CourseDetailPage() {
   return (
     <StudentShell>
@@ -34,11 +33,6 @@ function CourseDetailContent() {
   const [submitError, setSubmitError] = useState<unknown>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["courses", "detail", id] });
-
-  const completeTask = useMutation({
-    mutationFn: (taskId: string) => coursesApi.completeTask(id!, taskId),
-    onSuccess: refresh,
-  });
 
   const submitProof = useMutation({
     mutationFn: async () => {
@@ -116,51 +110,6 @@ function CourseDetailContent() {
         <Card className="border-rejected/40 bg-rejected/5">
           <h3 className="text-caption text-rejected">Mentor feedback</h3>
           <p className="mt-1 text-body text-ink">{c.enrollment.reviewFeedback}</p>
-        </Card>
-      ) : null}
-
-      {c.tasks.length > 0 ? (
-        <Card>
-          <h2 className="text-h2 text-ink">Tasks</h2>
-          <div className="mt-3 flex flex-col gap-3">
-            {c.tasks.map((t) => (
-              <div key={t.taskId} className="flex items-center justify-between gap-4 border-b border-border pb-3 last:border-0 last:pb-0">
-                <div>
-                  <div className="text-body text-ink">
-                    {t.title} {t.isRequired ? <span className="text-caption text-text-muted">(required)</span> : null}
-                  </div>
-                  {t.instructions ? <p className="text-caption text-text-muted">{t.instructions}</p> : null}
-                  {t.type === "LIVE_PROCTORED" && t.proctoringStatus === "LOCKED" ? (
-                    <p className="mt-1 text-caption text-rejected">Locked after repeated violations — a mentor must grant access.</p>
-                  ) : null}
-                </div>
-                {t.type === "STANDARD" ? (
-                  <Button
-                    variant={t.completed ? "secondary" : "primary"}
-                    disabled={t.completed || t.locked || completeTask.isPending}
-                    onClick={() => completeTask.mutate(t.taskId)}
-                  >
-                    {t.completed ? "Completed" : t.locked ? "Locked" : "Mark complete"}
-                  </Button>
-                ) : t.completed ? (
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="rounded-full bg-accent/10 px-3 py-1 text-caption font-medium text-accent-deep">Completed</span>
-                    {(t as any).score !== null && (
-                      <span className="text-[10px] font-bold text-slate-500">Score: {(t as any).score}%</span>
-                    )}
-                  </div>
-                ) : t.proctoringStatus === "LOCKED" ? (
-                  <span className="rounded-full bg-rejected/10 px-3 py-1 text-caption font-medium text-rejected">Session Locked</span>
-                ) : t.locked ? (
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-medium text-slate-400">Locked (Prerequisites)</span>
-                ) : (
-                  <Link href={`/courses/proctoring?taskId=${t.taskId}&courseId=${id}`}>
-                    <Button variant="primary">Start Task Session</Button>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
         </Card>
       ) : null}
 

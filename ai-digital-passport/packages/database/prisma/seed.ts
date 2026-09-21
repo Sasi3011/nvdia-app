@@ -45,6 +45,20 @@ async function main() {
       create: { category: rule.category, label: rule.label, points: rule.points },
     });
   }
+
+  const awardNames = [
+    "AI Student of the Year",
+    "AI Researcher of the Year",
+    "Best AI Project",
+    "Best AI Startup",
+    "Best AI Faculty Mentor",
+    "Best Industry Mentor",
+    "Most Active AI Learner",
+    "Best GPU Computing Project",
+  ];
+  for (const name of awardNames) {
+    await prisma.award.upsert({ where: { name }, update: {}, create: { name } });
+  }
 }
 
 main()

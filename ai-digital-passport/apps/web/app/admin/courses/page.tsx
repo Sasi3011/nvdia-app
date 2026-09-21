@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
-import { CourseForm, type CourseForEdit } from "../../../components/admin/CourseForm";
-import { TaskCreationModal } from "../../../components/admin/TaskCreationModal";
+import { CourseDetailModal } from "../../../components/admin/CourseDetailModal";
+import { CourseForm, POPULAR_PROVIDERS, type CourseForEdit } from "../../../components/admin/CourseForm";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { adminCoursesApi, type AdminCourseListItemResponse } from "../../../lib/api";
@@ -27,16 +26,35 @@ import {
   Archive,
   Trash2,
   Filter,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  CheckCircle
 } from "lucide-react";
+import { CustomSelect } from "../../../components/ui/CustomSelect";
 
 export default function AdminCoursesPage() {
   const queryClient = useQueryClient();
   const courses = useQuery({ queryKey: ["admin", "courses"], queryFn: adminCoursesApi.list });
   const [modalCourse, setModalCourse] = useState<CourseForEdit | "new" | null>(null);
-  const [taskModalCourse, setTaskModalCourse] = useState<{ id: string, title: string } | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<string>("ALL");
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<unknown>(null);
+
+  // The list only has summary fields; fetch the full record so the editor never saves blanks over real data.
+  async function openEditor(courseId: string) {
+    setEditError(null);
+    setLoadingEditId(courseId);
+    try {
+      const full = await queryClient.fetchQuery({ queryKey: ["admin", "courses", courseId], queryFn: () => adminCoursesApi.get(courseId), staleTime: 0 });
+      setModalCourse(full as unknown as CourseForEdit);
+    } catch (err) {
+      setEditError(err);
+    } finally {
+      setLoadingEditId(null);
+    }
+  }
 
   const invalidate = () => {
     setModalCourse(null);
@@ -59,15 +77,88 @@ export default function AdminCoursesPage() {
   });
 
   const allCourses = courses.data ?? [];
-  const providers = ["ALL", ...Array.from(new Set(allCourses.map((c) => c.provider)))];
+
+
+  const activeCourses = allCourses.filter((c) => c.status !== "ARCHIVED");
+  const providerCounts = activeCourses.reduce<Record<string, { name: string; count: number }>>((acc, c) => {
+    const key = c.provider.trim().toLowerCase();
+    return { ...acc, [key]: { name: acc[key]?.name ?? c.provider.trim(), count: (acc[key]?.count ?? 0) + 1 } };
+  }, {});
+  const providerList = Object.values(providerCounts).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const topProvider = providerList[0];
+  // Accredited = the platforms the catalog accepts (the form's provider list) plus any other provider used by an active course.
+  // The KPI count and the filter dropdown both use this one list, so adding a provider updates both.
+  const accreditedList = (() => {
+    const seen = new Map<string, string>();
+    for (const name of [...POPULAR_PROVIDERS, ...activeCourses.map((c) => c.provider.trim())]) {
+      if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+    }
+    return Array.from(seen.values());
+  })();
+  const providers = ["ALL", ...accreditedList];
 
   const filteredCourses = allCourses.filter((c) => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.category.toLowerCase().includes(search.toLowerCase());
-    const matchesProvider = selectedProvider === "ALL" || c.provider === selectedProvider;
+    const matchesProvider = selectedProvider === "ALL" || c.provider.trim().toLowerCase() === selectedProvider.toLowerCase();
     return matchesSearch && matchesProvider;
   });
 
-  const totalPoints = allCourses.reduce((acc, c) => acc + (c.pointsValue || 0), 0);
+  const renderActions = (c: AdminCourseListItemResponse) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setViewId(c.courseId)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all"
+            title="View Course Details"
+          >
+            <Eye className="h-3.5 w-3.5 text-slate-500" />
+          </button>
+          {c.status !== "PUBLISHED" && (
+            <button
+              type="button"
+              disabled={publish.isPending}
+              onClick={() => publish.mutate(c.courseId)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-200 transition-all disabled:opacity-50"
+              title="Publish"
+            >
+              <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+            </button>
+          )}
+          {c.status !== "ARCHIVED" && (
+            <button
+              type="button"
+              disabled={archive.isPending}
+              onClick={() => { if (window.confirm("Archive this course?")) archive.mutate(c.courseId); }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-200 transition-all disabled:opacity-50"
+              title="Archive"
+            >
+              <Archive className="h-3.5 w-3.5 text-amber-500" />
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={loadingEditId === c.courseId}
+            onClick={() => void openEditor(c.courseId)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all active:scale-95"
+            title="Edit"
+          >
+            <Edit3 className="h-3.5 w-3.5 text-blue-500" />
+          </button>
+          <button
+            type="button"
+            disabled={deleteCourse.isPending}
+            onClick={() => {
+              if (confirm("Are you sure you want to permanently delete this course?")) {
+                deleteCourse.mutate(c.courseId);
+              }
+            }}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 transition-all active:scale-95"
+            title="Delete"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-red-500 hover:text-red-600" />
+          </button>
+        </div>
+  );
 
   return (
     <ConsoleShell role="ADMIN">
@@ -94,6 +185,8 @@ export default function AdminCoursesPage() {
           isModal={true}
         />
       )}
+
+      {viewId && <CourseDetailModal courseId={viewId} onClose={() => setViewId(null)} />}
 
       {/* KPI Overview Tiles */}
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -128,14 +221,14 @@ export default function AdminCoursesPage() {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 tracking-tight">{providers.length - 1 || 4}</span>
+            <span className="text-3xl font-black text-slate-900 tracking-tight">{accreditedList.length}</span>
             <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
               Platforms
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
-            <span>NVIDIA DLI & DeepLearning.AI:</span>
-            <span className="font-bold text-[#1755A7]">Primary</span>
+            <span>Most used (active courses):</span>
+            <span className="font-bold text-[#1755A7]">{topProvider ? `${topProvider.name} (${topProvider.count})` : "-"}</span>
           </div>
         </div>
 
@@ -163,6 +256,12 @@ export default function AdminCoursesPage() {
         </div>
       </div>
 
+      {(archive.isError || publish.isError || deleteCourse.isError || !!editError) && (
+        <div className="mt-4">
+          <ErrorBanner error={archive.error ?? publish.error ?? deleteCourse.error ?? editError} />
+        </div>
+      )}
+
       {/* Filter and Search Bar */}
       <div className="mt-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="relative w-full md:w-72">
@@ -176,20 +275,12 @@ export default function AdminCoursesPage() {
           />
         </div>
 
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <select
+        <div className="w-full md:w-48">
+          <CustomSelect
             value={selectedProvider}
-            onChange={(e) => setSelectedProvider(e.target.value)}
-            className="w-full md:w-48 appearance-none rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs font-bold text-slate-700 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] shadow-2xs cursor-pointer"
-          >
-            {providers.map((p) => (
-              <option key={p} value={p}>
-                {p === "ALL" ? "All Platforms" : p}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            onChange={setSelectedProvider}
+            options={providers.map(p => ({ label: p === "ALL" ? "All Platforms" : p, value: p }))}
+          />
         </div>
       </div>
 
@@ -207,14 +298,29 @@ export default function AdminCoursesPage() {
           <p className="text-xs text-slate-400 mt-1">Try changing the filter or clicking "Create New Course" above.</p>
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-xs">
+        <>
+        <div className="mt-6 space-y-3 md:hidden">
+          {filteredCourses.map((c) => (
+            <div key={c.courseId} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <button type="button" onClick={() => setViewId(c.courseId)} className="min-w-0 break-words text-left text-[13px] font-bold text-slate-900">{c.title}</button>
+                <span className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${c.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-700" : c.status === "ARCHIVED" ? "bg-slate-100 text-slate-500" : "bg-amber-50 text-amber-700"}`}>{c.status}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-600">
+                <span className="flex items-center gap-1.5 text-[#1755A7]"><Briefcase className="h-3.5 w-3.5 text-slate-400" />{c.provider}</span>
+                <span>{c.durationHours}h{c.durationWeeks ? ` (${c.durationWeeks} weeks)` : ""}</span>
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3">{renderActions(c)}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+          <table className="w-full min-w-[720px] text-left text-xs">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-6 py-3.5">Course & Specialization</th>
-                <th className="px-6 py-3.5">Provider / Track</th>
-                <th className="px-6 py-3.5">Pillar & Level</th>
-                <th className="px-6 py-3.5 text-right">Points Bounty</th>
+                <th className="px-6 py-3.5">Provider</th>
+                <th className="px-6 py-3.5 text-center">Timeline</th>
                 <th className="px-6 py-3.5 text-center">Status</th>
                 <th className="px-6 py-3.5 text-right">Actions</th>
               </tr>
@@ -225,22 +331,7 @@ export default function AdminCoursesPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-start gap-3.5">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 text-[13px]">{c.title}</span>
-                        <div className="mt-1 flex items-center gap-2">
-                          {c.isFeatured && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
-                              <Sparkles className="h-2.5 w-2.5 text-amber-600" /> Featured
-                            </span>
-                          )}
-                          {c.certificateAvailable && (
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                              Cert Verified
-                            </span>
-                          )}
-                          <span className="text-[11px] text-slate-400 font-medium">
-                            {c.durationHours}h {c.durationWeeks ? `(${c.durationWeeks} weeks)` : ""}
-                          </span>
-                        </div>
+                        <button type="button" onClick={() => setViewId(c.courseId)} className="text-left font-bold text-slate-900 text-[13px] hover:text-[#1755A7] transition-colors">{c.title}</button>
                       </div>
                     </div>
                   </td>
@@ -251,119 +342,28 @@ export default function AdminCoursesPage() {
                         <Briefcase className="h-3.5 w-3.5 text-slate-400" />
                         {c.provider}
                       </span>
-                      <span className="text-[11px] text-slate-500 font-medium">{c.category}</span>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="inline-flex w-fit items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-800 text-[11px]">
-                        Lvl {c.levelRequirement || 1}+ Requisite
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-medium">{c.difficulty}</span>
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 text-right">
-                    <span className="inline-flex items-center gap-1 font-mono font-black text-xs text-[#1755A7] bg-[#1755A7]/10 px-2.5 py-1 rounded-lg">
-                      <Award className="h-3.5 w-3.5" />
-                      +{c.pointsValue} pts
+                  <td className="px-6 py-4 text-center">
+                    <span className="text-[12px] font-bold text-slate-700 whitespace-nowrap">
+                      {c.durationHours}h {c.durationWeeks ? `(${c.durationWeeks} weeks)` : ""}
                     </span>
                   </td>
 
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      c.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800' :
-                      c.status === 'ARCHIVED' ? 'bg-slate-200 text-slate-700' :
-                      'bg-blue-50 text-blue-800 border border-blue-200'
-                    }`}>
-                      {c.status}
-                    </span>
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${c.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-700" : c.status === "ARCHIVED" ? "bg-slate-100 text-slate-500" : "bg-amber-50 text-amber-700"}`}>{c.status}</span>
                   </td>
 
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const fullCourse = allCourses.find((item) => item.courseId === c.courseId);
-                          if (fullCourse) {
-                            setModalCourse(fullCourse as unknown as CourseForEdit);
-                          }
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition-all active:scale-95"
-                        title="Edit Course Pathway"
-                      >
-                        <Edit3 className="h-3 w-3 text-blue-500" />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTaskModalCourse({ id: c.courseId, title: c.title });
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all active:scale-95"
-                        title="Add Task to Course"
-                      >
-                        <Plus className="h-3 w-3 text-emerald-600" />
-                        <span>Manage Tasks</span>
-                      </button>
-
-                      {c.status === "PUBLISHED" ? (
-                        <button
-                          type="button"
-                          disabled={archive.isPending}
-                          onClick={() => archive.mutate(c.courseId)}
-                          className="rounded-lg p-1.5 hover:bg-amber-50 hover:text-amber-700 transition-colors active:scale-95"
-                          title="Archive Course"
-                        >
-                          <Archive className="h-3.5 w-3.5 text-amber-500" />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={publish.isPending}
-                          onClick={() => publish.mutate(c.courseId)}
-                          className="rounded-lg p-1.5 hover:bg-emerald-50 hover:text-emerald-700 transition-colors active:scale-95"
-                          title="Publish Course"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        disabled={deleteCourse.isPending}
-                        onClick={() => {
-                          if (confirm("Are you sure you want to permanently delete this course?")) {
-                            deleteCourse.mutate(c.courseId);
-                          }
-                        }}
-                        className="rounded-lg p-1.5 hover:bg-red-50 hover:text-red-700 transition-colors active:scale-95"
-                        title="Delete Course"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </button>
-                    </div>
+                    {renderActions(c)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-
-      {taskModalCourse && (
-        <TaskCreationModal
-          courseId={taskModalCourse.id}
-          courseTitle={taskModalCourse.title}
-          onClose={() => setTaskModalCourse(null)}
-          onFinish={() => {
-            setTaskModalCourse(null);
-            courses.refetch();
-          }}
-        />
+        </>
       )}
     </ConsoleShell>
   );

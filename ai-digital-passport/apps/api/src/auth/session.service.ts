@@ -4,8 +4,6 @@ import type { Response } from "express";
 import { SESSION_COOKIE_NAME } from "../common/auth/constants";
 import type { GoogleProfile, SessionIdentity } from "../common/auth/types";
 
-const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
 /**
  * Our own signed session, carried in an httpOnly cookie — not tokens in
  * localStorage (architecture requirement). Deliberately stateless (no
@@ -13,6 +11,11 @@ const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
  * and re-derives role/level from PostgreSQL (SessionAuthGuard), so a role
  * change takes effect on the very next request rather than waiting for a
  * stale session payload to expire.
+ *
+ * No `maxAge`/`expires` is set on the cookie — it's a browser *session*
+ * cookie, so the browser discards it once the user closes the browser
+ * (closing every tab), logging them out automatically instead of leaving a
+ * long-lived credential sitting around.
  */
 @Injectable()
 export class SessionService {
@@ -30,7 +33,6 @@ export class SessionService {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE_MS,
       path: "/",
       domain: process.env.COOKIE_DOMAIN || undefined,
     });

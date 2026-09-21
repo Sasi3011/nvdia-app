@@ -144,8 +144,11 @@ export const CreateStartupProjectSchema = z.object({
 export type CreateStartupProjectInput = z.infer<typeof CreateStartupProjectSchema>;
 
 export const SubmitStartupMilestoneSchema = z.object({
-  targetStage: z.coerce.number().int().min(2).max(6),
+  targetStage: z.coerce.number().int().min(1).max(6),
   evidenceUrl: z.string().trim().url().optional(),
+  // Stage-specific text fields plus uploaded file keys (see STARTUP_STAGE_FORMS in the web app).
+  details: z.record(z.string().max(4000)).optional(),
+  documents: z.array(z.object({ fileKey: z.string().min(1), fileName: z.string().min(1).max(255) })).max(5).optional(),
 });
 export type SubmitStartupMilestoneInput = z.infer<typeof SubmitStartupMilestoneSchema>;
 
@@ -187,10 +190,16 @@ export const CreateEventSchema = z.object({
   location: z.string().trim().max(200).optional(),
   // Which scoring-matrix category a QR check-in at this event awards.
   category: z.string().trim().min(1),
+  year: z.string().trim().max(50).optional(),
+  department: z.string().trim().max(100).optional(),
+  sessionType: z.string().trim().max(50).optional(),
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
 });
 export type CreateEventInput = z.infer<typeof CreateEventSchema>;
+
+export const UpdateEventSchema = CreateEventSchema.partial();
+export type UpdateEventInput = z.infer<typeof UpdateEventSchema>;
 
 export const CreateEventSessionSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -203,13 +212,29 @@ export type CreateEventSessionInput = z.infer<typeof CreateEventSessionSchema>;
 // Admin — Problem Bank Management (Page 26)
 // ---------------------------------------------------------------------------
 
-export const UpsertProblemSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  description: z.string().trim().min(1),
-  organization: z.string().trim().max(200).optional(),
-  status: z.nativeEnum(ProblemStatus).default(ProblemStatus.DRAFT),
-  levelRequirement: z.coerce.number().int().min(1).max(6).default(3),
+export const ProblemAttachmentSchema = z.object({
+  fileKey: z.string().trim().min(1),
+  fileName: z.string().trim().min(1).max(200),
+  mimeType: z.string().trim().min(1).max(200),
+  sizeBytes: z.coerce.number().int().positive(),
 });
+
+export const UpsertProblemSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    // Optional when an original file is attached; otherwise the text is required (see refine below).
+    description: z.string().trim().default(""),
+    organization: z.string().trim().max(200).optional(),
+    status: z.nativeEnum(ProblemStatus).default(ProblemStatus.DRAFT),
+    // Per-problem competency gating was removed; every problem is open to all levels.
+    levelRequirement: z.coerce.number().int().min(1).max(6).default(1),
+    // Original PDF/Excel/Word file. null removes an existing attachment on update.
+    attachment: ProblemAttachmentSchema.nullable().optional(),
+  })
+  .refine((d) => d.description.length > 0 || !!d.attachment, {
+    message: "Provide a problem description or attach a file.",
+    path: ["description"],
+  });
 export type UpsertProblemInput = z.infer<typeof UpsertProblemSchema>;
 
 // ---------------------------------------------------------------------------

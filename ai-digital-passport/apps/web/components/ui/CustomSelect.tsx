@@ -44,7 +44,7 @@ export function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between text-left focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed h-full gap-2"
+        className="flex w-full items-center justify-between text-left focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] disabled:opacity-50 disabled:cursor-not-allowed gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 transition-colors"
       >
         <span className="truncate">
           {selectedOption ? selectedOption.label : placeholder}
@@ -55,7 +55,7 @@ export function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 z-50 mt-2 min-w-[140px] max-w-xs overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100 max-h-64">
+        <div className="absolute top-full left-0 z-50 mt-2 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100 max-h-64">
           {options.map((option) => (
             <button
               key={option.value}

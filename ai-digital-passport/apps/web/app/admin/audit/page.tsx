@@ -9,9 +9,16 @@ import { Spinner } from "../../../components/ui/Spinner";
 import { adminAuditApi } from "../../../lib/api";
 import { Award, Play, Calendar, Trophy, Users, ShieldCheck, ChevronRight } from "lucide-react";
 
+// Academic year runs Aug-Jul, e.g. Sep 2026 -> "2026-2027".
+function currentAcademicYear() {
+  const d = new Date();
+  const start = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
+  return `${start}-${start + 1}`;
+}
+
 export default function AdminAuditPage() {
   const queryClient = useQueryClient();
-  const [academicYear, setAcademicYear] = useState("2025-2026");
+  const [academicYear, setAcademicYear] = useState(currentAcademicYear);
   const [candidateCount, setCandidateCount] = useState(25);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
@@ -52,7 +59,7 @@ export default function AdminAuditPage() {
         </div>
 
         <form
-          className="mt-4 flex flex-wrap items-end gap-3"
+          className="mt-4 grid grid-cols-1 items-end gap-3 sm:flex sm:flex-wrap"
           onSubmit={(e) => {
             e.preventDefault();
             trigger.mutate();
@@ -60,14 +67,14 @@ export default function AdminAuditPage() {
         >
           {trigger.isError ? <div className="w-full"><ErrorBanner error={trigger.error} /></div> : null}
           
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 sm:w-auto">
             <span className="text-xs font-semibold text-slate-700">Academic Year</span>
             <input 
               required 
-              placeholder="2025-2026" 
+              placeholder={currentAcademicYear()} 
               value={academicYear} 
               onChange={(e) => setAcademicYear(e.target.value)} 
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]" 
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]" 
             />
           </label>
 
@@ -79,14 +86,14 @@ export default function AdminAuditPage() {
               max={100}
               value={candidateCount}
               onChange={(e) => setCandidateCount(Number(e.target.value))}
-              className="w-28 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs sm:w-28 text-slate-900 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]"
             />
           </label>
 
           <button 
             type="submit" 
             disabled={trigger.isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all disabled:opacity-50 active:scale-95"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-5 text-xs font-bold sm:w-auto text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all disabled:opacity-50 active:scale-95"
           >
             <Play className="h-3.5 w-3.5" />
             {trigger.isPending ? "Evaluating Cohort..." : "Execute Audit"}
@@ -162,8 +169,8 @@ export default function AdminAuditPage() {
             <div className="mt-4 divide-y divide-slate-100">
               {runDetail.data.candidates.map((c) => (
                 <div key={c.candidateId} className="py-3 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg font-mono font-black text-xs ${
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono font-black text-xs ${
                       c.rank === 1 ? "bg-[#F8C401] text-slate-900" :
                       c.rank === 2 ? "bg-slate-200 text-slate-800" :
                       c.rank === 3 ? "bg-amber-100 text-amber-900" :
@@ -171,12 +178,12 @@ export default function AdminAuditPage() {
                     }`}>
                       #{c.rank}
                     </span>
-                    <div>
-                      <span className="font-bold text-slate-900">{c.user.fullName}</span>
-                      <p className="text-[11px] text-slate-400">{c.user.email}</p>
+                    <div className="min-w-0">
+                      <span className="block truncate font-bold text-slate-900">{c.user.fullName}</span>
+                      <p className="truncate text-[11px] text-slate-400">{c.user.email}</p>
                     </div>
                   </div>
-                  <span className="font-mono font-black text-[#1755A7] text-xs">
+                  <span className="shrink-0 font-mono font-black text-[#1755A7] text-xs">
                     {c.totalPoints.toLocaleString()} pts
                   </span>
                 </div>

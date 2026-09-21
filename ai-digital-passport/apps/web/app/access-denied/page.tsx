@@ -11,8 +11,8 @@ export default function AccessDeniedPage() {
         accounts may sign in to the AI Digital Passport. If you believe this is a mistake, sign in with your institutional Google
         account instead.
       </p>
-      <Link href="/login" className="text-body text-navy-700 underline underline-offset-2">
-        Back to sign in
+      <Link href="/" className="text-body text-navy-700 underline underline-offset-2">
+        Back to home
       </Link>
     </div>
   );

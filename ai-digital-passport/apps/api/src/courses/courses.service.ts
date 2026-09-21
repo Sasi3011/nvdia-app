@@ -1,13 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { CourseTaskType, EnrollmentStatus, prisma } from "@ai-digital-passport/database";
-import type { Course, CourseEnrollment, CourseTask } from "@ai-digital-passport/database";
+import { EnrollmentStatus, prisma } from "@ai-digital-passport/database";
+import type { Course, CourseEnrollment } from "@ai-digital-passport/database";
 import { CourseStatus, NotificationType } from "@ai-digital-passport/shared-types";
 import { AuditLogService } from "../common/audit-log/audit-log.service";
 import { MentorRoutingService } from "../common/mentor-routing/mentor-routing.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PointsService } from "../points/points.service";
-
-type CourseWithTasks = Course & { tasks: CourseTask[] };
 
 @Injectable()
 export class CoursesService {
@@ -22,6 +20,12 @@ export class CoursesService {
   // Student-facing
   // ---------------------------------------------------------------------
 
+  // Course completion points come from the scoring matrix ("course_completion").
+  private async coursePoints(fallback: number): Promise<number> {
+    const rule = await prisma.scoringRule.findUnique({ where: { category: "course_completion" } });
+    return rule?.points ?? fallback;
+  }
+
   async listPublishedForStudent(userId: string) {
     const user = await prisma.user.findUniqueOrThrow({ where: { user_id: userId } });
     const courses = await prisma.course.findMany({
@@ -35,7 +39,8 @@ export class CoursesService {
       where: { user_id: userId, course_id: { in: courses.map((c) => c.course_id) } },
     });
     const byCourseId = new Map(enrollments.map((e) => [e.course_id, e]));
-    return courses.map((c) => ({ ...courseDto(c), enrollmentStatus: byCourseId.get(c.course_id)?.status ?? EnrollmentStatus.NOT_STARTED }));
+    const matrixPoints = await this.coursePoints(0);
+    return courses.map((c) => ({ ...courseDto(c), pointsValue: matrixPoints || c.points_value, enrollmentStatus: byCourseId.get(c.course_id)?.status ?? EnrollmentStatus.NOT_STARTED }));
   }
 
   // Visiting the detail page is what creates the enrollment row (lazily —
@@ -43,197 +48,16 @@ export class CoursesService {
   async getDetailForStudent(courseId: string, userId: string) {
     const course = await this.findVisibleOrThrow(courseId, userId);
     const enrollment = await this.getOrCreateEnrollment(courseId, userId);
-    const completions = await prisma.courseTaskCompletion.findMany({
-      where: { user_id: userId, task: { course_id: courseId } },
-    });
-    const completedStandardTaskIds = new Set(completions.map((c) => c.task_id));
-    const proctoringSessions = await prisma.proctoringSession.findMany({
-      where: { user_id: userId, task: { course_id: courseId } },
-      orderBy: { started_at: "desc" },
-    });
-    const latestSessionByTask = new Map<string, (typeof proctoringSessions)[number]>();
-    for (const session of proctoringSessions) {
-      if (!latestSessionByTask.has(session.task_id)) latestSessionByTask.set(session.task_id, session);
-    }
-
-    let anyPreviousRequiredIncomplete = false;
-
     return {
       ...courseDto(course),
+      pointsValue: await this.coursePoints(course.points_value),
       enrollment: enrollmentDto(enrollment),
-      tasks: course.tasks
-        .sort((a, b) => a.sequence_order - b.sequence_order)
-        .map((t) => {
-          let isCompleted = false;
-          if (t.type === CourseTaskType.STANDARD) {
-            isCompleted = completedStandardTaskIds.has(t.task_id);
-          } else if (t.type === CourseTaskType.MCQ || t.type === CourseTaskType.CODING || t.type === CourseTaskType.LIVE_PROCTORED) {
-            isCompleted = latestSessionByTask.get(t.task_id)?.status === "COMPLETED";
-          }
-
-          const isLocked = anyPreviousRequiredIncomplete;
-          if (t.is_required && !isCompleted) {
-            anyPreviousRequiredIncomplete = true;
-          }
-
-          const completionRecord = completions.find(c => c.task_id === t.task_id);
-
-          return {
-            taskId: t.task_id,
-            title: t.title,
-            type: t.type,
-            instructions: t.instructions,
-            content: t.content,
-            sequenceOrder: t.sequence_order,
-            isRequired: t.is_required,
-            completed: isCompleted,
-            locked: isLocked,
-            score: completionRecord?.score ?? null,
-            feedback: completionRecord?.feedback ?? null,
-            proctoringStatus: (t.type !== CourseTaskType.STANDARD) ? (latestSessionByTask.get(t.task_id)?.status ?? null) : null,
-          };
-        }),
     };
   }
 
-  async completeStandardTask(courseId: string, taskId: string, userId: string) {
-    const task = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
-    if (task.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
-    if (task.type !== CourseTaskType.STANDARD) {
-      throw new BadRequestException({ code: "NOT_A_STANDARD_TASK", message: "Live proctored tasks are completed via the proctoring flow, not this endpoint." });
-    }
-    await this.findVisibleOrThrow(courseId, userId);
-    await prisma.courseTaskCompletion.upsert({
-      where: { task_id_user_id: { task_id: taskId, user_id: userId } },
-      update: {},
-      create: { task_id: taskId, user_id: userId },
-    });
-    await this.getOrCreateEnrollment(courseId, userId, EnrollmentStatus.IN_PROGRESS);
-    return { taskId, completed: true };
-  }
 
-  async submitProctoredTask(courseId: string, taskId: string, userId: string, submission: any) {
-    const task = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
-    if (task.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
-    if (task.type === CourseTaskType.STANDARD) {
-      throw new BadRequestException({ code: "INVALID_TASK_TYPE", message: "Standard tasks cannot be submitted via proctored evaluation." });
-    }
 
-    const session = await prisma.proctoringSession.findFirst({
-      where: { task_id: taskId, user_id: userId },
-      orderBy: { started_at: "desc" },
-    });
 
-    if (!session || session.status === "LOCKED") {
-      throw new ForbiddenException({ code: "SESSION_LOCKED", message: "Your session is locked or does not exist." });
-    }
-
-    let score = 0;
-    let feedback = "";
-
-    if (task.type === CourseTaskType.MCQ) {
-      // Mock MCQ Evaluation
-      // Expecting content: { questions: [{ id, answer }] }
-      // Expecting submission: { answers: { [id]: string } }
-      const content = task.content as any;
-      if (content && content.questions && submission.answers) {
-        let correctCount = 0;
-        content.questions.forEach((q: any) => {
-          if (submission.answers[q.id] === q.answer) correctCount++;
-        });
-        score = Math.round((correctCount / content.questions.length) * 100);
-        feedback = `You scored ${score}% (${correctCount}/${content.questions.length}).`;
-      }
-    } else if (task.type === CourseTaskType.CODING) {
-      // Mock LeetCode style Evaluation
-      // In a real system, this would execute the code in a sandbox container.
-      // For this demo, we simulate success if they submit non-empty code.
-      if (submission.code && submission.code.trim().length > 10) {
-        score = 100;
-        feedback = "All 15 test cases passed! (Simulated)";
-      } else {
-        score = 0;
-        feedback = "Compilation Error or Failed Test Cases.";
-      }
-    }
-
-    await prisma.proctoringSession.update({
-      where: { session_id: session.session_id },
-      data: {
-        status: "COMPLETED",
-        ended_at: new Date(),
-      },
-    });
-
-    await prisma.courseTaskCompletion.upsert({
-      where: { task_id_user_id: { task_id: taskId, user_id: userId } },
-      update: { score, feedback },
-      create: { task_id: taskId, user_id: userId, score, feedback },
-    });
-
-    await this.getOrCreateEnrollment(courseId, userId, EnrollmentStatus.IN_PROGRESS);
-
-    return { taskId, score, feedback, completed: true };
-  }
-
-  async startProctoredTask(courseId: string, taskId: string, userId: string) {
-    const task = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
-    if (task.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
-    if (task.type === CourseTaskType.STANDARD) {
-      throw new BadRequestException({ code: "INVALID_TASK_TYPE", message: "Cannot start a proctoring session for a standard task." });
-    }
-
-    await this.findVisibleOrThrow(courseId, userId);
-
-    const session = await prisma.proctoringSession.create({
-      data: {
-        task_id: taskId,
-        user_id: userId,
-        status: "ACTIVE",
-      },
-    });
-
-    return { sessionId: session.session_id };
-  }
-
-  async recordViolation(courseId: string, taskId: string, userId: string, violationTypeStr: string) {
-    const session = await prisma.proctoringSession.findFirst({
-      where: { task_id: taskId, user_id: userId },
-      orderBy: { started_at: "desc" },
-    });
-
-    if (!session || session.status !== "ACTIVE") {
-      throw new ForbiddenException({ code: "INVALID_SESSION", message: "No active session to record violation on." });
-    }
-
-    const updatedSession = await prisma.proctoringSession.update({
-      where: { session_id: session.session_id },
-      data: {
-        violation_count: { increment: 1 },
-      },
-    });
-
-    // We can dynamically cast the string since schema is out of sync in the type defs for this snippet
-    await prisma.proctoringViolation.create({
-      data: {
-        session_id: session.session_id,
-        violation_type: violationTypeStr as any,
-      },
-    });
-
-    if (updatedSession.violation_count >= 5) {
-      await prisma.proctoringSession.update({
-        where: { session_id: session.session_id },
-        data: {
-          status: "LOCKED",
-          locked_at: new Date(),
-        },
-      });
-      return { locked: true, violations: updatedSession.violation_count };
-    }
-
-    return { locked: false, violations: updatedSession.violation_count };
-  }
 
   async submitProof(
     courseId: string,
@@ -285,7 +109,7 @@ export class CoursesService {
   }
 
   async getForAdmin(courseId: string) {
-    const course = await prisma.course.findUnique({ where: { course_id: courseId }, include: { tasks: { orderBy: { sequence_order: "asc" } } } });
+    const course = await prisma.course.findUnique({ where: { course_id: courseId } });
     if (!course) throw new NotFoundException({ code: "COURSE_NOT_FOUND" });
     return course;
   }
@@ -334,6 +158,7 @@ export class CoursesService {
     deliveryMode: string; enrollmentType: string; certificateAvailable: boolean; isFeatured: boolean;
     skillsCovered: string[]; prerequisites: string[]; learningOutcomes: string[]; toolsRequired: string[]; targetAudience?: string;
   }) {
+    await this.getForAdmin(courseId);
     const course = await prisma.course.update({
       where: { course_id: courseId },
       data: {
@@ -365,62 +190,43 @@ export class CoursesService {
   }
 
   async setStatus(actorId: string, courseId: string, status: CourseStatus) {
+    await this.getForAdmin(courseId);
     const course = await prisma.course.update({ where: { course_id: courseId }, data: { status } });
     await this.auditLogService.record({ actorId, action: `COURSE_${status}`, entityType: "course", entityId: courseId });
     return course;
   }
 
+  // Courses that already awarded points keep their history: archive them
+  // instead. Anything else is removed together with its dependent rows.
   async deleteCourse(actorId: string, courseId: string) {
-    const course = await prisma.course.delete({ where: { course_id: courseId } });
+    const course = await this.getForAdmin(courseId);
+    const awarded = await prisma.pointsTransaction.count({ where: { enrollment: { course_id: courseId } } });
+    if (awarded > 0) {
+      throw new BadRequestException({
+        code: "COURSE_HAS_AWARDED_POINTS",
+        message: "Students have already earned points from this course, so it cannot be deleted. Archive it instead.",
+      });
+    }
+
+    const tasks = await prisma.courseTask.findMany({ where: { course_id: courseId }, select: { task_id: true } });
+    const taskIds = tasks.map((t) => t.task_id);
+    const sessions = await prisma.proctoringSession.findMany({ where: { task_id: { in: taskIds } }, select: { session_id: true } });
+    const sessionIds = sessions.map((x) => x.session_id);
+
+    await prisma.$transaction([
+      prisma.proctoringViolation.deleteMany({ where: { session_id: { in: sessionIds } } }),
+      prisma.proctoringSession.deleteMany({ where: { task_id: { in: taskIds } } }),
+      prisma.courseTaskCompletion.deleteMany({ where: { task_id: { in: taskIds } } }),
+      prisma.courseTask.deleteMany({ where: { course_id: courseId } }),
+      prisma.courseEnrollment.deleteMany({ where: { course_id: courseId } }),
+      prisma.course.delete({ where: { course_id: courseId } }),
+    ]);
     await this.auditLogService.record({ actorId, action: "COURSE_DELETED", entityType: "course", entityId: courseId });
     return course;
   }
 
-  async createTask(actorId: string, courseId: string, input: {
-    title: string; type: CourseTaskType; instructions?: string; content?: any; sequenceOrder: number; isRequired: boolean;
-  }) {
-    const task = await prisma.courseTask.create({
-      data: {
-        course_id: courseId,
-        title: input.title,
-        type: input.type,
-        instructions: input.instructions ?? null,
-        content: input.content ?? null,
-        sequence_order: input.sequenceOrder,
-        is_required: input.isRequired,
-      },
-    });
-    await this.auditLogService.record({ actorId, action: "COURSE_TASK_CREATED", entityType: "course_task", entityId: task.task_id, metadata: { courseId } });
-    return task;
-  }
 
-  async updateTask(actorId: string, courseId: string, taskId: string, input: {
-    title: string; type: CourseTaskType; instructions?: string; content?: any; sequenceOrder: number; isRequired: boolean;
-  }) {
-    const existing = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
-    if (existing.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
-    const task = await prisma.courseTask.update({
-      where: { task_id: taskId },
-      data: {
-        title: input.title,
-        type: input.type,
-        instructions: input.instructions ?? null,
-        content: input.content ?? null,
-        sequence_order: input.sequenceOrder,
-        is_required: input.isRequired,
-      },
-    });
-    await this.auditLogService.record({ actorId, action: "COURSE_TASK_UPDATED", entityType: "course_task", entityId: taskId, metadata: { courseId } });
-    return task;
-  }
 
-  async deleteTask(actorId: string, courseId: string, taskId: string) {
-    const existing = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
-    if (existing.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
-    const task = await prisma.courseTask.delete({ where: { task_id: taskId } });
-    await this.auditLogService.record({ actorId, action: "COURSE_TASK_DELETED", entityType: "course_task", entityId: taskId, metadata: { courseId } });
-    return task;
-  }
 
   // ---------------------------------------------------------------------
   // Mentor review (BR-14) — reuses PointsService, the same approval path
@@ -436,21 +242,10 @@ export class CoursesService {
   }
 
   async approve(actorId: string, enrollmentId: string) {
-    const enrollment = await prisma.courseEnrollment.findUnique({ where: { enrollment_id: enrollmentId }, include: { course: { include: { tasks: true } } } });
+    const enrollment = await prisma.courseEnrollment.findUnique({ where: { enrollment_id: enrollmentId }, include: { course: true } });
     if (!enrollment) throw new NotFoundException({ code: "ENROLLMENT_NOT_FOUND" });
     if (enrollment.status !== EnrollmentStatus.SUBMITTED) {
       throw new BadRequestException({ code: "NOT_SUBMITTED", message: "Only a submitted enrollment can be approved." });
-    }
-
-    // BR-14: every required task must be COMPLETED (not LOCKED) for this
-    // student before proof approval can award points.
-    const incomplete = await this.findIncompleteRequiredTasks(enrollment.course as CourseWithTasks, enrollment.user_id);
-    if (incomplete.length > 0) {
-      throw new BadRequestException({
-        code: "REQUIRED_TASKS_INCOMPLETE",
-        message: `${incomplete.length} required task(s) are not complete for this student yet.`,
-        incompleteTasks: incomplete.map((t) => t.title),
-      });
     }
 
     const updated = await prisma.courseEnrollment.update({
@@ -458,10 +253,11 @@ export class CoursesService {
       data: { status: EnrollmentStatus.APPROVED, reviewed_by: actorId, reviewed_at: new Date(), review_feedback: null },
     });
 
+    const points = await this.coursePoints(enrollment.course.points_value);
     const award = await this.pointsService.awardForEnrollment({
       userId: enrollment.user_id,
       enrollmentId,
-      points: enrollment.course.points_value,
+      points,
       reason: `Course completed: ${enrollment.course.title}`,
     });
 
@@ -470,7 +266,7 @@ export class CoursesService {
       userId: enrollment.user_id,
       type: NotificationType.CLAIM_APPROVED,
       title: "Course approved",
-      message: `Your submission for "${enrollment.course.title}" was approved. +${enrollment.course.points_value} points.`,
+      message: `Your submission for "${enrollment.course.title}" was approved. +${points} points.`,
     });
 
     return { ...enrollmentDto(updated), pointsAwarded: award.totalPoints, alreadyAwarded: award.alreadyAwarded, leveledUp: award.leveledUp };
@@ -504,8 +300,8 @@ export class CoursesService {
   // Internal helpers
   // ---------------------------------------------------------------------
 
-  private async findVisibleOrThrow(courseId: string, userId: string): Promise<CourseWithTasks> {
-    const course = await prisma.course.findUnique({ where: { course_id: courseId }, include: { tasks: { orderBy: { sequence_order: "asc" } } } });
+  private async findVisibleOrThrow(courseId: string, userId: string): Promise<Course> {
+    const course = await prisma.course.findUnique({ where: { course_id: courseId } });
     if (!course) throw new NotFoundException({ code: "COURSE_NOT_FOUND" });
     if (course.status !== CourseStatus.PUBLISHED) throw new ForbiddenException({ code: "COURSE_NOT_PUBLISHED" });
     if (course.level_requirement != null) {
@@ -530,22 +326,6 @@ export class CoursesService {
     });
   }
 
-  async findIncompleteRequiredTasks(course: CourseWithTasks, userId: string): Promise<CourseTask[]> {
-    const required = course.tasks.filter((t) => t.is_required);
-    if (required.length === 0) return [];
-    const [completions, sessions] = await Promise.all([
-      prisma.courseTaskCompletion.findMany({ where: { user_id: userId, task_id: { in: required.map((t) => t.task_id) } } }),
-      prisma.proctoringSession.findMany({ where: { user_id: userId, task_id: { in: required.map((t) => t.task_id) } }, orderBy: { started_at: "desc" } }),
-    ]);
-    const completedStandard = new Set(completions.map((c) => c.task_id));
-    const latestSessionByTask = new Map<string, (typeof sessions)[number]>();
-    for (const s of sessions) if (!latestSessionByTask.has(s.task_id)) latestSessionByTask.set(s.task_id, s);
-
-    return required.filter((t) => {
-      if (t.type === CourseTaskType.STANDARD) return !completedStandard.has(t.task_id);
-      return latestSessionByTask.get(t.task_id)?.status !== "COMPLETED";
-    });
-  }
 }
 
 function courseDto(c: Course) {

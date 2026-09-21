@@ -75,6 +75,8 @@ export enum EnrollmentStatus {
 export enum CourseTaskType {
   STANDARD = "STANDARD",
   LIVE_PROCTORED = "LIVE_PROCTORED",
+  MCQ = "MCQ",
+  CODING = "CODING",
 }
 
 export enum ProctoringStatus {
@@ -137,12 +139,12 @@ export function startupStageName(stage: number): string {
 // packages/database's schema.prisma) until a measurable rule is chosen —
 // flagged here rather than silently assumed.
 export const LEVEL_DEFINITIONS = [
-  { levelId: 1, levelName: "AI Explorer", minPoints: 0, unlockedPrivilege: "Basic Centre Access", requiresHighImpact: false },
-  { levelId: 2, levelName: "AI Practitioner", minPoints: 1000, unlockedPrivilege: "Advanced Labs Access", requiresHighImpact: false },
-  { levelId: 3, levelName: "AI Builder", minPoints: 2000, unlockedPrivilege: "GPU Project Credits", requiresHighImpact: false },
-  { levelId: 4, levelName: "AI Innovator", minPoints: 3000, unlockedPrivilege: "Innovation Opportunities", requiresHighImpact: false },
-  { levelId: 5, levelName: "AI Researcher", minPoints: 5000, unlockedPrivilege: "Research GPU Cluster", requiresHighImpact: false },
-  { levelId: 6, levelName: "AI Champion", minPoints: 5000, unlockedPrivilege: "Fellowship & Industry Perks", requiresHighImpact: true },
+  { levelId: 1, levelName: "AI Explorer", minPoints: 500, unlockedPrivilege: "Basic Centre Access", requiresHighImpact: false },
+  { levelId: 2, levelName: "AI Practitioner", minPoints: 1500, unlockedPrivilege: "Advanced Labs Access", requiresHighImpact: false },
+  { levelId: 3, levelName: "AI Builder", minPoints: 3000, unlockedPrivilege: "GPU Project Credits", requiresHighImpact: false },
+  { levelId: 4, levelName: "AI Innovator", minPoints: 5000, unlockedPrivilege: "Innovation Opportunities", requiresHighImpact: false },
+  { levelId: 5, levelName: "AI Researcher", minPoints: 7500, unlockedPrivilege: "Research GPU Cluster", requiresHighImpact: false },
+  { levelId: 6, levelName: "AI Champion", minPoints: 10000, unlockedPrivilege: "Fellowship & Industry Perks", requiresHighImpact: true },
 ] as const;
 
 export type LevelId = (typeof LEVEL_DEFINITIONS)[number]["levelId"];
@@ -160,6 +162,7 @@ export const SCORING_MATRIX = [
   { category: "certification_project_hackathon", label: "Certification / Mini Project / Hackathon", points: 100 },
   { category: "industry_hackathon_win", label: "Industry Project / Hackathon Win", points: 250 },
   { category: "research_patent", label: "Research Paper / Patent Filing", points: 300 },
+  { category: "hackathon_registration", label: "External Hackathon Registration", points: 20 },
 ] as const;
 
 export type ScoringCategory = (typeof SCORING_MATRIX)[number]["category"];

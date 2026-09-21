@@ -19,11 +19,14 @@ export class StartupController {
       currentStage: p.current_stage,
       currentStageName: startupStageName(p.current_stage),
       gpuValidated: p.gpu_validated,
+      verifiedStage: Math.max(0, ...p.milestones.filter((m) => m.status === "APPROVED").map((m) => m.target_stage)),
       milestones: p.milestones.map((m) => ({
         milestoneId: m.milestone_id,
         targetStage: m.target_stage,
         status: m.status,
         feedback: m.feedback,
+        details: m.details,
+        evidenceUrl: m.evidence_url,
         createdAt: m.created_at,
       })),
     }));
@@ -44,7 +47,7 @@ export class StartupController {
     @Param("id") id: string,
     @Body(new ZodValidationPipe(SubmitStartupMilestoneSchema)) body: ReturnType<typeof SubmitStartupMilestoneSchema.parse>,
   ) {
-    const milestone = await this.startupService.submitMilestone(user.userId, id, body.targetStage, body.evidenceUrl);
+    const milestone = await this.startupService.submitMilestone(user.userId, id, body.targetStage, body.evidenceUrl, body.details, body.documents);
     return {
       milestoneId: milestone.milestone_id,
       projectId: milestone.project_id,

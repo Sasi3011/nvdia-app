@@ -10,6 +10,11 @@ const TopQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(100)
 export class LeaderboardController {
   constructor(private readonly leaderboardService: LeaderboardService) {}
 
+  @Get("summary")
+  async summary() {
+    return this.leaderboardService.summary();
+  }
+
   @Get()
   async top(@Query(new ZodValidationPipe(TopQuerySchema)) query: z.infer<typeof TopQuerySchema>) {
     return this.leaderboardService.top(query.limit);

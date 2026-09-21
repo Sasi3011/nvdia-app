@@ -45,6 +45,7 @@ export class AdminAuditController {
     @Body(new ZodValidationPipe(RunAnnualAuditSchema)) body: ReturnType<typeof RunAnnualAuditSchema.parse>,
   ) {
     const topStudents = await prisma.user.findMany({
+      where: { user_roles: { some: { role: { name: "STUDENT" } } } },
       orderBy: [{ total_points: "desc" }, { created_at: "asc" }],
       take: body.candidateCount,
     });

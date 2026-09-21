@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put, Delete } from "@nestjs/common";
-import { CourseStatus, UpsertCourseSchema, UpsertCourseTaskSchema, UserRole } from "@ai-digital-passport/shared-types";
+import { CourseStatus, UpsertCourseSchema, UserRole } from "@ai-digital-passport/shared-types";
 import { CurrentUser } from "../common/auth/current-user.decorator";
 import { Roles } from "../common/auth/roles.decorator";
 import type { RequestUser } from "../common/auth/types";
@@ -32,10 +32,10 @@ export class AdminCoursesController {
       isFeatured: c.is_featured,
       skillsCovered: c.skills_covered,
       provider: c.provider,
+      externalUrl: c.external_url,
       pointsValue: c.points_value,
       levelRequirement: c.level_requirement,
       status: c.status,
-      taskCount: c.tasks.length,
       createdAt: c.created_at,
     }));
   }
@@ -67,7 +67,6 @@ export class AdminCoursesController {
       levelRequirement: c.level_requirement,
       status: c.status,
       createdAt: c.created_at,
-      tasks: c.tasks.map(taskDto),
     };
   }
 
@@ -107,47 +106,4 @@ export class AdminCoursesController {
     await this.coursesService.setStatus(user.userId, id, CourseStatus.ARCHIVED);
     return { courseId: id, status: CourseStatus.ARCHIVED };
   }
-
-  @Post(":id/tasks")
-  async createTask(
-    @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
-    @Body(new ZodValidationPipe(UpsertCourseTaskSchema)) body: ReturnType<typeof UpsertCourseTaskSchema.parse>,
-  ) {
-    const task = await this.coursesService.createTask(user.userId, id, body);
-    return taskDto(task);
-  }
-
-  @Put(":id/tasks/:taskId")
-  async updateTask(
-    @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
-    @Param("taskId") taskId: string,
-    @Body(new ZodValidationPipe(UpsertCourseTaskSchema)) body: ReturnType<typeof UpsertCourseTaskSchema.parse>,
-  ) {
-    const task = await this.coursesService.updateTask(user.userId, id, taskId, body);
-    return taskDto(task);
-  }
-
-  @Delete(":id/tasks/:taskId")
-  async deleteTask(
-    @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
-    @Param("taskId") taskId: string,
-  ) {
-    await this.coursesService.deleteTask(user.userId, id, taskId);
-    return { success: true };
-  }
-}
-
-function taskDto(t: { task_id: string; title: string; type: string; instructions: string | null; content: any | null; sequence_order: number; is_required: boolean }) {
-  return {
-    taskId: t.task_id,
-    title: t.title,
-    type: t.type,
-    instructions: t.instructions,
-    content: t.content,
-    sequenceOrder: t.sequence_order,
-    isRequired: t.is_required,
-  };
 }

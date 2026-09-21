@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ExternalHackathons } from "../../components/modules/ExternalHackathons";
 import { StudentShell } from "../../components/shell/StudentShell";
+import { useScoringPoints } from "../../lib/use-scoring-points";
 import { 
   Flag, 
   Sparkles, 
@@ -77,6 +78,7 @@ const HACKATHONS: HackathonEvent[] = [
 export default function HackathonsPage() {
   const [activeHackathon, setActiveHackathon] = useState<HackathonEvent | null>(null);
   const [registeredSuccess, setRegisteredSuccess] = useState(false);
+  const winPoints = useScoringPoints("industry_hackathon_win");
 
   return (
     <StudentShell>
@@ -128,7 +130,7 @@ export default function HackathonsPage() {
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Max Points Bounty</div>
-            <div className="mt-2 text-2xl font-black text-[#1755A7]">+350 pts</div>
+            <div className="mt-2 text-2xl font-black text-[#1755A7]">{winPoints != null ? `+${winPoints} pts` : "—"}</div>
             <div className="mt-1 text-xs text-slate-500">Per accredited hackathon win</div>
           </div>
 

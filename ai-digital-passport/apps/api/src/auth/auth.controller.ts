@@ -9,6 +9,7 @@ import { PendingIdentity } from "../common/auth/pending-identity.decorator";
 import { Public } from "../common/auth/public.decorator";
 import type { GoogleProfile } from "../common/auth/types";
 import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
+import { WhitelistService } from "../whitelist/whitelist.service";
 import { AuthService } from "./auth.service";
 import { SessionService } from "./session.service";
 
@@ -22,6 +23,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly whitelist: WhitelistService,
   ) {}
 
   // Page 1 — Login: a plain link/button to this URL (full-page navigation,
@@ -55,6 +57,13 @@ export class AuthController {
       return;
     }
 
+    const access = await this.whitelist.check(profile.email);
+    if (!access.ok) {
+      res.redirect(frontendUrl("/access-denied"));
+      return;
+    }
+    await this.whitelist.touchLogin(profile.email);
+
     this.sessionService.issueCookie(res, profile);
 
     const existing = await this.authService.findByEmail(profile.email);
@@ -69,6 +78,10 @@ export class AuthController {
   async session(@Req() req: Request) {
     const identity = this.sessionService.verifyCookie(req.cookies?.[SESSION_COOKIE_NAME] as string | undefined);
     if (!identity) return { authenticated: false as const };
+
+    // A suspended or removed email is signed out on the next session check.
+    const access = await this.whitelist.check(identity.email);
+    if (!access.ok) return { authenticated: false as const, reason: access.reason };
 
     const user = await this.authService.findByEmailWithRoles(identity.email);
     return {
@@ -118,7 +131,7 @@ export class AuthController {
    */
   @Public()
   @Post("dev-login")
-  devLogin(
+  async devLogin(
     @Res() res: Response,
     @Body(new ZodValidationPipe(z.object({ email: z.string().trim().toLowerCase().email(), fullName: z.string().trim().min(1).max(200), password: z.string().min(1) })))
     body: { email: string; fullName: string; password: string },
@@ -131,7 +144,13 @@ export class AuthController {
       res.status(401).send({ message: "Invalid email or password." });
       return;
     }
-    this.sessionService.issueCookie(res, { googleId: `dev-${body.email}`, email: body.email, fullName: body.fullName });
+    const access = await this.whitelist.check(body.email);
+    if (!access.ok) {
+      res.status(403).send({ code: "ACCESS_DENIED", message: access.reason });
+      return;
+    }
+    await this.whitelist.touchLogin(body.email);
+    this.sessionService.issueCookie(res, { googleId: `dev-${body.email}`, email: body.email, fullName: access.fullName || body.fullName });
     res.status(204).send();
   }
 }

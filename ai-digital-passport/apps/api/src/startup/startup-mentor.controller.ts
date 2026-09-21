@@ -23,6 +23,7 @@ export class StartupMentorController {
         milestoneId: m.milestone_id,
         targetStage: m.target_stage,
         evidenceUrl: m.evidence_url,
+        details: m.details,
         createdAt: m.created_at,
         project: { projectId: m.project.project_id, title: m.project.title, leadName: m.project.lead.full_name },
       })),

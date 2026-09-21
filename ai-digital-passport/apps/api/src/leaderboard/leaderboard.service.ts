@@ -3,6 +3,7 @@ import { prisma } from "@ai-digital-passport/database";
 import { RedisService } from "../common/redis/redis.service";
 
 const LEADERBOARD_KEY = "leaderboard:total_points";
+const STUDENT_ONLY = { user_roles: { some: { role: { name: "STUDENT" as const } } } };
 
 @Injectable()
 export class LeaderboardService {
@@ -27,7 +28,8 @@ export class LeaderboardService {
   // (Risk: "Redis outage", spec 04 NFR-AVAIL).
   async top(limit: number) {
     try {
-      const raw = await this.redisService.client.zrevrange(LEADERBOARD_KEY, 0, limit - 1, "WITHSCORES");
+      // Oversample: the cache also holds staff accounts, which are filtered out below.
+      const raw = await this.redisService.client.zrevrange(LEADERBOARD_KEY, 0, limit * 3 + 10 - 1, "WITHSCORES");
       if (raw.length > 0) {
         const userIds: string[] = [];
         const scoreByUser = new Map<string, number>();
@@ -39,16 +41,18 @@ export class LeaderboardService {
           scoreByUser.set(userId, Number(score));
         }
         const users = await prisma.user.findMany({
-          where: { user_id: { in: userIds } },
+          where: { user_id: { in: userIds }, ...STUDENT_ONLY },
           include: { current_level: true },
         });
         const byId = new Map(users.map((u) => [u.user_id, u]));
         return userIds
           .map((id) => byId.get(id))
           .filter((u): u is NonNullable<typeof u> => !!u)
+          .slice(0, limit)
           .map((u) => ({
             userId: u.user_id,
             fullName: u.full_name,
+            department: u.department,
             totalPoints: scoreByUser.get(u.user_id) ?? u.total_points,
             levelName: u.current_level.level_name,
           }));
@@ -58,6 +62,7 @@ export class LeaderboardService {
     }
 
     const users = await prisma.user.findMany({
+      where: STUDENT_ONLY,
       orderBy: [{ total_points: "desc" }, { created_at: "asc" }],
       take: limit,
       include: { current_level: true },
@@ -65,9 +70,28 @@ export class LeaderboardService {
     return users.map((u) => ({
       userId: u.user_id,
       fullName: u.full_name,
+      department: u.department,
       totalPoints: u.total_points,
       levelName: u.current_level.level_name,
     }));
+  }
+
+  // Real cohort-wide numbers for the leaderboard KPI cards.
+  async summary() {
+    const [totalStudents, agg, topLevel] = await Promise.all([
+      prisma.user.count({ where: STUDENT_ONLY }),
+      prisma.user.aggregate({ where: STUDENT_ONLY, _avg: { total_points: true }, _max: { total_points: true } }),
+      prisma.level.findFirst({ orderBy: { level_id: "desc" } }),
+    ]);
+    const topLevelCount = topLevel ? await prisma.user.count({ where: { ...STUDENT_ONLY, current_level_id: topLevel.level_id } }) : 0;
+    return {
+      totalStudents,
+      averagePoints: Math.round(agg._avg.total_points ?? 0),
+      topScore: agg._max.total_points ?? 0,
+      topLevelName: topLevel?.level_name ?? null,
+      topLevelMinPoints: topLevel?.min_points ?? null,
+      topLevelCount,
+    };
   }
 
   async rebuildFromPostgres(): Promise<number> {

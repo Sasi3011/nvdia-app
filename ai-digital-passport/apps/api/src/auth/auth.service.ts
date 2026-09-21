@@ -2,10 +2,14 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable 
 import { prisma } from "@ai-digital-passport/database";
 import { UserRole, type OnboardUserInput } from "@ai-digital-passport/shared-types";
 import { LeaderboardService } from "../leaderboard/leaderboard.service";
+import { WhitelistService } from "../whitelist/whitelist.service";
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly leaderboardService: LeaderboardService) {}
+  constructor(
+    private readonly leaderboardService: LeaderboardService,
+    private readonly whitelist: WhitelistService,
+  ) {}
 
   // BR-01 / FR-AUTH-01: only the institutional domain may authenticate.
   assertAllowedDomain(email: string): void {
@@ -43,6 +47,9 @@ export class AuthService {
       throw new ConflictException({ code: "ALREADY_ONBOARDED", message: "A profile already exists for this email." });
     }
 
+    // The role comes from the access list (students by default).
+    const role = await this.whitelist.roleFor(email);
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -54,7 +61,7 @@ export class AuthService {
         total_points: 0,
         gpu_credit_balance: 0,
         user_roles: {
-          create: { role: { connect: { name: UserRole.STUDENT } } },
+          create: { role: { connect: { name: role as UserRole } } },
         },
       },
     });

@@ -60,8 +60,8 @@ const NAV_GROUPS: StudentNavGroup[] = [
     label: "Credentials & Rewards",
     items: [
       { href: "/claims", label: "Evidence & Claims", icon: FileCheck },
-      { href: "/awards", label: "Awards & Honors", icon: Award },
-      { href: "/leaderboard", label: "Leaderboard", icon: Trophy, badge: "Rank #14" },
+      { href: "/awards", label: "Awards", icon: Award },
+      { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
       { href: "/scan", label: "Event QR Check-in", icon: ScanLine },
     ],
   },
@@ -78,13 +78,13 @@ export function StudentShell({ children }: { children: ReactNode }) {
   async function handleLogout() {
     await authApi.logout();
     await queryClient.invalidateQueries();
-    router.replace("/login");
+    router.replace("/");
   }
 
   useEffect(() => {
     if (session.isLoading) return;
     if (!session.data?.authenticated) {
-      router.replace("/login");
+      router.replace("/");
       return;
     }
     if (!session.data.onboarded) {

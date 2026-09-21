@@ -1,6 +1,6 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { prisma, Prisma } from "@ai-digital-passport/database";
+import { ClaimStatus, prisma } from "@ai-digital-passport/database";
 import { PointsService } from "../points/points.service";
 
 interface Candidate {
@@ -22,7 +22,8 @@ interface Candidate {
 
 const AI_KEYWORDS =
   /\b(ai|llm|llms|gen ?ai|genai|generative|gpt|chatgpt|openai|gemini|claude|agentic|agents?|machine learning|deep learning|nlp|rag|neural|langchain|copilot|prompt|nvidia|artificial intelligence|computer vision)\b/i;
-const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const HACKATHON_CATEGORY = "hackathon_registration";
+const SYNC_INTERVAL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 20_000;
 
 export function isAiRelated(...texts: Array<string | null | undefined>): boolean {
@@ -66,7 +67,7 @@ export class ExternalHackathonsService implements OnModuleInit {
 
   onModuleInit() {
     if (process.env.DISABLE_HACKATHON_SYNC === "true") return;
-    // First sync shortly after boot, then every few hours.
+    // First sync shortly after boot, then every hour.
     setTimeout(() => void this.sync().catch(() => undefined), 15_000).unref();
     setInterval(() => void this.sync().catch(() => undefined), SYNC_INTERVAL_MS).unref();
   }
@@ -74,39 +75,155 @@ export class ExternalHackathonsService implements OnModuleInit {
   async list(userId: string) {
     // Hide events that finished more than a day ago.
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const rule = await prisma.scoringRule.findUnique({ where: { category: HACKATHON_CATEGORY } });
+    const rulePoints = rule?.points ?? 20;
     const rows = await prisma.externalHackathon.findMany({
       where: { hidden: false, OR: [{ ends_at: null }, { ends_at: { gte: cutoff } }] },
       orderBy: [{ deadline_at: { sort: "asc", nulls: "last" } }, { created_at: "desc" }],
-      include: { registrations: { where: { user_id: userId }, select: { registration_id: true } } },
+      include: { registrations: { where: { user_id: userId }, select: { claim_id: true } } },
     });
-    return rows.map(({ registrations, ...h }) => ({ ...h, registered: registrations.length > 0 }));
+    const claimIds = rows.flatMap((r) => r.registrations.map((g) => g.claim_id).filter((c): c is string => !!c));
+    const claims = await prisma.activityClaim.findMany({
+      where: { claim_id: { in: claimIds } },
+      select: { claim_id: true, status: true, mentor_feedback: true },
+    });
+    const byId = new Map(claims.map((c) => [c.claim_id, c]));
+    return rows.map(({ registrations, ...h }) => {
+      const claim = registrations[0]?.claim_id ? byId.get(registrations[0].claim_id) : undefined;
+      // Legacy registrations (no claim) were already awarded, so treat as approved.
+      const registrationStatus = !registrations[0] ? "NONE" : (claim?.status ?? "APPROVED");
+      return {
+        ...h,
+        register_points: rulePoints,
+        registrationStatus,
+        registrationFeedback: claim?.mentor_feedback ?? null,
+        registered: registrationStatus === "APPROVED",
+      };
+    });
   }
 
-  /** Student says they registered on the external site: record it once and award the points. */
-  async register(userId: string, id: string) {
+  /**
+   * Student submits proof of registration. No points yet: it becomes a PENDING
+   * claim in the mentor queue, and the mentor's approval awards the points.
+   * A rejected submission can be resubmitted.
+   */
+  async register(
+    userId: string,
+    id: string,
+    proof: { proofType: "PDF_FILE" | "DOI_LINK" | "GITHUB_LINK"; proofUrl?: string; fileKey?: string; fileName?: string; mimeType?: string; sizeBytes?: number },
+  ) {
     const h = await prisma.externalHackathon.findUnique({ where: { external_id: id } });
     if (!h || h.hidden) throw new NotFoundException({ code: "HACKATHON_NOT_FOUND" });
-    try {
-      await prisma.externalHackathonRegistration.create({
-        data: { external_id: id, user_id: userId, points_awarded: h.register_points },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        return { alreadyRegistered: true, pointsAwarded: 0 };
+    const endsAt = h.ends_at ?? h.deadline_at;
+    if (endsAt && endsAt.getTime() < Date.now()) {
+      throw new BadRequestException({ code: "DEADLINE_FINISHED", message: "The deadline has finished, so registration proof can no longer be submitted." });
+    }
+
+    const existing = await prisma.externalHackathonRegistration.findUnique({
+      where: { external_id_user_id: { external_id: id, user_id: userId } },
+    });
+    if (existing) {
+      const claim = existing.claim_id
+        ? await prisma.activityClaim.findUnique({ where: { claim_id: existing.claim_id }, select: { status: true } })
+        : null;
+      if (!claim || claim.status !== ClaimStatus.REJECTED) {
+        return { alreadyRegistered: true, status: claim?.status ?? "APPROVED", pointsAwarded: 0 };
       }
-      throw err;
     }
-    if (h.register_points > 0) {
-      await this.points.awardGeneric({ userId, points: h.register_points, reason: `Registered for hackathon: ${h.title}` });
+
+    const rule = await prisma.scoringRule.upsert({
+      where: { category: HACKATHON_CATEGORY },
+      create: { category: HACKATHON_CATEGORY, label: "External Hackathon Registration", points: 20 },
+      update: {},
+    });
+
+    const claim = await prisma.activityClaim.create({
+      data: {
+        user_id: userId,
+        category: HACKATHON_CATEGORY,
+        proof_type: proof.proofType,
+        proof_url: proof.proofType === "PDF_FILE" ? undefined : proof.proofUrl,
+        points_requested: rule.points, // always the scoring-matrix value
+        status: ClaimStatus.PENDING,
+        attachments:
+          proof.proofType === "PDF_FILE" && proof.fileKey
+            ? {
+                create: {
+                  file_key: proof.fileKey,
+                  file_name: proof.fileName ?? proof.fileKey,
+                  mime_type: proof.mimeType ?? "application/pdf",
+                  size_bytes: proof.sizeBytes ?? 0,
+                },
+              }
+            : undefined,
+      },
+    });
+
+    if (existing) {
+      await prisma.externalHackathonRegistration.update({
+        where: { registration_id: existing.registration_id },
+        data: { claim_id: claim.claim_id },
+      });
+    } else {
+      await prisma.externalHackathonRegistration.create({
+        data: { external_id: id, user_id: userId, points_awarded: 0, claim_id: claim.claim_id },
+      });
     }
-    return { alreadyRegistered: false, pointsAwarded: h.register_points };
+    return { alreadyRegistered: false, status: ClaimStatus.PENDING, pointsAwarded: 0 };
+  }
+
+  /** Staff view: who applied to each hackathon and the state of their proof verification. */
+  async applications() {
+    const hackathons = await prisma.externalHackathon.findMany({
+      where: { hidden: false },
+      orderBy: { created_at: "desc" },
+      include: { registrations: { orderBy: { created_at: "desc" } } },
+    });
+    const regs = hackathons.flatMap((h) => h.registrations);
+    const users = await prisma.user.findMany({
+      where: { user_id: { in: [...new Set(regs.map((r) => r.user_id))] } },
+      select: { user_id: true, full_name: true, email: true },
+    });
+    const claims = await prisma.activityClaim.findMany({
+      where: { claim_id: { in: regs.map((r) => r.claim_id).filter((c): c is string => !!c) } },
+      select: { claim_id: true, status: true, mentor_feedback: true, points_awarded: true },
+    });
+    const userById = new Map(users.map((u) => [u.user_id, u]));
+    const claimById = new Map(claims.map((c) => [c.claim_id, c]));
+    return hackathons.map((h) => {
+      const applicants = h.registrations.map((r) => {
+        const claim = r.claim_id ? claimById.get(r.claim_id) : undefined;
+        const u = userById.get(r.user_id);
+        return {
+          registrationId: r.registration_id,
+          claimId: r.claim_id,
+          studentName: u?.full_name ?? "Unknown",
+          studentEmail: u?.email ?? "",
+          status: (claim?.status ?? "APPROVED") as string,
+          feedback: claim?.mentor_feedback ?? null,
+          pointsAwarded: claim?.points_awarded ?? r.points_awarded,
+          appliedAt: r.created_at,
+        };
+      });
+      return {
+        externalId: h.external_id,
+        title: h.title,
+        organizer: h.organizer,
+        deadlineAt: h.deadline_at,
+        total: applicants.length,
+        approved: applicants.filter((a) => a.status === "APPROVED").length,
+        pending: applicants.filter((a) => a.status === "PENDING").length,
+        rejected: applicants.filter((a) => a.status === "REJECTED").length,
+        applicants,
+      };
+    });
   }
 
   async update(
     id: string,
     input: {
       title?: string; url?: string; description?: string; organizer?: string; location?: string; isOnline?: boolean;
-      prize?: string; tags?: string[]; deadlineAt?: string; registerPoints?: number;
+      prize?: string; tags?: string[]; deadlineAt?: string;
     },
   ) {
     const row = await prisma.externalHackathon.findUnique({ where: { external_id: id } });
@@ -123,7 +240,6 @@ export class ExternalHackathonsService implements OnModuleInit {
         is_online: input.isOnline,
         prize: input.prize,
         tags: input.tags,
-        register_points: input.registerPoints,
         ...(deadline !== undefined ? { deadline_at: deadline, ends_at: deadline } : {}),
         locked: true, // keep staff edits safe from the next automatic sync
       },

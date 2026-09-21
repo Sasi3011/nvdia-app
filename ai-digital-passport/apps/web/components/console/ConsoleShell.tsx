@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { 
-  LayoutDashboard, Inbox, Library, FileCheck, Lock, Briefcase, 
-  Calendar, BookOpen, Server, Flag, Microscope, FileQuestion, 
-  Building, Medal, Users, Calculator, PieChart, ClipboardList, Activity,
-  LogOut, Shield, ChevronRight, UserCheck, Sparkles
+import {
+  LayoutDashboard, Inbox, Library, FileCheck, Lock, Briefcase,
+  Calendar, BookOpen, Server, Flag, Microscope, FileQuestion,
+  Building, Medal, Users, Calculator, PieChart, ClipboardList,
+  LogOut, Menu, Shield, X, Trophy, Rocket, ChevronRight, UserCheck, Sparkles, TrendingUp
 } from "lucide-react";
 import { authApi } from "../../lib/api";
 import { useMe, useSession } from "../../lib/session";
@@ -30,7 +30,7 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/gpu", label: "GPU Supercluster", icon: Server, badge: "Live" },
-      { href: "/admin/events", label: "Events & QR", icon: Calendar },
+      { href: "/admin/events", label: "CoE Classes", icon: Calendar },
       { href: "/admin/courses", label: "Courses & Curricula", icon: BookOpen },
     ],
   },
@@ -38,18 +38,20 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
     label: "Programs & Research",
     items: [
       { href: "/admin/hackathons", label: "Hackathons", icon: Flag },
+      { href: "/admin/startups", label: "Startup Launchpad", icon: Rocket },
       { href: "/admin/problems", label: "Industry Problems", icon: FileQuestion },
-      { href: "/admin/industry", label: "Industry Partners", icon: Building },
-      { href: "/admin/awards", label: "Awards & Rosters", icon: Medal },
+      { href: "/admin/industry", label: "Industry GPU Requests", icon: Building },
+      { href: "/admin/awards", label: "Awards", icon: Medal },
     ],
   },
   {
     label: "Governance & Analytics",
     items: [
+      { href: "/admin/students", label: "Student Progress", icon: TrendingUp },
       { href: "/admin/users", label: "User Management", icon: Users },
       { href: "/admin/scoring", label: "Scoring Matrix", icon: Calculator },
+      { href: "/admin/leaderboard", label: "Leaderboard", icon: Trophy },
       { href: "/admin/reports", label: "Reports & Analytics", icon: PieChart },
-      { href: "/admin/logs", label: "Security & Logs", icon: Activity },
     ],
   },
 ];
@@ -60,11 +62,13 @@ const MENTOR_NAV_GROUPS: ConsoleNavGroup[] = [
     items: [
       { href: "/mentor", label: "Dashboard", icon: LayoutDashboard },
       { href: "/mentor/queue", label: "Verification Queue", icon: Inbox },
+      { href: "/mentor/students", label: "Student Progress", icon: TrendingUp },
       { href: "/mentor/course-catalog", label: "Course Catalog", icon: Library },
       { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },
-      { href: "/mentor/proctoring-locks", label: "Proctoring Locks", icon: Lock },
       { href: "/mentor/startups", label: "Student Startups", icon: Briefcase },
       { href: "/mentor/hackathons", label: "Hackathons", icon: Flag },
+      { href: "/mentor/leaderboard", label: "Leaderboard", icon: Trophy },
+      { href: "/mentor/awards", label: "Awards", icon: Medal },
     ],
   },
 ];
@@ -78,16 +82,42 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
   const me = useMe(!!onboarded);
   const groups = role === "ADMIN" ? ADMIN_NAV_GROUPS : MENTOR_NAV_GROUPS;
 
+  // Off-canvas drawer state for < lg screens.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    const menuButton = menuButtonRef.current;
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      menuButton?.focus();
+    };
+  }, [menuOpen]);
+
   async function handleLogout() {
     await authApi.logout();
     await queryClient.invalidateQueries();
-    router.replace("/login");
+    router.replace("/");
   }
 
   useEffect(() => {
     if (session.isLoading) return;
     if (!session.data?.authenticated) {
-      router.replace("/login");
+      router.replace("/");
       return;
     }
     if (!session.data.onboarded) {
@@ -111,9 +141,51 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 antialiased selection:bg-[#1755A7] selection:text-white">
-      {/* Sidebar Navigation */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-slate-200/90 bg-white shadow-xs">
-        
+      {/* Mobile top bar (< lg) */}
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200/90 bg-white/95 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur lg:hidden">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={menuOpen}
+            aria-controls="console-sidebar"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 active:bg-slate-100"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <img src="/Eswar.png" alt="" className="h-8 w-8 shrink-0 object-contain" />
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[13px] font-black tracking-tight text-slate-900">Sri Eshwar NVIDIA</div>
+            <div className="truncate text-[10px] font-bold text-[#1755A7]">{role === "ADMIN" ? "Admin Console" : "Mentor Console"}</div>
+          </div>
+        </div>
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1755A7] text-xs font-bold text-white"
+          title={me.data.fullName}
+          aria-hidden="true"
+        >
+          {me.data.fullName.charAt(0)}
+        </div>
+      </header>
+
+      {/* Drawer backdrop (< lg) */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      )}
+
+      {/* Sidebar Navigation: fixed on lg+, off-canvas drawer below */}
+      <aside
+        id="console-sidebar"
+        aria-label="Console navigation"
+        className={
+          "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-slate-200/90 bg-white shadow-xs transition-transform duration-200 ease-out " +
+          "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] lg:z-30 lg:translate-x-0 lg:pb-0 lg:pt-0 " +
+          (menuOpen ? "translate-x-0" : "max-lg:invisible max-lg:-translate-x-full")
+        }
+      >
+
         {/* Header Branding */}
         <div className="flex items-center gap-3.5 border-b border-slate-100 px-5 py-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-1 border border-slate-200/80 shadow-2xs">
@@ -130,8 +202,17 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
               </span>
             </div>
           </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation menu"
+            className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        
+
         {/* Navigation Links Grouped */}
         <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6 minute-scrollbar">
           {groups.map((group, idx) => (
@@ -150,7 +231,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
                       key={item.href}
                       href={item.href}
                       className={
-                        "group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all " +
+                        "group relative flex min-h-[44px] items-center justify-between rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all lg:min-h-0 " +
                         (active
                           ? "bg-[#1755A7] text-white shadow-sm shadow-[#1755A7]/25"
                           : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900")
@@ -163,8 +244,8 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
 
                       {item.badge && (
                         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${
-                          active 
-                            ? "bg-[#F8C401] text-slate-900" 
+                          active
+                            ? "bg-[#F8C401] text-slate-900"
                             : "bg-[#1755A7]/10 text-[#1755A7]"
                         }`}>
                           {item.badge}
@@ -198,7 +279,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
                   Mentor
                 </Link>
               )}
-              <Link href="/dashboard" className="flex-1 rounded-md px-2 py-1 text-center text-slate-600 hover:bg-slate-100 transition-colors">
+              <Link href="/dashboard" className="flex-1 rounded-md px-2 py-2 text-center text-slate-600 hover:bg-slate-100 transition-colors lg:py-1">
                 Student View
               </Link>
             </div>
@@ -218,7 +299,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
             <button
               type="button"
               onClick={handleLogout}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-red-50 hover:text-red-600"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-red-50 hover:text-red-600 lg:h-8 lg:w-8"
               title="Sign out"
             >
               <LogOut className="h-4 w-4" />
@@ -227,9 +308,9 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
         </div>
       </aside>
 
-      {/* Main Content Area (Offset by sidebar width 72 -> 18rem) */}
-      <main className="w-full pl-72 min-h-screen">
-        <div className="mx-auto w-full max-w-[1440px] p-6 lg:p-8">
+      {/* Main Content Area (offset by the 18rem sidebar on lg+) */}
+      <main className="min-h-screen w-full min-w-0 overflow-x-clip lg:pl-72">
+        <div className="mx-auto w-full min-w-0 max-w-[1440px] px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-4 sm:px-6 sm:pt-6 lg:p-8">
           {children}
         </div>
       </main>

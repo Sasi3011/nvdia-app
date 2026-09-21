@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { StudentShell } from "../../components/shell/StudentShell";
+import { useScoringPoints } from "../../lib/use-scoring-points";
 import { 
   Microscope, 
   Sparkles, 
@@ -69,6 +70,7 @@ const FELLOWSHIPS: FellowshipGrant[] = [
 ];
 
 export default function ResearchPage() {
+  const researchPoints = useScoringPoints("research_patent");
   const [activeGrant, setActiveGrant] = useState<FellowshipGrant | null>(null);
   const [proposalSubmitted, setProposalSubmitted] = useState(false);
 
@@ -120,7 +122,7 @@ export default function ResearchPage() {
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Max Points Bounty</div>
-            <div className="mt-2 text-2xl font-black text-[#1755A7]">+500 pts</div>
+            <div className="mt-2 text-2xl font-black text-[#1755A7]">{researchPoints != null ? `+${researchPoints} pts` : "—"}</div>
             <div className="mt-1 text-xs text-slate-500">Scored Q1 Journal / Patent</div>
           </div>
 

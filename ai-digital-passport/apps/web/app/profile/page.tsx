@@ -5,9 +5,11 @@ import { departmentOptions } from "../../lib/departments";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
+import { LevelBadge } from "../../components/ui/LevelBadge";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { meApi } from "../../lib/api";
 import { useMe } from "../../lib/session";
+import { CustomSelect } from "../../components/ui/CustomSelect";
 import { 
   User, 
   Sparkles, 
@@ -70,9 +72,7 @@ export default function ProfilePage() {
           
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#1755A7] text-white text-2xl font-black shadow-md">
-                {fullName ? fullName.charAt(0) : "S"}
-              </div>
+              <LevelBadge levelId={me.data.level.levelId} size={76} />
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-black text-slate-900">{fullName || "Student Scholar"}</h1>
