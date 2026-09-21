@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ExternalHackathons } from "../../components/modules/ExternalHackathons";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { 
   Flag, 
@@ -114,6 +115,8 @@ export default function HackathonsPage() {
             </div>
           </div>
         </div>
+
+        <ExternalHackathons canManage={false} />
 
         {/* 4 KPI Metrics */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

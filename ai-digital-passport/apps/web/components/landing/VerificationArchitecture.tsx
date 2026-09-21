@@ -45,7 +45,7 @@ export function VerificationArchitecture() {
   return (
     <section className="py-20 bg-slate-50 border-b border-slate-200 relative overflow-hidden">
       
-      <div className="relative w-full px-4 sm:px-6 lg:px-8">
+      <div className="relative w-full px-6 sm:px-10 lg:px-16">
         
         {/* Section Header */}
         <div className="text-center w-full space-y-3">

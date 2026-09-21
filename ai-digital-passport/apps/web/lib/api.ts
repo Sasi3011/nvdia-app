@@ -524,6 +524,41 @@ export const hackathonsApi = {
     apiClient.post(`/hackathons/${hackathonId}/teams/${teamId}/submissions`, input),
 };
 
+export interface ExternalHackathon {
+  external_id: string;
+  source: "DEVPOST" | "UNSTOP" | "DEVFOLIO" | "MANUAL";
+  title: string;
+  description: string;
+  url: string;
+  image_url: string | null;
+  organizer: string | null;
+  location: string | null;
+  is_online: boolean;
+  prize: string | null;
+  tags: string[];
+  starts_at: string | null;
+  ends_at: string | null;
+  deadline_at: string | null;
+  register_points: number;
+  registered: boolean;
+}
+
+export const externalHackathonsApi = {
+  list: () => apiClient.get<ExternalHackathon[]>("/hackathons/external"),
+  sync: () => apiClient.post<{ fetched: number; saved: number; errors: string[] }>("/hackathons/external/sync"),
+  add: (input: {
+    title: string; url: string; description?: string; organizer?: string; location?: string; isOnline?: boolean;
+    prize?: string; tags?: string[]; deadlineAt?: string; endsAt?: string;
+  }) => apiClient.post<ExternalHackathon>("/hackathons/external", input),
+  remove: (id: string) => apiClient.delete<void>(`/hackathons/external/${id}`),
+  update: (id: string, input: {
+    title?: string; url?: string; description?: string; organizer?: string; location?: string; isOnline?: boolean;
+    prize?: string; tags?: string[]; deadlineAt?: string; registerPoints?: number;
+  }) => apiClient.patch<ExternalHackathon>(`/hackathons/external/${id}`, input),
+  register: (id: string) =>
+    apiClient.post<{ alreadyRegistered: boolean; pointsAwarded: number }>(`/hackathons/external/${id}/register`),
+};
+
 export interface ProjectRecordResponse {
   project_id: string;
   title: string;
@@ -742,8 +777,10 @@ export const adminCoursesApi = {
   update: (id: string, input: UpsertCourseInput) => apiClient.put<{ courseId: string }>(`/admin/courses/${id}`, input),
   publish: (id: string) => apiClient.post(`/admin/courses/${id}/publish`),
   archive: (id: string) => apiClient.post(`/admin/courses/${id}/archive`),
+  delete: (id: string) => apiClient.delete(`/admin/courses/${id}`),
   createTask: (id: string, input: UpsertCourseTaskInput) => apiClient.post(`/admin/courses/${id}/tasks`, input),
   updateTask: (id: string, taskId: string, input: UpsertCourseTaskInput) => apiClient.put(`/admin/courses/${id}/tasks/${taskId}`, input),
+  deleteTask: (id: string, taskId: string) => apiClient.delete(`/admin/courses/${id}/tasks/${taskId}`),
 };
 
 export interface MentorCourseQueueItemResponse {

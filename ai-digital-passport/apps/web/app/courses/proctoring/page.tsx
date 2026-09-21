@@ -59,6 +59,16 @@ function ProctoringContent() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  
+  // MCQ state
+  const [mcqAnswers, setMcqAnswers] = useState<Record<string, string>>({});
+  
+  // Coding state
+  const [code, setCode] = useState<string>("");
+  
+  // Evaluation result state
+  const [evalResult, setEvalResult] = useState<{score: number; feedback: string} | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const appStateListenerRef = useRef<{ remove: () => void } | null>(null);
 
@@ -89,8 +99,17 @@ function ProctoringContent() {
   });
 
   const complete = useMutation({
-    mutationFn: () => proctoringApi.complete(sessionId!),
-    onSuccess: () => {
+    mutationFn: () => {
+      let submission: any = {};
+      if (task?.type === "MCQ") {
+        submission = { answers: mcqAnswers };
+      } else if (task?.type === "CODING") {
+        submission = { code };
+      }
+      return coursesApi.submitProctoredTask(courseId!, taskId!, submission);
+    },
+    onSuccess: (res: any) => {
+      setEvalResult({ score: res.score, feedback: res.feedback });
       setPhase("completed");
       cleanupListeners();
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -195,12 +214,63 @@ function ProctoringContent() {
       ) : null}
 
       {phase === "active" ? (
-        <Card>
+        <Card className="flex flex-col flex-1 h-full">
           {warning ? <InlineBanner text={warning} /> : null}
-          <p className="text-body text-ink">Session in progress — complete the live task, then end the session below.</p>
-          <Button variant="primary" className="mt-4" disabled={complete.isPending} onClick={() => complete.mutate()}>
-            {complete.isPending ? "Ending…" : "End session (mark complete)"}
-          </Button>
+          <div className="flex-1 overflow-y-auto mb-4">
+            {task?.type === "MCQ" && task?.content?.questions && (
+              <div className="flex flex-col gap-6">
+                <h3 className="text-h2 font-bold text-ink mb-2">Multiple Choice Questions</h3>
+                {task.content.questions.map((q: any, i: number) => (
+                  <div key={q.id} className="flex flex-col gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <p className="font-semibold text-slate-800">{i + 1}. {q.question}</p>
+                    <div className="flex flex-col gap-2 pl-4">
+                      {q.options?.map((opt: string) => (
+                        <label key={opt} className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name={`q-${q.id}`} 
+                            checked={mcqAnswers[q.id] === opt}
+                            onChange={() => setMcqAnswers(prev => ({...prev, [q.id]: opt}))}
+                            className="w-4 h-4 text-[#1755A7] focus:ring-[#1755A7]"
+                          />
+                          <span className="text-slate-700 text-sm font-medium">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {task?.type === "CODING" && task?.content && (
+              <div className="flex flex-col gap-4 h-full">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-800 mb-2">Problem Statement</h3>
+                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.content.problem}</p>
+                </div>
+                <div className="flex-1 min-h-[300px] flex flex-col">
+                  <h3 className="text-sm font-bold text-slate-800 mb-2">Code Editor</h3>
+                  <textarea
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="flex-1 w-full bg-slate-900 text-slate-50 rounded-xl p-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1755A7]"
+                    placeholder="// Write your code here..."
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {task?.type !== "MCQ" && task?.type !== "CODING" && (
+              <p className="text-body text-ink">Session in progress — complete the live task, then end the session below.</p>
+            )}
+          </div>
+          
+          <div className="flex justify-end pt-4 border-t border-slate-100">
+            <Button variant="primary" disabled={complete.isPending} onClick={() => complete.mutate()}>
+              {complete.isPending ? "Submitting..." : "Submit Task & End Session"}
+            </Button>
+          </div>
         </Card>
       ) : null}
 
@@ -219,8 +289,21 @@ function ProctoringContent() {
 
       {phase === "completed" ? (
         <Card className="border-accent/40 bg-accent/5">
-          <h2 className="text-h2 text-accent-deep">Session complete</h2>
-          <Button variant="primary" className="mt-4" onClick={() => router.push(`/courses/detail?id=${courseId}`)}>
+          <h2 className="text-h2 text-accent-deep">Task Submitted & Session Completed</h2>
+          
+          {evalResult && (
+            <div className="mt-4 p-5 bg-white rounded-xl border border-accent/20 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Evaluation Result</h3>
+              <div className="flex items-center gap-4 mb-3">
+                <div className={`text-4xl font-black ${evalResult.score >= 50 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {evalResult.score}%
+                </div>
+              </div>
+              <p className="text-slate-700 font-medium">{evalResult.feedback}</p>
+            </div>
+          )}
+
+          <Button variant="primary" className="mt-6" onClick={() => router.push(`/courses/detail?id=${courseId}`)}>
             Back to course
           </Button>
         </Card>

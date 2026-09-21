@@ -52,7 +52,6 @@ const NAV_GROUPS: StudentNavGroup[] = [
     label: "Innovation & Labs",
     items: [
       { href: "/hackathons", label: "Hackathons & Challenges", icon: Flag, badge: "Active" },
-      { href: "/research", label: "Research Fellowships", icon: Microscope, badge: "₹52L" },
       { href: "/industry", label: "Industry Connect", icon: Users },
       { href: "/startup", label: "Startup Launchpad", icon: Rocket },
     ],

@@ -86,7 +86,7 @@ const PROGRAMMES: Programme[] = [
 export function ProgrammeCalendarPreview() {
   return (
     <section id="programmes" className="py-24 bg-white border-b border-slate-200">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-6 sm:px-10 lg:px-16">
         
         {/* Top Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 border-b border-slate-200">

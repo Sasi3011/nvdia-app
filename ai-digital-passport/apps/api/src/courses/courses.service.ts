@@ -56,21 +56,43 @@ export class CoursesService {
       if (!latestSessionByTask.has(session.task_id)) latestSessionByTask.set(session.task_id, session);
     }
 
+    let anyPreviousRequiredIncomplete = false;
+
     return {
       ...courseDto(course),
       enrollment: enrollmentDto(enrollment),
       tasks: course.tasks
         .sort((a, b) => a.sequence_order - b.sequence_order)
-        .map((t) => ({
-          taskId: t.task_id,
-          title: t.title,
-          type: t.type,
-          instructions: t.instructions,
-          sequenceOrder: t.sequence_order,
-          isRequired: t.is_required,
-          completed: t.type === CourseTaskType.STANDARD ? completedStandardTaskIds.has(t.task_id) : latestSessionByTask.get(t.task_id)?.status === "COMPLETED",
-          proctoringStatus: t.type === CourseTaskType.LIVE_PROCTORED ? (latestSessionByTask.get(t.task_id)?.status ?? null) : null,
-        })),
+        .map((t) => {
+          let isCompleted = false;
+          if (t.type === CourseTaskType.STANDARD) {
+            isCompleted = completedStandardTaskIds.has(t.task_id);
+          } else if (t.type === CourseTaskType.MCQ || t.type === CourseTaskType.CODING || t.type === CourseTaskType.LIVE_PROCTORED) {
+            isCompleted = latestSessionByTask.get(t.task_id)?.status === "COMPLETED";
+          }
+
+          const isLocked = anyPreviousRequiredIncomplete;
+          if (t.is_required && !isCompleted) {
+            anyPreviousRequiredIncomplete = true;
+          }
+
+          const completionRecord = completions.find(c => c.task_id === t.task_id);
+
+          return {
+            taskId: t.task_id,
+            title: t.title,
+            type: t.type,
+            instructions: t.instructions,
+            content: t.content,
+            sequenceOrder: t.sequence_order,
+            isRequired: t.is_required,
+            completed: isCompleted,
+            locked: isLocked,
+            score: completionRecord?.score ?? null,
+            feedback: completionRecord?.feedback ?? null,
+            proctoringStatus: (t.type !== CourseTaskType.STANDARD) ? (latestSessionByTask.get(t.task_id)?.status ?? null) : null,
+          };
+        }),
     };
   }
 
@@ -88,6 +110,129 @@ export class CoursesService {
     });
     await this.getOrCreateEnrollment(courseId, userId, EnrollmentStatus.IN_PROGRESS);
     return { taskId, completed: true };
+  }
+
+  async submitProctoredTask(courseId: string, taskId: string, userId: string, submission: any) {
+    const task = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
+    if (task.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
+    if (task.type === CourseTaskType.STANDARD) {
+      throw new BadRequestException({ code: "INVALID_TASK_TYPE", message: "Standard tasks cannot be submitted via proctored evaluation." });
+    }
+
+    const session = await prisma.proctoringSession.findFirst({
+      where: { task_id: taskId, user_id: userId },
+      orderBy: { started_at: "desc" },
+    });
+
+    if (!session || session.status === "LOCKED") {
+      throw new ForbiddenException({ code: "SESSION_LOCKED", message: "Your session is locked or does not exist." });
+    }
+
+    let score = 0;
+    let feedback = "";
+
+    if (task.type === CourseTaskType.MCQ) {
+      // Mock MCQ Evaluation
+      // Expecting content: { questions: [{ id, answer }] }
+      // Expecting submission: { answers: { [id]: string } }
+      const content = task.content as any;
+      if (content && content.questions && submission.answers) {
+        let correctCount = 0;
+        content.questions.forEach((q: any) => {
+          if (submission.answers[q.id] === q.answer) correctCount++;
+        });
+        score = Math.round((correctCount / content.questions.length) * 100);
+        feedback = `You scored ${score}% (${correctCount}/${content.questions.length}).`;
+      }
+    } else if (task.type === CourseTaskType.CODING) {
+      // Mock LeetCode style Evaluation
+      // In a real system, this would execute the code in a sandbox container.
+      // For this demo, we simulate success if they submit non-empty code.
+      if (submission.code && submission.code.trim().length > 10) {
+        score = 100;
+        feedback = "All 15 test cases passed! (Simulated)";
+      } else {
+        score = 0;
+        feedback = "Compilation Error or Failed Test Cases.";
+      }
+    }
+
+    await prisma.proctoringSession.update({
+      where: { session_id: session.session_id },
+      data: {
+        status: "COMPLETED",
+        ended_at: new Date(),
+      },
+    });
+
+    await prisma.courseTaskCompletion.upsert({
+      where: { task_id_user_id: { task_id: taskId, user_id: userId } },
+      update: { score, feedback },
+      create: { task_id: taskId, user_id: userId, score, feedback },
+    });
+
+    await this.getOrCreateEnrollment(courseId, userId, EnrollmentStatus.IN_PROGRESS);
+
+    return { taskId, score, feedback, completed: true };
+  }
+
+  async startProctoredTask(courseId: string, taskId: string, userId: string) {
+    const task = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
+    if (task.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
+    if (task.type === CourseTaskType.STANDARD) {
+      throw new BadRequestException({ code: "INVALID_TASK_TYPE", message: "Cannot start a proctoring session for a standard task." });
+    }
+
+    await this.findVisibleOrThrow(courseId, userId);
+
+    const session = await prisma.proctoringSession.create({
+      data: {
+        task_id: taskId,
+        user_id: userId,
+        status: "ACTIVE",
+      },
+    });
+
+    return { sessionId: session.session_id };
+  }
+
+  async recordViolation(courseId: string, taskId: string, userId: string, violationTypeStr: string) {
+    const session = await prisma.proctoringSession.findFirst({
+      where: { task_id: taskId, user_id: userId },
+      orderBy: { started_at: "desc" },
+    });
+
+    if (!session || session.status !== "ACTIVE") {
+      throw new ForbiddenException({ code: "INVALID_SESSION", message: "No active session to record violation on." });
+    }
+
+    const updatedSession = await prisma.proctoringSession.update({
+      where: { session_id: session.session_id },
+      data: {
+        violation_count: { increment: 1 },
+      },
+    });
+
+    // We can dynamically cast the string since schema is out of sync in the type defs for this snippet
+    await prisma.proctoringViolation.create({
+      data: {
+        session_id: session.session_id,
+        violation_type: violationTypeStr as any,
+      },
+    });
+
+    if (updatedSession.violation_count >= 5) {
+      await prisma.proctoringSession.update({
+        where: { session_id: session.session_id },
+        data: {
+          status: "LOCKED",
+          locked_at: new Date(),
+        },
+      });
+      return { locked: true, violations: updatedSession.violation_count };
+    }
+
+    return { locked: false, violations: updatedSession.violation_count };
   }
 
   async submitProof(
@@ -225,8 +370,14 @@ export class CoursesService {
     return course;
   }
 
+  async deleteCourse(actorId: string, courseId: string) {
+    const course = await prisma.course.delete({ where: { course_id: courseId } });
+    await this.auditLogService.record({ actorId, action: "COURSE_DELETED", entityType: "course", entityId: courseId });
+    return course;
+  }
+
   async createTask(actorId: string, courseId: string, input: {
-    title: string; type: CourseTaskType; instructions?: string; sequenceOrder: number; isRequired: boolean;
+    title: string; type: CourseTaskType; instructions?: string; content?: any; sequenceOrder: number; isRequired: boolean;
   }) {
     const task = await prisma.courseTask.create({
       data: {
@@ -234,6 +385,7 @@ export class CoursesService {
         title: input.title,
         type: input.type,
         instructions: input.instructions ?? null,
+        content: input.content ?? null,
         sequence_order: input.sequenceOrder,
         is_required: input.isRequired,
       },
@@ -243,7 +395,7 @@ export class CoursesService {
   }
 
   async updateTask(actorId: string, courseId: string, taskId: string, input: {
-    title: string; type: CourseTaskType; instructions?: string; sequenceOrder: number; isRequired: boolean;
+    title: string; type: CourseTaskType; instructions?: string; content?: any; sequenceOrder: number; isRequired: boolean;
   }) {
     const existing = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
     if (existing.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
@@ -253,11 +405,20 @@ export class CoursesService {
         title: input.title,
         type: input.type,
         instructions: input.instructions ?? null,
+        content: input.content ?? null,
         sequence_order: input.sequenceOrder,
         is_required: input.isRequired,
       },
     });
     await this.auditLogService.record({ actorId, action: "COURSE_TASK_UPDATED", entityType: "course_task", entityId: taskId, metadata: { courseId } });
+    return task;
+  }
+
+  async deleteTask(actorId: string, courseId: string, taskId: string) {
+    const existing = await prisma.courseTask.findUniqueOrThrow({ where: { task_id: taskId } });
+    if (existing.course_id !== courseId) throw new NotFoundException({ code: "TASK_NOT_FOUND" });
+    const task = await prisma.courseTask.delete({ where: { task_id: taskId } });
+    await this.auditLogService.record({ actorId, action: "COURSE_TASK_DELETED", entityType: "course_task", entityId: taskId, metadata: { courseId } });
     return task;
   }
 

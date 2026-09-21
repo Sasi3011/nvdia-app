@@ -294,6 +294,7 @@ export const UpsertCourseTaskSchema = z.object({
   title: z.string().trim().min(1).max(200),
   type: z.nativeEnum(CourseTaskType).default(CourseTaskType.STANDARD),
   instructions: z.string().trim().max(5000).optional(),
+  content: z.any().optional(),
   sequenceOrder: z.coerce.number().int().nonnegative().default(0),
   isRequired: z.boolean().default(true),
 });

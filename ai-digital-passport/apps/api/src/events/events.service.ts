@@ -160,8 +160,8 @@ export class EventsService {
             user_id: userId,
             category: session.event.category,
             proof_type: ProofType.TOTP_QR,
-            points_requested: session.event.scoring_rule.points,
-            points_awarded: session.event.scoring_rule.points,
+            points_requested: 20,
+            points_awarded: 20,
             status: ClaimStatus.APPROVED,
             reviewed_at: new Date(),
           },
@@ -183,10 +183,10 @@ export class EventsService {
     const award = await this.pointsService.awardForClaim({
       userId,
       claimId,
-      points: session.event.scoring_rule.points,
+      points: 20,
       reason: `Live event attendance: ${session.title}`,
     });
 
-    return { alreadyRecorded: false, claimId, pointsAwarded: session.event.scoring_rule.points, ...award };
+    return { alreadyRecorded: false, claimId, pointsAwarded: 20, ...award };
   }
 }

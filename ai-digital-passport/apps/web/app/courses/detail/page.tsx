@@ -137,18 +137,25 @@ function CourseDetailContent() {
                 {t.type === "STANDARD" ? (
                   <Button
                     variant={t.completed ? "secondary" : "primary"}
-                    disabled={t.completed || completeTask.isPending}
+                    disabled={t.completed || t.locked || completeTask.isPending}
                     onClick={() => completeTask.mutate(t.taskId)}
                   >
-                    {t.completed ? "Completed" : "Mark complete"}
+                    {t.completed ? "Completed" : t.locked ? "Locked" : "Mark complete"}
                   </Button>
                 ) : t.completed ? (
-                  <span className="rounded-full bg-accent/10 px-3 py-1 text-caption font-medium text-accent-deep">Completed</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="rounded-full bg-accent/10 px-3 py-1 text-caption font-medium text-accent-deep">Completed</span>
+                    {(t as any).score !== null && (
+                      <span className="text-[10px] font-bold text-slate-500">Score: {(t as any).score}%</span>
+                    )}
+                  </div>
                 ) : t.proctoringStatus === "LOCKED" ? (
-                  <span className="rounded-full bg-rejected/10 px-3 py-1 text-caption font-medium text-rejected">Locked</span>
+                  <span className="rounded-full bg-rejected/10 px-3 py-1 text-caption font-medium text-rejected">Session Locked</span>
+                ) : t.locked ? (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-medium text-slate-400">Locked (Prerequisites)</span>
                 ) : (
                   <Link href={`/courses/proctoring?taskId=${t.taskId}&courseId=${id}`}>
-                    <Button variant="primary">Start proctored session</Button>
+                    <Button variant="primary">Start Task Session</Button>
                   </Link>
                 )}
               </div>

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
 import { CourseForm, type CourseForEdit } from "../../../components/admin/CourseForm";
+import { TaskCreationModal } from "../../../components/admin/TaskCreationModal";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { adminCoursesApi, type AdminCourseListItemResponse } from "../../../lib/api";
@@ -33,6 +34,7 @@ export default function AdminCoursesPage() {
   const queryClient = useQueryClient();
   const courses = useQuery({ queryKey: ["admin", "courses"], queryFn: adminCoursesApi.list });
   const [modalCourse, setModalCourse] = useState<CourseForEdit | "new" | null>(null);
+  const [taskModalCourse, setTaskModalCourse] = useState<{ id: string, title: string } | null>(null);
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<string>("ALL");
 
@@ -48,6 +50,11 @@ export default function AdminCoursesPage() {
 
   const publish = useMutation({
     mutationFn: (id: string) => adminCoursesApi.publish(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "courses"] }),
+  });
+
+  const deleteCourse = useMutation({
+    mutationFn: (id: string) => adminCoursesApi.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "courses"] }),
   });
 
@@ -89,17 +96,21 @@ export default function AdminCoursesPage() {
       )}
 
       {/* KPI Overview Tiles */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Card 1: Total Curricula */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#1755A7] via-[#2563EB] to-[#38BDF8]" />
+          <div className="flex items-center justify-between mt-1">
             <span className="text-xs font-semibold text-slate-500">Total Curricula</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#1755A7]/15 to-[#2563EB]/10 text-[#1755A7]">
               <BookOpen className="h-4.5 w-4.5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{allCourses.length}</span>
-            <span className="text-xs font-semibold text-emerald-600">Active Modules</span>
+            <span className="text-3xl font-black text-slate-900 tracking-tight">{allCourses.length}</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+              Active Modules
+            </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
             <span>Published Courses:</span>
@@ -107,16 +118,20 @@ export default function AdminCoursesPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+        {/* Card 2: Accredited Providers */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400" />
+          <div className="flex items-center justify-between mt-1">
             <span className="text-xs font-semibold text-slate-500">Accredited Providers</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8C401]/20 text-slate-900">
-              <GraduationCap className="h-4.5 w-4.5 text-amber-700" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-400/10 text-emerald-600">
+              <GraduationCap className="h-4.5 w-4.5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{providers.length - 1 || 4}</span>
-            <span className="text-xs font-semibold text-slate-500">Platforms</span>
+            <span className="text-3xl font-black text-slate-900 tracking-tight">{providers.length - 1 || 4}</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+              Platforms
+            </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
             <span>NVIDIA DLI & DeepLearning.AI:</span>
@@ -124,35 +139,22 @@ export default function AdminCoursesPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Point Pool</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-              <Award className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#1755A7]">{totalPoints.toLocaleString()}</span>
-            <span className="text-xs font-bold text-slate-500">pts available</span>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
-            <span>Avg Weight per Course:</span>
-            <span className="font-bold text-slate-800">{allCourses.length ? Math.round(totalPoints / allCourses.length) : 0} pts</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+        {/* Card 3: Certification Available */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] via-amber-500 to-orange-500" />
+          <div className="flex items-center justify-between mt-1">
             <span className="text-xs font-semibold text-slate-500">Certification Available</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8C401]/20 text-slate-900">
-              <ShieldCheck className="h-4.5 w-4.5 text-amber-700" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 text-amber-600">
+              <ShieldCheck className="h-4.5 w-4.5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">
+            <span className="text-3xl font-black text-slate-900 tracking-tight">
               {allCourses.filter(c => c.certificateAvailable).length}
             </span>
-            <span className="text-xs font-bold text-emerald-600">Verifiable</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+              Verifiable
+            </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
             <span>Level 3+ Advanced:</span>
@@ -289,11 +291,23 @@ export default function AdminCoursesPage() {
                             setModalCourse(fullCourse as unknown as CourseForEdit);
                           }
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-[#1755A7] transition-all active:scale-95"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition-all active:scale-95"
                         title="Edit Course Pathway"
                       >
-                        <Edit3 className="h-3 w-3 text-slate-500" />
+                        <Edit3 className="h-3 w-3 text-blue-500" />
                         <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTaskModalCourse({ id: c.courseId, title: c.title });
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all active:scale-95"
+                        title="Add Task to Course"
+                      >
+                        <Plus className="h-3 w-3 text-emerald-600" />
+                        <span>Manage Tasks</span>
                       </button>
 
                       {c.status === "PUBLISHED" ? (
@@ -301,22 +315,36 @@ export default function AdminCoursesPage() {
                           type="button"
                           disabled={archive.isPending}
                           onClick={() => archive.mutate(c.courseId)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-amber-50 hover:text-amber-700 transition-colors active:scale-95"
+                          className="rounded-lg p-1.5 hover:bg-amber-50 hover:text-amber-700 transition-colors active:scale-95"
                           title="Archive Course"
                         >
-                          <Archive className="h-3.5 w-3.5" />
+                          <Archive className="h-3.5 w-3.5 text-amber-500" />
                         </button>
                       ) : (
                         <button
                           type="button"
                           disabled={publish.isPending}
                           onClick={() => publish.mutate(c.courseId)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700 transition-colors active:scale-95"
+                          className="rounded-lg p-1.5 hover:bg-emerald-50 hover:text-emerald-700 transition-colors active:scale-95"
                           title="Publish Course"
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        disabled={deleteCourse.isPending}
+                        onClick={() => {
+                          if (confirm("Are you sure you want to permanently delete this course?")) {
+                            deleteCourse.mutate(c.courseId);
+                          }
+                        }}
+                        className="rounded-lg p-1.5 hover:bg-red-50 hover:text-red-700 transition-colors active:scale-95"
+                        title="Delete Course"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -324,6 +352,18 @@ export default function AdminCoursesPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {taskModalCourse && (
+        <TaskCreationModal
+          courseId={taskModalCourse.id}
+          courseTitle={taskModalCourse.title}
+          onClose={() => setTaskModalCourse(null)}
+          onFinish={() => {
+            setTaskModalCourse(null);
+            courses.refetch();
+          }}
+        />
       )}
     </ConsoleShell>
   );

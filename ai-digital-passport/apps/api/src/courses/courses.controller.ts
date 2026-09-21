@@ -26,6 +26,35 @@ export class CoursesController {
     return this.coursesService.completeStandardTask(id, taskId, user.userId);
   }
 
+  @Post(":id/tasks/:taskId/submit")
+  async submitTask(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Param("taskId") taskId: string,
+    @Body() body: any,
+  ) {
+    return this.coursesService.submitProctoredTask(id, taskId, user.userId, body);
+  }
+
+  @Post(":id/tasks/:taskId/start")
+  async startTask(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Param("taskId") taskId: string,
+  ) {
+    return this.coursesService.startProctoredTask(id, taskId, user.userId);
+  }
+
+  @Post(":id/tasks/:taskId/violation")
+  async recordViolation(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Param("taskId") taskId: string,
+    @Body() body: { type: string },
+  ) {
+    return this.coursesService.recordViolation(id, taskId, user.userId, body.type);
+  }
+
   @Post(":id/proof")
   async submitProof(
     @CurrentUser() user: RequestUser,

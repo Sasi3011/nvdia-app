@@ -22,6 +22,7 @@ import { OtaModule } from "./ota/ota.module";
 import { PointsModule } from "./points/points.module";
 import { ProblemsModule } from "./problems/problems.module";
 import { ProgramModule } from "./program/program.module";
+import { ExternalHackathonsModule } from "./external-hackathons/external-hackathons.module";
 import { ProctoringModule } from "./proctoring/proctoring.module";
 import { StartupModule } from "./startup/startup.module";
 import { UploadsModule } from "./uploads/uploads.module";
@@ -45,6 +46,7 @@ import { UsersModule } from "./users/users.module";
     EventsModule,
     ProblemsModule,
     ProgramModule,
+    ExternalHackathonsModule,
     StartupModule,
     NotificationsModule,
     UploadsModule,

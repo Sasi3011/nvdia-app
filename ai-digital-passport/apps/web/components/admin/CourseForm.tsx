@@ -329,6 +329,7 @@ export function CourseForm({
   if (showTaskCreation) {
     return (
       <TaskCreationModal 
+        courseId={save.data?.courseId ?? course?.courseId ?? ""}
         courseTitle={title}
         onClose={() => {
           setShowTaskCreation(false);

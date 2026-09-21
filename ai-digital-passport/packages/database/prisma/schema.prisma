@@ -117,6 +117,8 @@ enum EnrollmentStatus {
 enum CourseTaskType {
   STANDARD
   LIVE_PROCTORED
+  MCQ
+  CODING
 }
 
 enum ProctoringStatus {
@@ -1004,6 +1006,7 @@ model CourseTask {
   title          String
   type           CourseTaskType @default(STANDARD)
   instructions   String?
+  content        Json?
   sequence_order Int            @default(0)
   is_required    Boolean        @default(true)
   created_at     DateTime       @default(now())
@@ -1026,6 +1029,8 @@ model CourseTaskCompletion {
   task_id       String
   user_id       String
   completed_at  DateTime @default(now())
+  score         Int?
+  feedback      String?
 
   task CourseTask @relation(fields: [task_id], references: [task_id])
   user User       @relation(fields: [user_id], references: [user_id])
@@ -1085,4 +1090,51 @@ model StoredFile {
   @@index([entity_type, entity_id])
   @@index([uploaded_by])
   @@map("stored_files")
+}
+
+// Hackathons discovered on external platforms (Devpost / Unstop / Devfolio)
+// or added manually by admins and mentors. Separate from the in-house
+// Hackathon model, which tracks teams and submissions inside the portal.
+model ExternalHackathon {
+  external_id  String    @id @default(uuid())
+  source       String
+  source_ref   String
+  title        String
+  description  String    @default("")
+  url          String
+  image_url    String?
+  organizer    String?
+  location     String?
+  is_online    Boolean   @default(false)
+  prize        String?
+  tags         String[]
+  starts_at    DateTime?
+  ends_at      DateTime?
+  deadline_at  DateTime?
+  added_by     String?
+  register_points Int    @default(20)
+  locked       Boolean   @default(false)
+  hidden       Boolean   @default(false)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  registrations ExternalHackathonRegistration[]
+
+  @@unique([source, source_ref])
+  @@index([ends_at])
+  @@map("external_hackathons")
+}
+
+model ExternalHackathonRegistration {
+  registration_id String   @id @default(uuid())
+  external_id     String
+  user_id         String
+  points_awarded  Int
+  created_at      DateTime @default(now())
+
+  hackathon ExternalHackathon @relation(fields: [external_id], references: [external_id], onDelete: Cascade)
+
+  @@unique([external_id, user_id])
+  @@index([user_id])
+  @@map("external_hackathon_registrations")
 }

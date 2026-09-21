@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { departmentOptions } from "../../lib/departments";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
@@ -177,13 +178,14 @@ export default function ProfilePage() {
                   <label className="block text-xs font-bold text-slate-900 mb-1">Academic Department</label>
                   <div className="relative">
                     <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      required
+                    <CustomSelect
                       value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="e.g. Artificial Intelligence & Data Science"
-                      className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 focus:border-[#1755A7] focus:outline-none"
+                      onChange={setDepartment}
+                      options={[
+                        { label: "Select Department...", value: "" },
+                        ...departmentOptions(department).map((d) => ({ label: d, value: d }))
+                      ]}
+                      className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2 text-xs font-medium text-slate-900 focus-within:border-[#1755A7]"
                     />
                   </div>
                 </div>

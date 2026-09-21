@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { departmentOptions } from "../../../lib/departments";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
 import { 
@@ -429,7 +430,7 @@ function FellowshipModal({
   onSave: (f: ResearchFellow) => void;
 }) {
   const [scholar, setScholar] = useState(fellow?.scholar ?? "");
-  const [dept, setDept] = useState(fellow?.dept ?? "AI & Data Science");
+  const [dept, setDept] = useState(fellow?.dept ?? "B.Tech AIDS");
   const [guide, setGuide] = useState(fellow?.guide ?? "Dr. R. Kumar (Principal Scientist)");
   const [title, setTitle] = useState(fellow?.title ?? "");
   const [domain, setDomain] = useState(fellow?.domain ?? "Healthcare AI & Diagnostics");
@@ -487,7 +488,10 @@ function FellowshipModal({
 
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>Department</label>
-            <input placeholder="E.g. AI & Data Science" value={dept} onChange={(e) => setDept(e.target.value)} className={inputClass} />
+            <select required value={dept} onChange={(e) => setDept(e.target.value)} className={inputClass}>
+              <option value="">Select Department...</option>
+              {departmentOptions(dept).map((d) => (<option key={d} value={d}>{d}</option>))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">

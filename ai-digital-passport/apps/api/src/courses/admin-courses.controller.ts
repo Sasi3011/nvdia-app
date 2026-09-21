@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Delete } from "@nestjs/common";
 import { CourseStatus, UpsertCourseSchema, UpsertCourseTaskSchema, UserRole } from "@ai-digital-passport/shared-types";
 import { CurrentUser } from "../common/auth/current-user.decorator";
 import { Roles } from "../common/auth/roles.decorator";
@@ -90,6 +90,12 @@ export class AdminCoursesController {
     return { courseId: id };
   }
 
+  @Delete(":id")
+  async deleteCourse(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    await this.coursesService.deleteCourse(user.userId, id);
+    return { success: true };
+  }
+
   @Post(":id/publish")
   async publish(@CurrentUser() user: RequestUser, @Param("id") id: string) {
     await this.coursesService.setStatus(user.userId, id, CourseStatus.PUBLISHED);
@@ -122,14 +128,25 @@ export class AdminCoursesController {
     const task = await this.coursesService.updateTask(user.userId, id, taskId, body);
     return taskDto(task);
   }
+
+  @Delete(":id/tasks/:taskId")
+  async deleteTask(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Param("taskId") taskId: string,
+  ) {
+    await this.coursesService.deleteTask(user.userId, id, taskId);
+    return { success: true };
+  }
 }
 
-function taskDto(t: { task_id: string; title: string; type: string; instructions: string | null; sequence_order: number; is_required: boolean }) {
+function taskDto(t: { task_id: string; title: string; type: string; instructions: string | null; content: any | null; sequence_order: number; is_required: boolean }) {
   return {
     taskId: t.task_id,
     title: t.title,
     type: t.type,
     instructions: t.instructions,
+    content: t.content,
     sequenceOrder: t.sequence_order,
     isRequired: t.is_required,
   };

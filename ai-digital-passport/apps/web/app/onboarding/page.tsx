@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { departmentOptions } from "../../lib/departments";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Calendar, GraduationCap, IdCard, Landmark, Sparkles } from "lucide-react";
+import { Calendar, CheckCircle2, ChevronRight, GraduationCap, IdCard, Landmark, Loader2, Sparkles } from "lucide-react";
+import { CustomSelect } from "../../components/ui/CustomSelect";
 import { authApi } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { Button } from "../../components/ui/Button";
@@ -92,7 +94,15 @@ export default function OnboardingPage() {
             <span className="text-caption text-text-muted">Department</span>
             <div className="relative">
               <Landmark className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-              <input required value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full rounded-card border border-border bg-surface-muted py-3 pl-10 pr-3 text-body outline-none focus:border-accent focus:bg-white" placeholder="Computer Science" />
+              <CustomSelect
+                value={department}
+                onChange={setDepartment}
+                options={[
+                  { label: "Select department...", value: "" },
+                  ...departmentOptions(department).map((d) => ({ label: d, value: d }))
+                ]}
+                className="w-full rounded-card border border-border bg-surface-muted py-2 pl-10 pr-3 text-body outline-none focus-within:border-accent focus-within:bg-white"
+              />
             </div>
           </label>
 

@@ -38,7 +38,6 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
     label: "Programs & Research",
     items: [
       { href: "/admin/hackathons", label: "Hackathons", icon: Flag },
-      { href: "/admin/research", label: "Research & Fellowships", icon: Microscope, badge: "₹52L" },
       { href: "/admin/problems", label: "Industry Problems", icon: FileQuestion },
       { href: "/admin/industry", label: "Industry Partners", icon: Building },
       { href: "/admin/awards", label: "Awards & Rosters", icon: Medal },
@@ -50,7 +49,6 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
       { href: "/admin/users", label: "User Management", icon: Users },
       { href: "/admin/scoring", label: "Scoring Matrix", icon: Calculator },
       { href: "/admin/reports", label: "Reports & Analytics", icon: PieChart },
-      { href: "/admin/audit", label: "Annual Audit", icon: ClipboardList },
       { href: "/admin/logs", label: "Security & Logs", icon: Activity },
     ],
   },
@@ -66,6 +64,7 @@ const MENTOR_NAV_GROUPS: ConsoleNavGroup[] = [
       { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },
       { href: "/mentor/proctoring-locks", label: "Proctoring Locks", icon: Lock },
       { href: "/mentor/startups", label: "Student Startups", icon: Briefcase },
+      { href: "/mentor/hackathons", label: "Hackathons", icon: Flag },
     ],
   },
 ];
