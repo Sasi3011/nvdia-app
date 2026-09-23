@@ -61,6 +61,7 @@ async function main() {
   }
 
   await seedDemoAccounts();
+  await seedDemoCoeClasses();
 }
 
 // Demo accounts for local testing/demos — sign in with these emails via the
@@ -164,6 +165,89 @@ async function seedDemoAccounts() {
         create: { user_id: user.user_id, role_id: roleId },
       });
     }
+  }
+}
+
+// Demo CoE Class schedule — one class per year, showing on the student CoE
+// Classes page. Year is display metadata only (no department filter
+// anywhere in the app — see events.service.ts), so each is visible to
+// every student regardless of department, exactly like admin-created
+// classes. Idempotent: skipped if a class with the same title already
+// exists, so re-running seed never duplicates them.
+async function seedDemoCoeClasses() {
+  const creator = await prisma.user.findUnique({ where: { email: "admin@sece.ac.in" } });
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+
+  const demoClasses = [
+    {
+      title: "AI Foundations Tech Eve",
+      description: "Kickoff Tech Eve session covering the AI Digital Passport program, levels, and how to start earning points.",
+      category: "tech_eve_masterclass",
+      year: "1st Year",
+      location: "IT Centre",
+      sessionType: "Forenoon",
+      startsAt: new Date(now + DAY),
+      endsAt: new Date(now + DAY + 1.5 * HOUR),
+    },
+    {
+      title: "GPU Friday Lab — CUDA Basics",
+      description: "Hands-on CUDA programming lab on the DGX cluster: kernels, memory hierarchy, and a simple parallel reduction.",
+      category: "gpu_friday_lab",
+      year: "2nd Year",
+      location: "Code Studio",
+      sessionType: "Afternoon",
+      // Live right now, so the demo schedule shows a "Live Now" class with a scannable QR.
+      startsAt: new Date(now - 30 * 60 * 1000),
+      endsAt: new Date(now + 90 * 60 * 1000),
+    },
+    {
+      title: "NPTEL Course Completion Review",
+      description: "Review session for students submitting NPTEL/Coursera completion certificates this cycle.",
+      category: "course_completion",
+      year: "3rd Year",
+      location: "Collab Space",
+      sessionType: "Forenoon",
+      startsAt: new Date(now - DAY - 2 * HOUR),
+      endsAt: new Date(now - DAY),
+    },
+    {
+      title: "Capstone Hackathon Prep",
+      description: "Prep session for final-year capstone teams entering the industry hackathon track.",
+      category: "certification_project_hackathon",
+      year: "4th Year",
+      location: "Full Stack Lab",
+      sessionType: "Afternoon",
+      startsAt: new Date(now + 7 * DAY),
+      endsAt: new Date(now + 7 * DAY + 2 * HOUR),
+    },
+  ];
+
+  for (const c of demoClasses) {
+    const existing = await prisma.event.findFirst({ where: { title: c.title } });
+    if (existing) continue;
+
+    await prisma.event.create({
+      data: {
+        title: c.title,
+        description: c.description,
+        location: c.location,
+        category: c.category,
+        year: c.year,
+        session_type: c.sessionType,
+        starts_at: c.startsAt,
+        ends_at: c.endsAt,
+        created_by: creator?.user_id,
+        sessions: {
+          create: {
+            title: c.title,
+            starts_at: c.startsAt,
+            ends_at: c.endsAt,
+          },
+        },
+      },
+    });
   }
 }
 
