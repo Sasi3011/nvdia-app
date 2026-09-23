@@ -130,9 +130,9 @@ function StartupContent() {
         </div>
 
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Seed Grant Eligibility</div>
-          <div className="mt-2 text-2xl font-black text-amber-600">₹10,00,000</div>
-          <div className="mt-1 text-xs text-slate-500">Upon reaching Stage 4 (Traction)</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Approved Milestones</div>
+          <div className="mt-2 text-2xl font-black text-amber-600">{project?.milestones.filter((m) => m.status === "APPROVED").length ?? 0}</div>
+          <div className="mt-1 text-xs text-slate-500">Verified by your mentor</div>
         </div>
 
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
@@ -144,9 +144,9 @@ function StartupContent() {
         </div>
 
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Accreditation Bounty</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">+500 pts</div>
-          <div className="mt-1 text-xs text-slate-500">Credited at Stage 6 scale</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Review</div>
+          <div className="mt-2 text-2xl font-black text-slate-900">{hasPendingMilestone ? "1 Milestone" : "None"}</div>
+          <div className="mt-1 text-xs text-slate-500">Awaiting mentor decision</div>
         </div>
       </div>
 

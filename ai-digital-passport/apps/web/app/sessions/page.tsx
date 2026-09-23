@@ -11,7 +11,7 @@ export default function SessionsPage() {
         { label: "Scan QR", href: "/scan" },
       ]}
       steps={[
-        { title: "Attend session", description: "Join Tech Eve, AI masterclass, orientation or expert talk.", points: "+10" },
+        { title: "Attend session", description: "Join Tech Eve, AI masterclass, orientation or expert talk.", pointsCategory: "tech_eve_masterclass" },
         { title: "Verify presence", description: "Scan live QR when available or submit approved evidence." },
         { title: "Grow passport", description: "Approved attendance appears in points history and AI Passport activity." },
       ]}

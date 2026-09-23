@@ -11,7 +11,7 @@ export default function LabsPage() {
         { label: "Browse courses", href: "/courses" },
       ]}
       steps={[
-        { title: "Attend lab", description: "Join a scheduled GPU Friday or assigned hands-on lab session.", points: "+30" },
+        { title: "Attend lab", description: "Join a scheduled GPU Friday or assigned hands-on lab session.", pointsCategory: "gpu_friday_lab" },
         { title: "Complete exercise", description: "Run the notebook/code, capture output, and prepare a PDF or repo link." },
         { title: "Submit proof", description: "Upload the lab proof so mentors can verify and approve your points." },
       ]}

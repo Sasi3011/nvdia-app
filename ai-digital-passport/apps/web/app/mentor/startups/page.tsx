@@ -63,18 +63,12 @@ export default function MentorStartupsPage() {
           </div>
         </div>
 
-        {/* 4 KPI Metrics */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* KPI Metrics */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Milestone Reviews</div>
             <div className="mt-2 text-2xl font-black text-amber-600">{rawItems.length} Advancements</div>
             <div className="mt-1 text-xs text-slate-500">Awaiting mentor decision</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Seed Grant Pipeline</div>
-            <div className="mt-2 text-2xl font-black text-emerald-600">₹35,00,000</div>
-            <div className="mt-1 text-xs text-slate-500">Seed grant corpus active</div>
           </div>
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">

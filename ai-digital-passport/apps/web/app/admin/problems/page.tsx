@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
@@ -227,7 +228,7 @@ export default function AdminProblemsPage() {
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-12 text-center">
           <Lightbulb className="mx-auto h-8 w-8 text-slate-300" />
           <p className="mt-2 text-sm font-bold text-slate-700">No problem statements found.</p>
-          <p className="text-xs text-slate-400 mt-1">Click "Create Problem Statement" to publish your first grand challenge.</p>
+          <p className="text-xs text-slate-400 mt-1">Click &quot;Create Problem Statement&quot; to publish your first grand challenge.</p>
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -448,7 +449,9 @@ function ProblemModal({
     onSuccess: onDone,
   });
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh]">
         {/* Modal Header */}
@@ -586,7 +589,8 @@ function ProblemModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -659,23 +663,40 @@ function ImportModal({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
 
   const ready = !!file && !!title.trim() && !!organization.trim() && !!status;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Import Problem File</h3>
-            <p className="text-[11px] text-slate-500">
-              Upload a PDF, Excel, Word or other file. It is kept as-is and shown to viewers exactly as uploaded.
-            </p>
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh]">
+        {/* Modal Header */}
+        <div className="bg-gradient-to-r from-[#1755A7] via-[#1E40AF] to-[#2563EB] px-6 py-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#F8C401]">
+              <Upload className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold">Import Problem File</h3>
+              <p className="text-xs text-blue-100">Upload a PDF, Excel, Word or other file. It is kept as-is and shown exactly as uploaded.</p>
+            </div>
           </div>
-          <button type="button" onClick={onCancel} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-            <X className="h-5 w-5" />
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors active:scale-95"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-xs sm:p-6">
-          <div className="space-y-1.5">
+        {/* Modal Form Body */}
+        <div className="p-4 sm:p-6 grid grid-cols-1 gap-4 sm:grid-cols-2 max-h-[75vh] overflow-y-auto minute-scrollbar">
+          {save.isError && (
+            <div className="sm:col-span-2">
+              <ErrorBanner error={save.error} />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label className={labelClass}>
               <span>File <span className="text-red-500">*</span></span>
             </label>
@@ -692,57 +713,70 @@ function ImportModal({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label className={labelClass}>
               <span>Problem Title <span className="text-red-500">*</span></span>
             </label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Problem title" className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className={labelClass}>
-                <span>Industry name <span className="text-red-500">*</span></span>
-              </label>
-              <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="E.g. NVIDIA, Siemens" className={inputClass} />
-            </div>
-            <div className="space-y-1.5">
-              <label className={labelClass}>
-                <span>Lifecycle status <span className="text-red-500">*</span></span>
-              </label>
-              <select value={status} onChange={(e) => setStatus(e.target.value as ImportStatus | "")} className={inputClass}>
-                <option value="">Select status...</option>
-                <option value="PUBLISHED">Published (visible to students)</option>
-                <option value="DRAFT">Draft</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label className={labelClass}>
+              <span>Industry name <span className="text-red-500">*</span></span>
+            </label>
+            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="E.g. NVIDIA, Siemens" className={inputClass} />
+          </div>
+
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label className={labelClass}>
+              <span>Lifecycle Status <span className="text-red-500">*</span></span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {STATUSES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s as ImportStatus)}
+                  className={`rounded-xl border py-2.5 text-xs font-bold transition-all ${
+                    status === s
+                      ? "border-[#1755A7] bg-blue-50 text-[#1755A7] shadow-2xs"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label className={labelClass}>
               <span>Short description (optional)</span>
             </label>
             <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
           </div>
 
-          {save.isError && <ErrorBanner error={save.error} />}
-        </div>
-
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3 sm:px-6 sm:py-4">
-          <button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!ready || save.isPending}
-            onClick={() => save.mutate()}
-            className="rounded-xl bg-[#1755A7] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#134486] disabled:opacity-50"
-          >
-            {save.isPending ? "Importing..." : "Import File"}
-          </button>
+          {/* Modal Sticky Actions */}
+          <div className="mt-2 flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3 pt-3 border-t border-slate-100">
+            <button 
+              type="button" 
+              onClick={onCancel}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!ready || save.isPending}
+              onClick={() => save.mutate()}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all disabled:opacity-50 active:scale-95"
+            >
+              {save.isPending ? "Importing..." : "Import File"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

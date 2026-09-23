@@ -112,7 +112,7 @@ export default function ScanPage() {
             </div>
             <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
               <strong className="text-slate-900 block font-bold">3. Manual Fallback:</strong>
-              <p>If your camera is unavailable, type the Session ID and 6-digit code displayed below the QR code.</p>
+              <p>If your camera is unavailable, type just the 6-digit code displayed below the QR code — no Session ID required.</p>
             </div>
           </div>
         </div>
@@ -126,7 +126,8 @@ type ScanResult = { kind: "success"; message: string } | { kind: "error"; messag
 
 function useScanMutation(onResult: (r: ScanResult) => void) {
   return useMutation({
-    mutationFn: ({ sessionId, token }: { sessionId: string; token: string }) => eventsApi.scan(sessionId, token),
+    mutationFn: ({ sessionId, token }: { sessionId?: string; token: string }) =>
+      sessionId ? eventsApi.scan(sessionId, token) : eventsApi.scanGlobal(token),
     onSuccess: (res) => {
       if (res.alreadyRecorded) {
         onResult({ kind: "success", message: "Already recorded — you are already checked in for this session." });
@@ -147,7 +148,8 @@ function useScanMutation(onResult: (r: ScanResult) => void) {
 function parseAndScan(raw: string, scan: ReturnType<typeof useScanMutation>, setResult: (r: ScanResult) => void) {
   try {
     const payload = JSON.parse(raw) as { sessionId?: string; token?: string };
-    if (payload.sessionId && payload.token) {
+    if (payload.token) {
+      // sessionId is optional — the server resolves the active session from the token alone when omitted.
       scan.mutate({ sessionId: payload.sessionId, token: payload.token });
       return;
     }
@@ -387,7 +389,6 @@ function WebCameraScanner() {
 }
 
 function ManualEntry() {
-  const [sessionId, setSessionId] = useState("");
   const [token, setToken] = useState("");
   const [result, setResult] = useState<ScanResult | null>(null);
   const scan = useScanMutation(setResult);
@@ -400,29 +401,17 @@ function ManualEntry() {
         </div>
         <div>
           <h2 className="text-sm font-black text-slate-900">Manual Code Check-in</h2>
-          <p className="text-[11px] text-slate-500">Enter Session ID and 6-digit TOTP code</p>
+          <p className="text-[11px] text-slate-500">Enter the 6-digit TOTP code — no Session ID needed</p>
         </div>
       </div>
 
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          scan.mutate({ sessionId, token });
+          scan.mutate({ token });
         }}
         className="space-y-4"
       >
-        <div>
-          <label className="block text-xs font-bold text-slate-900 mb-1">Event Session ID</label>
-          <input
-            type="text"
-            required
-            value={sessionId}
-            onChange={(e) => setSessionId(e.target.value)}
-            placeholder="e.g. sess-nvidia-seminar-2026"
-            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-mono text-slate-900 focus:border-[#1755A7] focus:outline-none"
-          />
-        </div>
-
         <div>
           <label className="block text-xs font-bold text-slate-900 mb-1">6-Digit Dynamic TOTP Token</label>
           <input

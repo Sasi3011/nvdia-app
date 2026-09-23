@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
@@ -249,10 +250,12 @@ function RequestModal({ request, onCancel, onDone }: { request: IndustryGpuReque
     onSuccess: onDone,
   });
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-        <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-          <div className="bg-gradient-to-r from-[#1755A7] via-[#1E40AF] to-[#2563EB] px-4 py-4 text-white flex items-center justify-between shrink-0 sm:px-6">
+        <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-gradient-to-r from-[#1755A7] via-[#1E40AF] to-[#2563EB] px-6 py-4 text-white flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#F8C401]">
                 <Cpu className="h-5 w-5" />
@@ -266,15 +269,13 @@ function RequestModal({ request, onCancel, onDone }: { request: IndustryGpuReque
               <X className="h-4 w-4" />
             </button>
           </div>
-
         <form
-          className="flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
             save.mutate();
           }}
+          className="p-4 sm:p-6 grid grid-cols-1 gap-4 sm:grid-cols-2 max-h-[75vh] overflow-y-auto minute-scrollbar"
         >
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 sm:grid-cols-2 sm:p-6">
             {save.isError && <div className="sm:col-span-2"><ErrorBanner error={save.error} /></div>}
             <Field label="Company name *"><input required value={f.companyName} onChange={(e) => set("companyName", e.target.value)} className={inputClass} /></Field>
             <Field label="Industry / sector"><input value={f.sector} onChange={(e) => set("sector", e.target.value)} placeholder="e.g. Healthcare AI" className={inputClass} /></Field>
@@ -301,18 +302,18 @@ function RequestModal({ request, onCancel, onDone }: { request: IndustryGpuReque
             <div className="sm:col-span-2">
               <Field label="Admin notes"><textarea rows={2} value={f.adminNotes} onChange={(e) => set("adminNotes", e.target.value)} className={inputClass} /></Field>
             </div>
-          </div>
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
-            <button type="button" onClick={onCancel} className="min-h-10 rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">
+          <div className="mt-2 flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3 pt-3 border-t border-slate-100">
+            <button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95">
               Cancel
             </button>
-            <button type="submit" disabled={save.isPending} className="min-h-10 rounded-xl bg-[#1755A7] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#134486] disabled:opacity-50">
+            <button type="submit" disabled={save.isPending} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all disabled:opacity-50 active:scale-95">
               {save.isPending ? "Saving…" : request ? "Save Changes" : "Add Request"}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

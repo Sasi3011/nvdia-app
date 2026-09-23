@@ -548,7 +548,6 @@ function CreateEventModal({
                 { label: "Forenoon", value: "Forenoon" },
                 { label: "Afternoon", value: "Afternoon" }
               ]}
-              className={inputClass}
             />
           </div>
 
@@ -563,7 +562,6 @@ function CreateEventModal({
                 { label: "Select Year...", value: "" },
                 ...YEAR_OPTIONS.map((y) => ({ label: y, value: y })),
               ]}
-              className={inputClass}
             />
           </div>
 
@@ -580,7 +578,6 @@ function CreateEventModal({
                 { label: "Select Venue...", value: "" },
                 ...VENUE_OPTIONS.map((v) => ({ label: v, value: v })),
               ]}
-              className={inputClass}
             />
           </div>
 

@@ -53,6 +53,7 @@ const config: Config = {
         chip: "999px",
       },
       screens: {
+        xs: "380px",
         tablet: "641px",
         desktop: "1025px",
       },

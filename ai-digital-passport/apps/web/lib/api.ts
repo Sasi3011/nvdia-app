@@ -69,6 +69,8 @@ export interface MeResponse {
 export const meApi = {
   get: () => apiClient.get<MeResponse>("/me"),
   update: (input: { fullName?: string; department?: string; cohortYear?: number }) => apiClient.patch<MeResponse>("/me", input),
+  // Full activity record for the dashboard analytics (points history, category breakdown, rank, badges, etc.) — self-service mirror of the staff student-progress view.
+  progress: () => apiClient.get<StudentProgressResponse>("/me/progress"),
 };
 
 // ---------------------------------------------------------------------------
@@ -391,6 +393,8 @@ export interface ScanResponse {
 
 export const eventsApi = {
   scan: (sessionId: string, token: string) => apiClient.post<ScanResponse>(`/events/${sessionId}/scan`, { token }),
+  // Resolves the active event session purely from the 6-digit TOTP code — no Session ID required.
+  scanGlobal: (token: string) => apiClient.post<ScanResponse>(`/events/scan`, { token }),
 };
 
 // ---------------------------------------------------------------------------

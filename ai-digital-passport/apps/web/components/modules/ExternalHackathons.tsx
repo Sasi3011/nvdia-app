@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useImperativeHandle, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, CheckCircle2, Clock, XCircle, Upload, Globe2, MapPin, Pencil, Plus, RefreshCw, Trash2, Trophy, X, Search } from "lucide-react";
 import { externalHackathonsApi, uploadsApi, type ExternalHackathon } from "../../lib/api";
@@ -345,15 +346,11 @@ function AddModal({ existing, onClose, onAdded }: { existing: ExternalHackathon 
     onSuccess: onAdded,
   });
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          add.mutate();
-        }}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-      >
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh] flex flex-col">
         <div className="bg-gradient-to-r from-[#1755A7] via-[#1E40AF] to-[#2563EB] px-6 py-4 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#F8C401]">
@@ -368,33 +365,46 @@ function AddModal({ existing, onClose, onAdded }: { existing: ExternalHackathon 
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-6">
-          {add.error ? <ErrorBanner error={add.error} /> : null}
-          <input required placeholder="Title *" value={f.title} onChange={(e) => set("title", e.target.value)} className={inputClass} />
-          <input required type="url" placeholder="Link to register (https://...) *" value={f.url} onChange={(e) => set("url", e.target.value)} className={inputClass} />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <input placeholder="Organizer" value={f.organizer} onChange={(e) => set("organizer", e.target.value)} className={inputClass} />
-            <input placeholder="Prize (e.g. INR 1,00,000)" value={f.prize} onChange={(e) => set("prize", e.target.value)} className={inputClass} />
-            <input placeholder="Location" value={f.location} onChange={(e) => set("location", e.target.value)} className={inputClass} />
-            <input type="date" title="Registration / event deadline" value={f.deadlineAt} onChange={(e) => set("deadlineAt", e.target.value)} className={inputClass} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            add.mutate();
+          }}
+          className="p-4 sm:p-6 grid grid-cols-1 gap-4 sm:grid-cols-2 max-h-[75vh] overflow-y-auto minute-scrollbar min-h-0"
+        >
+          {add.error ? <div className="sm:col-span-2"><ErrorBanner error={add.error} /></div> : null}
+          <div className="sm:col-span-2">
+            <input required placeholder="Title *" value={f.title} onChange={(e) => set("title", e.target.value)} className={inputClass} />
           </div>
-          <input placeholder="Themes, comma separated (LLM, Agents...)" value={f.tags} onChange={(e) => set("tags", e.target.value)} className={inputClass} />
-          <textarea rows={3} placeholder="Short description" value={f.description} onChange={(e) => set("description", e.target.value)} className={inputClass} />
-          <p className="text-[11px] text-slate-500">Registration points come from the Scoring Matrix (Admin → Scoring).</p>
-          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <div className="sm:col-span-2">
+            <input required type="url" placeholder="Link to register (https://...) *" value={f.url} onChange={(e) => set("url", e.target.value)} className={inputClass} />
+          </div>
+          <input placeholder="Organizer" value={f.organizer} onChange={(e) => set("organizer", e.target.value)} className={inputClass} />
+          <input placeholder="Prize (e.g. INR 1,00,000)" value={f.prize} onChange={(e) => set("prize", e.target.value)} className={inputClass} />
+          <input placeholder="Location" value={f.location} onChange={(e) => set("location", e.target.value)} className={inputClass} />
+          <input type="date" title="Registration / event deadline" value={f.deadlineAt} onChange={(e) => set("deadlineAt", e.target.value)} className={inputClass} />
+          <div className="sm:col-span-2">
+            <input placeholder="Themes, comma separated (LLM, Agents...)" value={f.tags} onChange={(e) => set("tags", e.target.value)} className={inputClass} />
+          </div>
+          <div className="sm:col-span-2">
+            <textarea rows={3} placeholder="Short description" value={f.description} onChange={(e) => set("description", e.target.value)} className={inputClass} />
+          </div>
+          <p className="text-[11px] text-slate-500 sm:col-span-2">Registration points come from the Scoring Matrix (Admin → Scoring).</p>
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 sm:col-span-2">
             <input type="checkbox" checked={f.isOnline} onChange={(e) => set("isOnline", e.target.checked)} /> Online event
           </label>
-          <div className="mt-2 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">
+          <div className="mt-2 flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3 pt-3 border-t border-slate-100">
+            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95">
               Cancel
             </button>
-            <button type="submit" disabled={add.isPending} className="rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#134486] disabled:opacity-60">
+            <button type="submit" disabled={add.isPending} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all disabled:opacity-50 active:scale-95">
               {add.isPending ? "Saving..." : existing ? "Save changes" : "Add hackathon"}
             </button>
           </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+    </div>,
+    document.body
   );
 }
 

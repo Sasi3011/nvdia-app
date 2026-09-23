@@ -12,6 +12,14 @@ import { EventsService } from "./events.service";
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
+  @Post("scan")
+  async scanGlobal(
+    @CurrentUser() user: RequestUser,
+    @Body(new ZodValidationPipe(ScanQrSchema)) body: ReturnType<typeof ScanQrSchema.parse>,
+  ) {
+    return this.eventsService.scanGlobal(user.userId, body.token);
+  }
+
   @Post(":id/scan")
   async scan(
     @CurrentUser() user: RequestUser,

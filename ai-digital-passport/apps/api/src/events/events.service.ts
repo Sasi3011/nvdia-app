@@ -99,6 +99,25 @@ export class EventsService {
       },
       include: { sessions: { orderBy: { starts_at: "asc" } } },
     });
+    
+    // Sync the sessions with the new event times since the admin UI 
+    // doesn't have a way to edit individual session times yet.
+    if (input.startsAt !== undefined || input.endsAt !== undefined) {
+      await prisma.eventSession.updateMany({
+        where: { event_id: eventId },
+        data: {
+          starts_at: input.startsAt,
+          ends_at: input.endsAt,
+        },
+      });
+      // Update the returned event object's sessions so the caller gets the updated times
+      const updatedSessions = await prisma.eventSession.findMany({
+        where: { event_id: eventId },
+        orderBy: { starts_at: "asc" }
+      });
+      event.sessions = updatedSessions;
+    }
+
     await this.auditLogService.record({ actorId, action: "EVENT_UPDATED", entityType: "event", entityId: event.event_id });
     return event;
   }
@@ -245,6 +264,44 @@ export class EventsService {
   }
 
   // ---- Student: live scan (Page 17) ---------------------------------------
+
+  /**
+   * Global scan when session ID is not provided (e.g. manual entry of 6-digit code).
+   * Finds the correct active session by verifying the TOTP token against all active sessions.
+   */
+  async scanGlobal(userId: string, token: string) {
+    const now = new Date();
+    const activeSessions = await prisma.eventSession.findMany({
+      where: {
+        starts_at: { lte: now },
+        ends_at: { gte: now },
+        qr_active: true,
+        qr_secret: { not: null }
+      }
+    });
+
+    let matchedSessionId: string | null = null;
+    for (const session of activeSessions) {
+      if (verifyToken(token, session.qr_secret as string, session.qr_window_seconds)) {
+        if (matchedSessionId) {
+          throw new BadRequestException({ 
+            code: "QR_COLLISION", 
+            message: "Token collision detected. Please use the native camera scanner." 
+          });
+        }
+        matchedSessionId = session.session_id;
+      }
+    }
+
+    if (!matchedSessionId) {
+      throw new BadRequestException({ 
+        code: "QR_EXPIRED_OR_INVALID", 
+        message: "This QR code has expired or is invalid. Ask the event host to refresh it." 
+      });
+    }
+
+    return this.scan(matchedSessionId, userId, token);
+  }
 
   /**
    * FR-VERIF-01 / BR-04/BR-05: validates the scanned token against the

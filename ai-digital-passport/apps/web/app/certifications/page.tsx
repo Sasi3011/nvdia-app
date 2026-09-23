@@ -11,7 +11,7 @@ export default function CertificationsPage() {
         { label: "Course catalog", href: "/courses" },
       ]}
       steps={[
-        { title: "Complete course", description: "Finish approved internal or external learning path.", points: "+50" },
+        { title: "Complete course", description: "Finish approved internal or external learning path.", pointsCategory: "course_completion" },
         { title: "Upload certificate", description: "Upload PDF proof into PostgreSQL-backed storage for mentor review." },
         { title: "Receive approval", description: "Mentor verifies and points are awarded to your AI Passport." },
       ]}

@@ -71,14 +71,13 @@ export default function Home() {
 
   return (
     <div
-      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url(/Login.png)" }}
+      className="relative min-h-[100dvh] bg-cover bg-center bg-no-repeat bg-[url('/Mobile%20login.png')] sm:bg-[url('/Login.png')]"
     >
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="fixed inset-0 bg-black/40" />
       <div className="relative">
         <LoginModal isOpen standalone onClose={() => undefined} />
       </div>
-      <footer className="absolute inset-x-0 bottom-0 px-4 py-3 text-center text-[11px] font-medium text-white/80">
+      <footer className="pointer-events-none fixed inset-x-0 bottom-0 px-4 py-2.5 text-center text-[10px] xs:text-[11px] font-medium text-white/80">
         &copy; {new Date().getFullYear()} Sri Eshwar College of Engineering &middot; NVIDIA AI Digital Passport. All rights reserved.
       </footer>
     </div>

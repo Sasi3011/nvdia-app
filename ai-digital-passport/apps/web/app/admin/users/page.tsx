@@ -487,7 +487,6 @@ function ImportCsvModal({
                 { label: "Faculty Mentor", value: "MENTOR" },
                 { label: "Platform Admin", value: "ADMIN" },
               ]}
-              className={inputClass}
             />
           </div>
 
@@ -622,7 +621,6 @@ function AddSingleEmailModal({ onClose, onAdded }: { onClose: () => void; onAdde
                   { label: "Faculty Mentor", value: "MENTOR" },
                   { label: "Platform Admin", value: "ADMIN" },
                 ]}
-                className={inputClass}
               />
             </div>
 
@@ -632,7 +630,6 @@ function AddSingleEmailModal({ onClose, onAdded }: { onClose: () => void; onAdde
                 value={department}
                 onChange={setDepartment}
                 options={[{ label: "Select Department...", value: "" }, ...departmentOptions(department).map((d) => ({ label: d, value: d }))]}
-                className={inputClass}
               />
             </div>
           </div>

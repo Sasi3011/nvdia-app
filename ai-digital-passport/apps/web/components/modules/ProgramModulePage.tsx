@@ -1,23 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { 
-  Sparkles, 
-  ChevronRight, 
-  CheckCircle2, 
-  Award, 
-  Clock, 
-  ShieldCheck, 
-  ArrowUpRight, 
-  Layers, 
-  Cpu, 
-  Users, 
-  FileText,
-  X,
-  Send
+import {
+  Sparkles,
+  ChevronRight,
+  CheckCircle2,
+  ShieldCheck,
+  ArrowUpRight,
+  Layers,
 } from "lucide-react";
 import { StudentShell } from "../shell/StudentShell";
+import { useQuery } from "@tanstack/react-query";
+import { activitiesApi } from "../../lib/api";
 
 export interface ProgramAction {
   label: string;
@@ -29,7 +23,8 @@ export interface ProgramAction {
 export interface ProgramStep {
   title: string;
   description: string;
-  points?: string;
+  /** Scoring-matrix category this step awards points for — points are read live from the admin-configured matrix. */
+  pointsCategory?: string;
 }
 
 export function ProgramModulePage({
@@ -49,29 +44,8 @@ export function ProgramModulePage({
   sections: { title: string; items: string[] }[];
   stats?: { label: string; value: string; sub?: string }[];
 }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalSubmitted, setModalSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const defaultStats = stats || [
-    { label: "Bounty Points", value: "+250 - 500", sub: "Verified upon review" },
-    { label: "Review Turnaround", value: "< 24 Hours", sub: "Faculty Mentor SLA" },
-    { label: "GPU SuperPOD Tier", value: "Priority Queue", sub: "H100 / A100 Clusters" },
-    { label: "Accreditation", value: "ISO Verifiable", sub: "Digitally signed credential" },
-  ];
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setModalSubmitted(true);
-      setTimeout(() => {
-        setModalSubmitted(false);
-        setModalOpen(false);
-      }, 1500);
-    }, 800);
-  }
+  const rules = useQuery({ queryKey: ["activities", "rules"], queryFn: () => activitiesApi.discover(), staleTime: 60_000 });
+  const pointsFor = (category?: string) => (category ? rules.data?.find((r) => r.category === category)?.points ?? null : null);
 
   return (
     <StudentShell>
@@ -135,16 +109,18 @@ export function ProgramModulePage({
           </div>
         </div>
 
-        {/* 4 KPI Metrics Strip */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {defaultStats.map((stat, idx) => (
-            <div key={idx} className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{stat.label}</div>
-              <div className="mt-2 text-xl font-black text-slate-900">{stat.value}</div>
-              {stat.sub && <div className="mt-1 text-xs text-slate-500">{stat.sub}</div>}
-            </div>
-          ))}
-        </div>
+        {/* KPI Metrics Strip — only rendered when the caller supplies real, page-specific stats */}
+        {stats && stats.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((stat, idx) => (
+              <div key={idx} className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{stat.label}</div>
+                <div className="mt-2 text-xl font-black text-slate-900">{stat.value}</div>
+                {stat.sub && <div className="mt-1 text-xs text-slate-500">{stat.sub}</div>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Step-by-Step Workflow */}
         <div className="space-y-4">
@@ -169,10 +145,10 @@ export function ProgramModulePage({
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-xs font-black text-[#1755A7] group-hover:bg-[#1755A7] group-hover:text-white transition-colors">
                       {idx + 1}
                     </div>
-                    {step.points && (
+                    {step.pointsCategory && pointsFor(step.pointsCategory) !== null && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-[#F8C401]/15 px-2.5 py-0.5 font-mono text-xs font-black text-amber-900 border border-[#F8C401]/30">
                         <Sparkles className="h-3 w-3 text-[#F8C401]" />
-                        {step.points}
+                        +{pointsFor(step.pointsCategory)}
                       </span>
                     )}
                   </div>
