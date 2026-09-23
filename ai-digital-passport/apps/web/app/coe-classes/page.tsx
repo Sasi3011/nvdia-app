@@ -20,6 +20,7 @@ import {
   MapPin,
   Radio,
   Search,
+  X,
 } from "lucide-react";
 
 export default function CoeClassesPage() {
@@ -45,11 +46,23 @@ export default function CoeClassesPage() {
   const past = filtered.filter((e) => new Date(e.endsAt).getTime() < now);
   const ordered: StudentClassScheduleItem[] = [...upcoming, ...[...past].reverse()];
 
+  const [checkInOpen, setCheckInOpen] = useState(false);
+
   return (
     <StudentShell>
       <ConsolePageHeader
         title="CoE Classes"
         description="Scan the live QR code projected in your CoE Class session, or enter the 6-digit code manually, to instantly earn attendance points."
+        actions={
+          <button
+            type="button"
+            onClick={() => setCheckInOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] to-[#2563EB] px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1E40AF] transition-all active:scale-95"
+          >
+            <ScanLine className="h-4 w-4" />
+            <span>Check In</span>
+          </button>
+        }
       />
 
       {/* Top 3 Metric Cards — same visual language as the admin CoE Classes page */}
@@ -223,19 +236,34 @@ export default function CoeClassesPage() {
         </>
       )}
 
-      {/* Check-in — single card, switched by the tab buttons on top */}
-      <div className="mt-6">
-        <CheckInPanel isNative={isNative} />
-      </div>
+      {/* Check-in Popup — opened by the "Check In" button near the heading */}
+      {checkInOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200" onClick={() => setCheckInOpen(false)}>
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-4 mb-1">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+                  <ScanLine className="h-4 w-4" />
+                </div>
+                <h3 className="text-sm font-black text-slate-900">Class Check-in</h3>
+              </div>
+              <button type="button" onClick={() => setCheckInOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <CheckInPanel isNative={isNative} bare />
+          </div>
+        </div>
+      )}
     </StudentShell>
   );
 }
 
-function CheckInPanel({ isNative }: { isNative: boolean }) {
+function CheckInPanel({ isNative, bare = false }: { isNative: boolean; bare?: boolean }) {
   const [mode, setMode] = useState<"scan" | "code">("scan");
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
+    <div className={bare ? "space-y-4" : "rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4"}>
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
