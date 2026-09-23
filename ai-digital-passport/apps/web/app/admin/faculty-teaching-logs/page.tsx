@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GraduationCap, Search, ExternalLink } from "lucide-react";
+import { GraduationCap, Search, ExternalLink, Users, BookOpen } from "lucide-react";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
@@ -27,6 +27,11 @@ export default function FacultyTeachingLogsPage() {
     );
   });
 
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const loggedThisWeek = rows.filter((l) => new Date(l.createdAt) >= since).length;
+  const facultyCount = new Set(rows.map((l) => l.mentorEmail).filter(Boolean)).size;
+  const classCount = new Set(rows.map((l) => l.eventId)).size;
+
   return (
     <ConsoleShell role="ADMIN">
       <ConsolePageHeader
@@ -34,24 +39,87 @@ export default function FacultyTeachingLogsPage() {
         description="What each mentor taught in their CoE Class sessions, across every department."
       />
 
-      <div className="mt-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-[#1755A7]" />
-            <span className="text-xs font-bold text-slate-600">{rows.length} log{rows.length === 1 ? "" : "s"} recorded</span>
+      {/* Top 3 Metric Cards — same visual language as the CoE Classes page */}
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Card 1: Total Teaching Logs */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#1755A7] via-[#2563EB] to-[#38BDF8]" />
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-xs font-semibold text-slate-500">Total Teaching Logs</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#1755A7]/15 to-[#2563EB]/10 text-[#1755A7]">
+              <GraduationCap className="h-4.5 w-4.5" />
+            </div>
           </div>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search class, mentor, department, topic…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none"
-            />
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-900 tracking-tight">{rows.length}</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+              {loggedThisWeek} this week
+            </span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+            <span>Search results:</span>
+            <span className="font-bold text-slate-800">{filtered.length} matching</span>
           </div>
         </div>
 
+        {/* Card 2: Faculty Who Logged */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400" />
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-xs font-semibold text-slate-500">Faculty Who Logged</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-400/10 text-emerald-600">
+              <Users className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-900 tracking-tight">{facultyCount}</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Mentors
+            </span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+            <span>Avg logs per faculty:</span>
+            <span className="font-bold text-slate-800">{facultyCount ? (rows.length / facultyCount).toFixed(1) : "0"}</span>
+          </div>
+        </div>
+
+        {/* Card 3: Classes Covered */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] via-amber-500 to-orange-500" />
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-xs font-semibold text-slate-500">Classes Covered</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 text-amber-600">
+              <BookOpen className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-900 tracking-tight">{classCount}</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+              CoE Classes
+            </span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+            <span>Distinct topics logged:</span>
+            <span className="font-bold text-slate-800">{rows.length}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 sm:max-w-xs">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search class, mentor, department, topic…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] transition-colors"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6">
         {logs.isLoading ? (
           <div className="flex min-h-[30vh] items-center justify-center"><Spinner label="Loading teaching logs…" /></div>
         ) : logs.isError ? (

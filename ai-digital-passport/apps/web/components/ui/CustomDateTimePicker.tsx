@@ -47,11 +47,11 @@ export function CustomDateTimePicker({
     const trigger = triggerRef.current;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
-    const panelWidth = Math.max(rect.width, 280);
+    const panelWidth = Math.max(rect.width, 240);
     // Keep the panel on-screen even when the trigger sits near the right edge.
     const left = Math.min(rect.left, window.innerWidth - panelWidth - 16);
     // Flip above the trigger if there isn't enough room below.
-    const panelHeight = 420;
+    const panelHeight = 340;
     const opensUp = rect.bottom + panelHeight > window.innerHeight && rect.top > panelHeight;
     const top = opensUp ? rect.top - panelHeight - 8 : rect.bottom + 8;
     setCoords({ top: Math.max(8, top), left: Math.max(8, left), width: panelWidth });
@@ -123,23 +123,23 @@ export function CustomDateTimePicker({
     <div
       ref={panelRef}
       style={{ position: "fixed", top: coords.top, left: coords.left, width: coords.width }}
-      className="z-[300] rounded-xl border border-slate-200 bg-white p-4 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto"
+      className="z-[300] rounded-xl border border-slate-200 bg-white p-3 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <button type="button" onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors">
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <span className="font-bold text-sm text-slate-800">
+        <span className="font-bold text-xs text-slate-800">
           {viewDate.toLocaleString("default", { month: "long", year: "numeric" })}
         </span>
         <button type="button" onClick={nextMonth} className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors">
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-1 mb-4 text-center text-xs font-bold text-slate-400">
+      <div className="grid grid-cols-7 gap-0.5 mb-2 text-center text-[10px] font-bold text-slate-400">
         {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -159,7 +159,7 @@ export function CustomDateTimePicker({
               key={day}
               type="button"
               onClick={() => handleDateSelect(day)}
-              className={`h-8 w-8 rounded-full mx-auto flex items-center justify-center text-xs font-bold transition-colors ${
+              className={`h-6 w-6 rounded-full mx-auto flex items-center justify-center text-[10px] font-bold transition-colors ${
                 isSelected
                   ? "bg-[#1755A7] text-white"
                   : "hover:bg-slate-100 text-slate-700"
@@ -172,29 +172,29 @@ export function CustomDateTimePicker({
       </div>
 
       {/* Time Picker */}
-      <div className="flex items-center justify-center gap-2 pt-4 border-t border-slate-100">
-        <Clock className="h-4 w-4 text-slate-400" />
+      <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-slate-100">
+        <Clock className="h-3.5 w-3.5 text-slate-400" />
         <select
           value={hours}
           onChange={(e) => {
             setHours(e.target.value);
             updateValue(selectedDate, e.target.value, minutes, ampm);
           }}
-          className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none bg-slate-50 cursor-pointer text-slate-700"
+          className="border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold focus:outline-none bg-slate-50 cursor-pointer text-slate-700"
         >
           {Array.from({ length: 12 }).map((_, i) => {
             const val = String(i + 1).padStart(2, "0");
             return <option key={val} value={val}>{val}</option>;
           })}
         </select>
-        <span className="font-bold text-slate-400">:</span>
+        <span className="font-bold text-slate-400 text-xs">:</span>
         <select
           value={minutes}
           onChange={(e) => {
             setMinutes(e.target.value);
             updateValue(selectedDate, hours, e.target.value, ampm);
           }}
-          className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none bg-slate-50 cursor-pointer text-slate-700"
+          className="border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold focus:outline-none bg-slate-50 cursor-pointer text-slate-700"
         >
           {["00", "15", "30", "45"].map((val) => (
             <option key={val} value={val}>{val}</option>
@@ -206,7 +206,7 @@ export function CustomDateTimePicker({
             setAmpm(e.target.value);
             updateValue(selectedDate, hours, minutes, e.target.value);
           }}
-          className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none bg-slate-50 cursor-pointer text-[#1755A7]"
+          className="border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold focus:outline-none bg-slate-50 cursor-pointer text-[#1755A7]"
         >
           <option value="AM">AM</option>
           <option value="PM">PM</option>
