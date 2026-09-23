@@ -223,12 +223,48 @@ export default function CoeClassesPage() {
         </>
       )}
 
-      {/* Scanner & Manual Entry Grid */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {isNative ? <NativeScanner /> : <WebCameraScanner />}
-        <ManualEntry />
+      {/* Check-in — single card, switched by the tab buttons on top */}
+      <div className="mt-6">
+        <CheckInPanel isNative={isNative} />
       </div>
     </StudentShell>
+  );
+}
+
+function CheckInPanel({ isNative }: { isNative: boolean }) {
+  const [mode, setMode] = useState<"scan" | "code">("scan");
+
+  return (
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("scan")}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all active:scale-95 ${
+            mode === "scan"
+              ? "bg-[#1755A7] text-white shadow-xs"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200/70"
+          }`}
+        >
+          <Camera className="h-4 w-4" />
+          Scan QR
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("code")}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all active:scale-95 ${
+            mode === "code"
+              ? "bg-[#1755A7] text-white shadow-xs"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200/70"
+          }`}
+        >
+          <KeyRound className="h-4 w-4" />
+          Enter Code
+        </button>
+      </div>
+
+      {mode === "scan" ? (isNative ? <NativeScanner /> : <WebCameraScanner />) : <ManualEntry />}
+    </div>
   );
 }
 
@@ -332,18 +368,8 @@ function NativeScanner() {
   }, [scan]);
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-            <Camera className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-black text-slate-900">Native Camera Scanner</h2>
-            <p className="text-[11px] text-slate-500">Google ML Kit hardware barcode scanning</p>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Native Camera Scanner · Google ML Kit hardware barcode scanning</p>
 
       <div className="p-8 text-center space-y-4 bg-slate-50/60 rounded-xl border border-slate-100">
         <ScanLine className="mx-auto h-12 w-12 text-[#1755A7] animate-pulse" />
@@ -446,22 +472,14 @@ function WebCameraScanner() {
   }, [active, tick]);
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-            <Camera className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-black text-slate-900">Web Camera QR Scanner</h2>
-            <p className="text-[11px] text-slate-500">Live browser camera feed</p>
-          </div>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Web Camera QR Scanner · Live browser camera feed</p>
 
         <button
           type="button"
           onClick={() => setActive((a) => !a)}
-          className={`rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs active:scale-95 ${
+          className={`shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs active:scale-95 ${
             active
               ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
               : "bg-[#1755A7] text-white hover:bg-[#134486]"
@@ -525,16 +543,8 @@ function ManualEntry() {
   const scan = useScanMutation(setResult);
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
-      <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60">
-          <KeyRound className="h-4 w-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-black text-slate-900">Manual Code Check-in</h2>
-          <p className="text-[11px] text-slate-500">Enter the 6-digit TOTP code — no Session ID needed</p>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Manual Code Check-in · Enter the 6-digit TOTP code, no Session ID needed</p>
 
       <form
         onSubmit={(e) => {
