@@ -97,7 +97,7 @@ export function LandingFooter() {
               <li><Link href="/research" className="hover:text-[#1755A7] transition-colors">AI Research Friday</Link></li>
               <li><Link href="/startup" className="hover:text-[#1755A7] transition-colors">Startup Launchpad</Link></li>
               <li><Link href="/leaderboard" className="hover:text-[#1755A7] transition-colors">Leaderboard & Awards</Link></li>
-              <li><Link href="/scan" className="hover:text-[#1755A7] transition-colors">Live QR Scan Check-in</Link></li>
+              <li><Link href="/coe-classes" className="hover:text-[#1755A7] transition-colors">Live QR Scan Check-in</Link></li>
             </ul>
           </div>
 

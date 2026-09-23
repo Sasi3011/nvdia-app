@@ -8,7 +8,7 @@ export default function SessionsPage() {
       badge="AI Explorer"
       actions={[
         { label: "Submit attendance", href: "/claims/new?category=tech_eve_masterclass", primary: true },
-        { label: "Scan QR", href: "/scan" },
+        { label: "Scan QR", href: "/coe-classes" },
       ]}
       steps={[
         { title: "Attend session", description: "Join Tech Eve, AI masterclass, orientation or expert talk.", pointsCategory: "tech_eve_masterclass" },

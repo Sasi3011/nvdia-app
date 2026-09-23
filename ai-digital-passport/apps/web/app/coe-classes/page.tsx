@@ -6,22 +6,23 @@ import { Capacitor } from "@capacitor/core";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { ApiError } from "../../lib/api-client";
 import { eventsApi } from "../../lib/api";
-import { 
-  ScanLine, 
-  Sparkles, 
-  Camera, 
-  KeyRound, 
-  CheckCircle2, 
-  AlertCircle, 
-  ShieldCheck, 
-  RefreshCw, 
-  Clock, 
+import {
+  ScanLine,
+  Sparkles,
+  Camera,
+  KeyRound,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+  RefreshCw,
+  Clock,
   Zap,
   Layers,
-  HelpCircle
+  HelpCircle,
+  GraduationCap
 } from "lucide-react";
 
-export default function ScanPage() {
+export default function CoeClassesPage() {
   const [isNative, setIsNative] = useState(false);
 
   useEffect(() => {
@@ -31,15 +32,16 @@ export default function ScanPage() {
   return (
     <StudentShell>
       <div className="space-y-6">
-        
+
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Event QR Check-in & Point Crediting
+              <GraduationCap className="h-6 w-6 text-[#1755A7]" />
+              CoE Classes
             </h1>
             <p className="text-xs text-slate-500 mt-1 max-w-3xl">
-              Scan live event QR codes to instantly earn attendance points for your AI competence score.
+              Scan the live QR code projected in your CoE Class session, or enter the 6-digit code manually, to instantly earn attendance points for your AI competence score.
             </p>
           </div>
         </div>
@@ -84,7 +86,7 @@ export default function ScanPage() {
               <ShieldCheck className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900">Event Attendance Protocol & Rules</h3>
+              <h3 className="text-sm font-black text-slate-900">Class Attendance Protocol & Rules</h3>
               <p className="text-[11px] text-slate-500">Security precautions for valid check-in</p>
             </div>
           </div>
@@ -96,7 +98,7 @@ export default function ScanPage() {
             </div>
             <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
               <strong className="text-slate-900 block font-bold">2. One Check-in Per Session:</strong>
-              <p>Each authenticated student scholar can claim attendance points exactly once per event session.</p>
+              <p>Each authenticated student scholar can claim attendance points exactly once per class session.</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
               <strong className="text-slate-900 block font-bold">3. Manual Fallback:</strong>
@@ -127,7 +129,7 @@ function useScanMutation(onResult: (r: ScanResult) => void) {
       }
     },
     onError: (err) => {
-      const message = err instanceof ApiError ? err.message : "This QR code has expired or is invalid. Ask the event host to refresh it.";
+      const message = err instanceof ApiError ? err.message : "This QR code has expired or is invalid. Ask the class host to refresh it.";
       onResult({ kind: "error", message });
     },
   });
@@ -144,7 +146,7 @@ function parseAndScan(raw: string, scan: ReturnType<typeof useScanMutation>, set
   } catch {
     // fall through to error below
   }
-  setResult({ kind: "error", message: "That QR code is not a valid Sri Eshwar event check-in token." });
+  setResult({ kind: "error", message: "That QR code is not a valid Sri Eshwar class check-in token." });
 }
 
 function NativeScanner() {
@@ -339,7 +341,7 @@ function WebCameraScanner() {
         <div className="relative overflow-hidden rounded-2xl border-2 border-[#1755A7] bg-slate-950 aspect-video flex items-center justify-center">
           <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
           <canvas ref={canvasRef} className="hidden" />
-          
+
           {/* Viewfinder Overlay Frame */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="relative h-48 w-48 rounded-2xl border-2 border-[#F8C401] shadow-2xl">

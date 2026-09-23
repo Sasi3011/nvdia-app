@@ -23,7 +23,7 @@ const FAQS: FaqItem[] = [
   },
   {
     question: "How does the Live Event QR Scan verification work?",
-    answer: "During live sessions like Tech Eves and AI Masterclasses, an ephemeral rolling QR token is projected in the supercomputing auditorium. Scanning the QR via the in-app scanner (/scan) cryptographically validates your in-person presence and credits points instantly without manual mentor review."
+    answer: "During live sessions like Tech Eves and AI Masterclasses, an ephemeral rolling QR token is projected in the supercomputing auditorium. Scanning the QR via the in-app scanner (/coe-classes) cryptographically validates your in-person presence and credits points instantly without manual mentor review."
   },
   {
     question: "What happens when I submit evidence for courses or hackathons?",

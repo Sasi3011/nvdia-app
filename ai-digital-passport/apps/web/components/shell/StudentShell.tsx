@@ -57,7 +57,7 @@ const NAV_GROUPS: StudentNavGroup[] = [
   {
     label: "Credentials & Rewards",
     items: [
-      { href: "/scan", label: "Event QR Check-in", icon: ScanLine },
+      { href: "/coe-classes", label: "CoE Classes", icon: ScanLine },
       { href: "/claims", label: "Evidence & Claims", icon: FileCheck },
       { href: "/awards", label: "Awards", icon: Award },
       { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
