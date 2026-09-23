@@ -1156,6 +1156,7 @@ export interface ClassTeachingLogResponse {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  coMentors?: { id: string; name: string }[];
 }
 
 export interface AdminClassTeachingLogResponse extends ClassTeachingLogResponse {
@@ -1168,11 +1169,12 @@ export interface AdminClassTeachingLogResponse extends ClassTeachingLogResponse 
 export const mentorCoeClassesApi = {
   events: () => apiClient.get<CoeClassEventOption[]>("/mentor/coe-classes/events"),
   myLogs: () => apiClient.get<ClassTeachingLogResponse[]>("/mentor/coe-classes/logs"),
-  create: (input: { eventId: string; classDate: string; topicsCovered: string; materialsUrl?: string; notes?: string }) =>
+  create: (input: { eventId: string; classDate: string; topicsCovered: string; materialsUrl?: string; notes?: string; coMentorIds?: string[] }) =>
     apiClient.post<ClassTeachingLogResponse>("/mentor/coe-classes/logs", input),
-  update: (logId: string, input: { classDate?: string; topicsCovered?: string; materialsUrl?: string; notes?: string }) =>
+  update: (logId: string, input: { classDate?: string; topicsCovered?: string; materialsUrl?: string; notes?: string; coMentorIds?: string[] }) =>
     apiClient.patch<ClassTeachingLogResponse>(`/mentor/coe-classes/logs/${logId}`, input),
   remove: (logId: string) => apiClient.delete<{ deleted: boolean }>(`/mentor/coe-classes/logs/${logId}`),
+  listMentors: () => apiClient.get<{ id: string; name: string }[]>("/users/mentors"),
 };
 
 export const adminCoeClassLogsApi = {

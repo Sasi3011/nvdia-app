@@ -40,7 +40,7 @@ function eventDto(e: Event & { sessions?: EventSession[]; scoring_rule?: Scoring
 
 // Admin — Event & QR Management (Page 25).
 @Controller("admin/events")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.MENTOR)
 export class AdminEventsController {
   constructor(private readonly eventsService: EventsService) {}
 

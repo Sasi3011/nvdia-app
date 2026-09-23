@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
+import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
 import { Spinner } from "../../../components/ui/Spinner";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { mentorCoeClassesApi, type ClassTeachingLogResponse } from "../../../lib/api";
@@ -19,6 +20,8 @@ import {
   ExternalLink,
   CheckCircle2,
 } from "lucide-react";
+import Select from "react-select";
+import { EventsManager } from "../../admin/events/page";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]";
@@ -43,12 +46,16 @@ export default function MentorCoeClassesPage() {
   const [topicsCovered, setTopicsCovered] = useState("");
   const [materialsUrl, setMaterialsUrl] = useState("");
   const [notes, setNotes] = useState("");
+  const [coMentorIds, setCoMentorIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"MANAGE" | "LOGS">("LOGS");
+
+  const mentors = useQuery({ queryKey: ["users", "mentors"], queryFn: mentorCoeClassesApi.listMentors });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["mentor", "coe-classes", "logs"] });
 
   const submit = useMutation({
     mutationFn: async () => {
-      const input = { classDate: new Date(classDate).toISOString(), topicsCovered, materialsUrl: materialsUrl || undefined, notes: notes || undefined };
+      const input = { classDate: new Date(classDate).toISOString(), topicsCovered, materialsUrl: materialsUrl || undefined, notes: notes || undefined, coMentorIds: coMentorIds.length > 0 ? coMentorIds : undefined };
       if (editing) return mentorCoeClassesApi.update(editing.logId, input);
       return mentorCoeClassesApi.create({ eventId, ...input });
     },
@@ -70,6 +77,7 @@ export default function MentorCoeClassesPage() {
     setTopicsCovered("");
     setMaterialsUrl("");
     setNotes("");
+    setCoMentorIds([]);
     submit.reset();
     setFormOpen(true);
   }
@@ -81,6 +89,7 @@ export default function MentorCoeClassesPage() {
     setTopicsCovered(log.topicsCovered);
     setMaterialsUrl(log.materialsUrl ?? "");
     setNotes(log.notes ?? "");
+    setCoMentorIds(log.coMentors?.map(m => m.id) ?? []);
     submit.reset();
     setFormOpen(true);
   }
@@ -93,38 +102,119 @@ export default function MentorCoeClassesPage() {
   const rawLogs = logs.data ?? [];
   const rawEvents = events.data ?? [];
 
+  const tabs = (
+    <div className="flex items-center gap-6 pr-4">
+      <button
+        onClick={() => setActiveTab("LOGS")}
+        className={`pb-4 -mb-4 text-sm font-bold transition-colors border-b-2 ${activeTab === "LOGS" ? "border-[#1755A7] text-[#1755A7]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+      >
+        My Teaching Logs
+      </button>
+      <button
+        onClick={() => setActiveTab("MANAGE")}
+        className={`pb-4 -mb-4 text-sm font-bold transition-colors border-b-2 ${activeTab === "MANAGE" ? "border-[#1755A7] text-[#1755A7]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+      >
+        Manage CoE Classes
+      </button>
+    </div>
+  );
+
+  const logAction = (
+    <button
+      type="button"
+      onClick={openCreate}
+      className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
+    >
+      <BookOpen className="h-4 w-4" />
+      Log a Class
+    </button>
+  );
+
   return (
     <ConsoleShell role="MENTOR">
       <div className="space-y-6">
 
-        {/* Top Header Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
-          <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
+        {activeTab === "MANAGE" ? (
+           <div><EventsManager customSearchAreaContent={tabs} /></div>
+        ) : (
+          <>
+        {/* My Teaching Logs */}
+        <ConsolePageHeader
+          title="CoE Classes & Dynamic QR Sessions"
+          description="Schedule Tech Eves masterclasses, GPU hands-on Friday labs, and project live rotating QR attendance check-ins."
+          actions={
+            <div className="flex items-center gap-2.5">
+              {logAction}
+            </div>
+          }
+        />
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
-                  <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
-                  Faculty Teaching Record
-                </span>
+        {/* Top 3 Metric Cards for Teaching Logs */}
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Card 1: Total Classes Logged */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#1755A7] via-[#2563EB] to-[#38BDF8]" />
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs font-semibold text-slate-500">Classes Logged</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#1755A7]/15 to-[#2563EB]/10 text-[#1755A7]">
+                <BookOpen className="h-4.5 w-4.5" />
               </div>
-              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">CoE Classes — What You Taught</h1>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Log the topics you covered in each CoE Class session. Admin sees every entry across all departments, giving them visibility into actual class content — not just attendance counts.
-              </p>
             </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{rawLogs.length}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-[#1755A7]">
+                Total
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+              <span>This Month:</span>
+              <span className="font-bold text-slate-800">{rawLogs.filter(l => new Date(l.classDate).getMonth() === new Date().getMonth()).length} Classes</span>
+            </div>
+          </div>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={openCreate}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
-              >
-                <BookOpen className="h-4 w-4" />
-                Log a Class
-              </button>
+          {/* Card 2: Co-Faculty */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400" />
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs font-semibold text-slate-500">Collaborators</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-400/10 text-emerald-600">
+                <Sparkles className="h-4.5 w-4.5" />
+              </div>
             </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{new Set(rawLogs.flatMap(l => l.coMentors?.map(m => m.id) ?? [])).size}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Co-Faculty
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+              <span>Teaching Together</span>
+              <span className="font-bold text-[#1755A7]">In your classes</span>
+            </div>
+          </div>
+
+          {/* Card 3: Events Taught */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] via-amber-500 to-orange-500" />
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs font-semibold text-slate-500">Unique CoE Events</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 text-amber-600">
+                <Calendar className="h-4.5 w-4.5" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{new Set(rawLogs.map(l => l.eventId)).size}</span>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+              <span>Different events you taught</span>
+              <span className="font-bold text-amber-600">Across {new Set(rawLogs.map(l => l.eventDepartment)).size} Departments</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="flex flex-1 items-center gap-6">
+            {tabs}
           </div>
         </div>
 
@@ -145,6 +235,7 @@ export default function MentorCoeClassesPage() {
                   <th className="px-6 py-3.5">CoE Class</th>
                   <th className="px-6 py-3.5">Class Date</th>
                   <th className="px-6 py-3.5">Topics Covered</th>
+                  <th className="px-6 py-3.5">Co-Faculty</th>
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -166,6 +257,15 @@ export default function MentorCoeClassesPage() {
                         </a>
                       )}
                       {log.notes && <p className="mt-1 text-[11px] text-slate-400 italic">{log.notes}</p>}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {log.coMentors?.length ? log.coMentors.map(m => (
+                          <span key={m.id} className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200">
+                            {m.name}
+                          </span>
+                        )) : <span className="text-[11px] text-slate-400">—</span>}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
@@ -194,6 +294,8 @@ export default function MentorCoeClassesPage() {
               </tbody>
             </table>
           </div>
+        )}
+        </>
         )}
 
         {/* Log / Edit Modal */}
@@ -249,6 +351,23 @@ export default function MentorCoeClassesPage() {
                       </select>
                     </div>
                   )}
+                  
+                  <div>
+                    <label className={labelClass}>Co-Faculty</label>
+                    <Select
+                      isMulti
+                      options={mentors.data?.map(m => ({ value: m.id, label: m.name })) ?? []}
+                      value={mentors.data?.filter(m => coMentorIds.includes(m.id)).map(m => ({ value: m.id, label: m.name })) ?? []}
+                      onChange={(selected) => setCoMentorIds((selected as { value: string, label: string }[]).map(s => s.value))}
+                      className="text-xs"
+                      classNames={{
+                        control: (state) => `!border-slate-200 !rounded-xl !min-h-[42px] ${state.isFocused ? '!border-[#1755A7] !shadow-[0_0_0_1px_#1755A7]' : ''}`,
+                        valueContainer: () => "!px-3.5",
+                        placeholder: () => "!text-slate-400",
+                      }}
+                      placeholder="Select co-faculty if they also taught this class"
+                    />
+                  </div>
 
                   <div>
                     <label className={labelClass}>Class Date</label>

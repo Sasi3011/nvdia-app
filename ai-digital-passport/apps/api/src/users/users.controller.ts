@@ -52,3 +52,13 @@ export class UsersController {
     };
   }
 }
+
+@Controller("users")
+export class UsersListController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get("mentors")
+  async listMentors() {
+    return this.usersService.listMentors();
+  }
+}

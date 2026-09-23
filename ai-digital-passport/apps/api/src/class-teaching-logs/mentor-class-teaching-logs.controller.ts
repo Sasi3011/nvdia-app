@@ -7,7 +7,7 @@ import type { RequestUser } from "../common/auth/types";
 import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
 import { ClassTeachingLogsService } from "./class-teaching-logs.service";
 
-function logDto(l: ClassTeachingLog & { event?: Pick<Event, "title" | "department" | "year"> }) {
+function logDto(l: ClassTeachingLog & { event?: Pick<Event, "title" | "department" | "year">; coMentors?: { id: string; name: string }[] }) {
   return {
     logId: l.log_id,
     eventId: l.event_id,
@@ -20,6 +20,7 @@ function logDto(l: ClassTeachingLog & { event?: Pick<Event, "title" | "departmen
     notes: l.notes,
     createdAt: l.created_at,
     updatedAt: l.updated_at,
+    coMentors: l.coMentors,
   };
 }
 

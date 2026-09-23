@@ -243,6 +243,7 @@ export const CreateClassTeachingLogSchema = z.object({
   topicsCovered: z.string().trim().min(1).max(4000),
   materialsUrl: z.string().trim().url().optional(),
   notes: z.string().trim().max(2000).optional(),
+  coMentorIds: z.array(z.string()).optional(),
 });
 export type CreateClassTeachingLogInput = z.infer<typeof CreateClassTeachingLogSchema>;
 

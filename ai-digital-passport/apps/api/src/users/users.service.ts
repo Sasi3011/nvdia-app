@@ -49,4 +49,13 @@ export class UsersService {
       return { ...user, student, faculty };
     });
   }
+
+  async listMentors() {
+    const mentors = await prisma.user.findMany({
+      where: { user_roles: { some: { role: { name: "MENTOR" } } } },
+      select: { user_id: true, full_name: true },
+      orderBy: { full_name: "asc" }
+    });
+    return mentors.map(m => ({ id: m.user_id, name: m.full_name }));
+  }
 }

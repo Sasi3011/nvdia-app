@@ -459,6 +459,7 @@ model ClassTeachingLog {
   log_id         String   @id @default(uuid())
   event_id       String
   mentor_id      String
+  co_mentor_ids  String[] @default([])
   class_date     DateTime
   topics_covered String
   materials_url  String?
