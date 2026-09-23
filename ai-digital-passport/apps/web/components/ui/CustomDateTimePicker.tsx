@@ -25,7 +25,7 @@ export function CustomDateTimePicker({
   // modal ancestor — the bug this replaced: the panel used to render
   // `position: absolute` inside the modal's own overflow-y-auto container,
   // so it got visually cut off and overlapped neighboring fields.
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
 
   // Initialize state from value
   const initialDate = value ? new Date(value) : new Date();
@@ -49,12 +49,19 @@ export function CustomDateTimePicker({
     const rect = trigger.getBoundingClientRect();
     const panelWidth = Math.max(rect.width, 240);
     // Keep the panel on-screen even when the trigger sits near the right edge.
-    const left = Math.min(rect.left, window.innerWidth - panelWidth - 16);
-    // Flip above the trigger if there isn't enough room below.
-    const panelHeight = 340;
-    const opensUp = rect.bottom + panelHeight > window.innerHeight && rect.top > panelHeight;
-    const top = opensUp ? rect.top - panelHeight - 8 : rect.bottom + 8;
-    setCoords({ top: Math.max(8, top), left: Math.max(8, left), width: panelWidth });
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - panelWidth - 8);
+    const gap = 8;
+    const preferredHeight = 320;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - 8;
+    const spaceAbove = rect.top - gap - 8;
+    // Stay directly under the field by default (like a normal dropdown) and
+    // only flip above it when there's truly not enough room below AND more
+    // room above — otherwise just clamp the panel's height and let it
+    // scroll internally, so it never jumps far away from the field itself.
+    const opensUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const top = opensUp ? Math.max(8, rect.top - Math.min(spaceAbove, preferredHeight) - gap) : rect.bottom + gap;
+    const maxHeight = Math.max(160, Math.min(opensUp ? spaceAbove : spaceBelow, preferredHeight));
+    setCoords({ top, left, width: panelWidth, maxHeight });
   }, []);
 
   useLayoutEffect(() => {
@@ -122,8 +129,8 @@ export function CustomDateTimePicker({
   const panel = isOpen && coords && (
     <div
       ref={panelRef}
-      style={{ position: "fixed", top: coords.top, left: coords.left, width: coords.width }}
-      className="z-[300] rounded-xl border border-slate-200 bg-white p-3 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto"
+      style={{ position: "fixed", top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
+      className="z-[300] rounded-xl border border-slate-200 bg-white p-3 shadow-2xl overflow-y-auto"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
