@@ -8,8 +8,9 @@ import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader
 import { LiveQrDisplay } from "../../../components/admin/LiveQrDisplay";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
+import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
 import { QR_REFRESH_SECONDS } from "@ai-digital-passport/shared-types";
-import { adminEventsApi, adminScoringApi, adminCoeClassLogsApi, type AdminEventInput, type AdminEventResponse, type AdminEventSessionResponse } from "../../../lib/api";
+import { adminEventsApi, adminScoringApi, type AdminEventInput, type AdminEventResponse, type AdminEventSessionResponse } from "../../../lib/api";
 import { 
   Calendar, 
   Clock, 
@@ -32,9 +33,7 @@ import {
   ChevronDown,
   Trash2,
   Eye,
-  Share2,
-  GraduationCap,
-  ExternalLink
+  Share2
 } from "lucide-react";
 import { CustomSelect } from "../../../components/ui/CustomSelect";
 import { CustomDateTimePicker } from "../../../components/ui/CustomDateTimePicker";
@@ -86,13 +85,23 @@ function EventActions({ e, onView, onEdit, onDelete }: { e: AdminEventResponse; 
 
 export default function AdminEventsPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const events = useQuery({ queryKey: ["admin", "events"], queryFn: adminEventsApi.list });
-  
+
+  // A CoE Class edit/create/delete needs to show up everywhere it's read
+  // from: the admin list itself, every mentor's "log a class" event picker,
+  // and both the admin and mentor teaching-log tables (they embed the
+  // event's title/department/year). Invalidating by these key prefixes
+  // covers every one of those query keys in this session.
+  const invalidateEventRelated = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
+    queryClient.invalidateQueries({ queryKey: ["mentor", "coe-classes"] });
+    queryClient.invalidateQueries({ queryKey: ["admin", "coe-classes"] });
+  };
+
   const remove = useMutation({
     mutationFn: (eventId: string) => adminEventsApi.delete(eventId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
-    },
+    onSuccess: invalidateEventRelated,
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -160,7 +169,7 @@ export default function AdminEventsPage() {
           onCreated={() => {
             setShowCreateModal(false);
             setEditingEvent(null);
-            queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
+            invalidateEventRelated();
           }}
           onClose={() => {
             setShowCreateModal(false);
@@ -173,7 +182,7 @@ export default function AdminEventsPage() {
       {selected && (
         <EventDetailModal 
           event={selected} 
-          onChanged={() => queryClient.invalidateQueries({ queryKey: ["admin", "events"] })} 
+          onChanged={invalidateEventRelated}
           onClose={() => setSelectedId(null)} 
         />
       )}
@@ -333,7 +342,7 @@ export default function AdminEventsPage() {
                   e={e}
                   onView={() => setSelectedId(e.eventId)}
                   onEdit={() => setEditingEvent(e)}
-                  onDelete={() => { if (window.confirm("Are you sure you want to delete this event?")) remove.mutate(e.eventId); }}
+                  onDelete={async () => { if (await confirm({ message: "Are you sure you want to delete this event?", confirmLabel: "Delete" })) remove.mutate(e.eventId); }}
                 />
               </div>
             </div>
@@ -408,7 +417,7 @@ export default function AdminEventsPage() {
                       e={e}
                       onView={() => setSelectedId(e.eventId)}
                       onEdit={() => setEditingEvent(e)}
-                      onDelete={() => { if (window.confirm("Are you sure you want to delete this event?")) remove.mutate(e.eventId); }}
+                      onDelete={async () => { if (await confirm({ message: "Are you sure you want to delete this event?", confirmLabel: "Delete" })) remove.mutate(e.eventId); }}
                     />
                   </td>
                 </tr>
@@ -419,7 +428,6 @@ export default function AdminEventsPage() {
         </>
       )}
 
-      <TeachingLogsPanel />
     </ConsoleShell>
   );
 }
@@ -764,95 +772,6 @@ function EventDetailModal({ event, onChanged, onClose }: { event: AdminEventResp
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// Faculty-authored record of what was taught in each CoE Class — separate
-// from the QR attendance table above. Every mentor's submission across every
-// department shows up here; department is display metadata only, never a
-// filter that would hide a mentor's log from admin.
-function TeachingLogsPanel() {
-  const [search, setSearch] = useState("");
-  const logs = useQuery({ queryKey: ["admin", "coe-classes", "logs"], queryFn: adminCoeClassLogsApi.list });
-  const rows = logs.data ?? [];
-  const filtered = rows.filter((l) => {
-    const q = search.toLowerCase();
-    return (
-      (l.eventTitle ?? "").toLowerCase().includes(q) ||
-      (l.mentorName ?? "").toLowerCase().includes(q) ||
-      (l.eventDepartment ?? "").toLowerCase().includes(q) ||
-      l.topicsCovered.toLowerCase().includes(q)
-    );
-  });
-
-  return (
-    <div className="mt-8 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-5 w-5 text-[#1755A7]" />
-          <div>
-            <h2 className="text-base font-black text-slate-900">Faculty Teaching Logs</h2>
-            <p className="text-xs text-slate-500">What each mentor taught in their CoE Class sessions, across every department</p>
-          </div>
-        </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search class, mentor, department, topic…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {logs.isLoading ? (
-        <div className="flex min-h-[20vh] items-center justify-center"><Spinner label="Loading teaching logs…" /></div>
-      ) : logs.isError ? (
-        <ErrorBanner error={logs.error} />
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-8 text-center text-sm text-slate-500">
-          {rows.length === 0 ? "No faculty have logged a class yet." : "No teaching logs match your search."}
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-6 py-3.5">CoE Class</th>
-                <th className="px-6 py-3.5">Faculty</th>
-                <th className="px-6 py-3.5">Class Date</th>
-                <th className="px-6 py-3.5">Topics Covered</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((l) => (
-                <tr key={l.logId} className="hover:bg-slate-50/70 transition-colors align-top">
-                  <td className="px-6 py-4">
-                    <span className="font-bold text-slate-900">{l.eventTitle ?? "—"}</span>
-                    {l.eventDepartment && <div className="mt-0.5 text-[11px] text-slate-400">{l.eventDepartment}{l.eventYear ? ` · ${l.eventYear}` : ""}</div>}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-bold text-slate-800">{l.mentorName ?? "—"}</span>
-                    {l.mentorDepartment && <div className="mt-0.5 text-[11px] text-slate-400">{l.mentorDepartment}</div>}
-                  </td>
-                  <td className="px-6 py-4 font-mono text-slate-600 whitespace-nowrap">{new Date(l.classDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 max-w-md">
-                    <p className="text-slate-700 whitespace-pre-wrap">{l.topicsCovered}</p>
-                    {l.materialsUrl && (
-                      <a href={l.materialsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
-                        Materials <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

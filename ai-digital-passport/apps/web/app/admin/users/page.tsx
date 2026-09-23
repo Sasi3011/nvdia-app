@@ -8,6 +8,7 @@ import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { CustomSelect } from "../../../components/ui/CustomSelect";
+import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
 import { parseRosterFile, parseRosterText, type RosterRow } from "../../../lib/whitelist";
 import { adminWhitelistApi, type WhitelistEntryResponse, type WhitelistRole } from "../../../lib/api";
 import {
@@ -384,12 +385,13 @@ function ToggleButton({ w, pending, onClick, className = "" }: { w: WhitelistEnt
 }
 
 function DeleteButton({ w, pending, onClick }: { w: WhitelistEntryResponse; pending: boolean; onClick: () => void }) {
+  const confirm = useConfirm();
   return (
     <button
       type="button"
       disabled={pending}
-      onClick={() => {
-        if (window.confirm(`Remove ${w.email} from the access list? They will no longer be able to sign in.`)) onClick();
+      onClick={async () => {
+        if (await confirm({ message: `Remove ${w.email} from the access list? They will no longer be able to sign in.`, confirmLabel: "Remove" })) onClick();
       }}
       title="Delete from list"
       aria-label={`Remove ${w.email}`}

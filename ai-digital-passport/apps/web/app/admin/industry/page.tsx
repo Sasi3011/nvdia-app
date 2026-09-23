@@ -8,6 +8,7 @@ import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { adminIndustryGpuApi, type IndustryGpuRequestResponse, type IndustryGpuStatus } from "../../../lib/api";
+import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
 import { Building, Cpu, Edit3, ExternalLink, Mail, Phone, Plus, Search, Trash2, X, TrendingUp, CheckCircle2 } from "lucide-react";
 
 const STATUSES: { value: IndustryGpuStatus; label: string; style: string }[] = [
@@ -23,6 +24,7 @@ const inputClass =
 
 export default function AdminIndustryPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const requests = useQuery({ queryKey: ["admin", "industry", "gpu-requests"], queryFn: adminIndustryGpuApi.list });
   const [editing, setEditing] = useState<IndustryGpuRequestResponse | "new" | null>(null);
   const [search, setSearch] = useState("");
@@ -163,8 +165,8 @@ export default function AdminIndustryPage() {
                       title="Delete"
                       aria-label={`Delete ${r.companyName}`}
                       disabled={remove.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Delete the request from ${r.companyName}?`)) remove.mutate(r.requestId);
+                      onClick={async () => {
+                        if (await confirm({ message: `Delete the request from ${r.companyName}?`, confirmLabel: "Delete" })) remove.mutate(r.requestId);
                       }}
                       className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-rose-500 hover:bg-rose-50 disabled:opacity-50 sm:h-8 sm:w-8"
                     >

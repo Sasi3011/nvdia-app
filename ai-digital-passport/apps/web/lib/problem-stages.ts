@@ -3,6 +3,15 @@ import type { StageField, StageForm } from "./startup-stages";
 // Industry Problem Bank — 6-stage solution flow, same staged/mentor-approved
 // pattern as the Startup Launchpad (see lib/startup-stages.ts). Each stage's
 // evidence is a link (Google Drive, GitHub, etc.) — no file uploads.
+export const PROBLEM_STAGES = [
+  { stage: 1, name: "Problem Analysis" },
+  { stage: 2, name: "Technical Approach" },
+  { stage: 3, name: "Prototype" },
+  { stage: 4, name: "Testing" },
+  { stage: 5, name: "Demo" },
+  { stage: 6, name: "Final Delivery" },
+];
+
 export const PROBLEM_STAGE_FORMS: StageForm[] = [
   {
     stage: 1,

@@ -6,6 +6,7 @@ import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { Spinner } from "../../../components/ui/Spinner";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { mentorCoeClassesApi, type ClassTeachingLogResponse } from "../../../lib/api";
+import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
 import {
   Sparkles,
   Calendar,
@@ -31,6 +32,7 @@ function toLocalDateInput(iso: string) {
 
 export default function MentorCoeClassesPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const events = useQuery({ queryKey: ["mentor", "coe-classes", "events"], queryFn: mentorCoeClassesApi.events });
   const logs = useQuery({ queryKey: ["mentor", "coe-classes", "logs"], queryFn: mentorCoeClassesApi.myLogs });
 
@@ -177,8 +179,8 @@ export default function MentorCoeClassesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm("Delete this teaching log entry?")) remove.mutate(log.logId);
+                          onClick={async () => {
+                            if (await confirm({ message: "Delete this teaching log entry?", confirmLabel: "Delete" })) remove.mutate(log.logId);
                           }}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-rose-200 bg-white hover:bg-rose-50"
                           title="Delete"

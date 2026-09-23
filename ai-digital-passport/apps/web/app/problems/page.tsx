@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PROBLEM_BANK_MIN_LEVEL, PROBLEM_STAGES } from "@ai-digital-passport/shared-types";
+import { PROBLEM_BANK_MIN_LEVEL } from "@ai-digital-passport/shared-types";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { problemsApi, type FileAttachment, type ProblemResponse } from "../../lib/api";
 import { AttachmentViewer } from "../../components/shared/AttachmentViewer";
-import { PROBLEM_STAGE_FORMS } from "../../lib/problem-stages";
+import { PROBLEM_STAGE_FORMS, PROBLEM_STAGES } from "../../lib/problem-stages";
 import { useMe } from "../../lib/session";
 import {
   Lightbulb,

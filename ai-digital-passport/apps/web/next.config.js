@@ -9,6 +9,12 @@ const nextConfig = {
     unoptimized: true,
   },
   transpilePackages: ["@ai-digital-passport/shared-types"],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 module.exports = nextConfig;

@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Inbox, Library, FileCheck, Lock, Briefcase,
   Calendar, BookOpen, Server, Flag, Microscope, FileQuestion,
   Building, Medal, Users, Calculator, PieChart, ClipboardList,
-  LogOut, Menu, Shield, X, Trophy, Rocket, ChevronRight, UserCheck, Sparkles, TrendingUp, Lightbulb
+  LogOut, Menu, Shield, X, Trophy, Rocket, ChevronRight, UserCheck, Sparkles, TrendingUp, Lightbulb, GraduationCap
 } from "lucide-react";
 import { authApi } from "../../lib/api";
 import { useMe, useSession } from "../../lib/session";
@@ -31,6 +31,7 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/gpu", label: "GPU Supercluster", icon: Server, badge: "Live" },
       { href: "/admin/events", label: "CoE Classes", icon: Calendar },
+      { href: "/admin/faculty-teaching-logs", label: "Faculty Teaching Logs", icon: GraduationCap },
       { href: "/admin/courses", label: "Courses & Curricula", icon: BookOpen },
     ],
   },

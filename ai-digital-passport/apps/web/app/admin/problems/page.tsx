@@ -9,6 +9,7 @@ import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { adminProblemsApi, uploadsApi, type AdminProblemResponse, type FileAttachment, type UpsertProblemInput } from "../../../lib/api";
 import { AttachmentViewer } from "../../../components/shared/AttachmentViewer";
+import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
 import { 
   Lightbulb, 
   Building, 
@@ -34,7 +35,8 @@ const labelClass = "text-xs font-bold text-slate-700 flex items-center gap-1.5";
 
 export default function AdminProblemsPage() {
   const queryClient = useQueryClient();
-  const problems = useQuery({ 
+  const confirm = useConfirm();
+  const problems = useQuery({
     queryKey: ["admin", "problems"], 
     queryFn: () => adminProblemsApi.list({ page: 1, pageSize: 100 }) 
   });
@@ -305,8 +307,8 @@ export default function AdminProblemsPage() {
                       {p.status !== "ARCHIVED" && (
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm("Archive this problem? Students will no longer see it.")) {
+                          onClick={async () => {
+                            if (await confirm({ message: "Archive this problem? Students will no longer see it.", confirmLabel: "Archive" })) {
                               updateStatus.mutate({ id: p.problemId, status: "ARCHIVED", problem: p });
                             }
                           }}
@@ -321,8 +323,8 @@ export default function AdminProblemsPage() {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm("Permanently delete this problem statement? This cannot be undone.")) remove.mutate(p.problemId);
+                        onClick={async () => {
+                          if (await confirm({ message: "Permanently delete this problem statement? This cannot be undone.", confirmLabel: "Delete" })) remove.mutate(p.problemId);
                         }}
                         disabled={remove.isPending}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:opacity-50 border-slate-200 bg-white text-red-500 hover:bg-red-50 hover:border-red-200"

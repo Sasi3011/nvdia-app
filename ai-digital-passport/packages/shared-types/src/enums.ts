@@ -187,4 +187,4 @@ export const SCORING_MATRIX = [
 export type ScoringCategory = (typeof SCORING_MATRIX)[number]["category"];
 
 // QR refresh interval (FR-VERIF-01).
-export const QR_REFRESH_SECONDS = 15;
+export const QR_REFRESH_SECONDS = 30;

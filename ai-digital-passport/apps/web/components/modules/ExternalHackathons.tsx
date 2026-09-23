@@ -7,6 +7,7 @@ import { ArrowUpRight, CheckCircle2, Clock, XCircle, Upload, Globe2, MapPin, Pen
 import { externalHackathonsApi, type ExternalHackathon, type HackathonResponse } from "../../lib/api";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
+import { useConfirm } from "../ui/ConfirmDialogProvider";
 
 const SOURCES: { key: string; label: string; badge: string }[] = [
   { key: "ALL", label: "All", badge: "" },
@@ -31,6 +32,7 @@ export interface ExternalHackathonsHandle {
 export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canManage: boolean; hideHeaderActions?: boolean; internalHackathons?: HackathonResponse[]; onRegisterInternal?: (h: HackathonResponse) => void }>(
   ({ canManage, hideHeaderActions, internalHackathons = [], onRegisterInternal }, ref) => {
     const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [source, setSource] = useState("ALL");
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -177,8 +179,8 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
                   setEditing(item);
                   setShowAdd(true);
                 }}
-                onDelete={() => {
-                  if (confirm("Delete this hackathon?")) {
+                onDelete={async () => {
+                  if (await confirm({ message: "Delete this hackathon?", confirmLabel: "Delete" })) {
                     remove.mutate(item.external_id);
                   }
                 }}
@@ -219,6 +221,7 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
     </section>
   );
 });
+ExternalHackathons.displayName = "ExternalHackathons";
 
 function HackathonCard({
   h, canManage, onEdit, onDelete, onRegister,

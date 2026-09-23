@@ -403,7 +403,7 @@ model EventSession {
   // is activated; window defaults to the spec's 15-second refresh.
   qr_secret         String?
   qr_active         Boolean  @default(false)
-  qr_window_seconds Int      @default(15)
+  qr_window_seconds Int      @default(30)
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 

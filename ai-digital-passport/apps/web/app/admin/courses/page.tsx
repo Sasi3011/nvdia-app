@@ -8,6 +8,7 @@ import { CourseDetailModal } from "../../../components/admin/CourseDetailModal";
 import { CourseForm, POPULAR_PROVIDERS, type CourseForEdit } from "../../../components/admin/CourseForm";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
+import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
 import { adminCoursesApi, type AdminCourseListItemResponse } from "../../../lib/api";
 import { 
   BookOpen, 
@@ -34,6 +35,7 @@ import { CustomSelect } from "../../../components/ui/CustomSelect";
 
 export default function AdminCoursesPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const courses = useQuery({ queryKey: ["admin", "courses"], queryFn: adminCoursesApi.list });
   const [modalCourse, setModalCourse] = useState<CourseForEdit | "new" | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export default function AdminCoursesPage() {
             <button
               type="button"
               disabled={archive.isPending}
-              onClick={() => { if (window.confirm("Archive this course?")) archive.mutate(c.courseId); }}
+              onClick={async () => { if (await confirm({ message: "Archive this course?", confirmLabel: "Archive" })) archive.mutate(c.courseId); }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-200 transition-all disabled:opacity-50"
               title="Archive"
             >
@@ -147,8 +149,8 @@ export default function AdminCoursesPage() {
           <button
             type="button"
             disabled={deleteCourse.isPending}
-            onClick={() => {
-              if (confirm("Are you sure you want to permanently delete this course?")) {
+            onClick={async () => {
+              if (await confirm({ message: "Are you sure you want to permanently delete this course?", confirmLabel: "Delete" })) {
                 deleteCourse.mutate(c.courseId);
               }
             }}

@@ -44,7 +44,7 @@ function SheetTable({ blob }: { blob: Blob }) {
     };
   }, [blob]);
 
-  if (failed) return <p className="text-xs text-slate-500">This spreadsheet can't be previewed here. Use Open / Download.</p>;
+  if (failed) return <p className="text-xs text-slate-500">This spreadsheet can&apos;t be previewed here. Use Open / Download.</p>;
   if (!rows) return <Spinner label="Reading spreadsheet..." />;
   if (rows.length === 0) return <p className="text-xs text-slate-500">The spreadsheet is empty.</p>;
 
@@ -126,7 +126,7 @@ export function AttachmentViewer({ attachment }: { attachment: FileAttachment })
       )}
       {file.data && sheet && <SheetTable blob={file.data} />}
       {file.data && !isPdf && !isImage && !sheet && (
-        <p className="text-xs text-slate-500">This file type can't be shown inside the page. Use Open or Download to view it.</p>
+        <p className="text-xs text-slate-500">This file type can&apos;t be shown inside the page. Use Open or Download to view it.</p>
       )}
     </div>
   );
