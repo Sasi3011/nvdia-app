@@ -59,61 +59,52 @@ function StartupContent() {
   const hasPendingMilestone = project?.milestones.some((m) => m.status === "PENDING") ?? false;
   const atFinalStage = verifiedStage >= 6;
 
+  const NEXT_STAGE_NAME = STARTUP_STAGES.reduce((acc, s) => {
+    acc[s.stage - 1] = `Stage ${s.stage}: ${s.name}`;
+    return acc;
+  }, {} as Record<number, string>);
+
   return (
     <div className="space-y-6">
       
-      {/* Top Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="max-w-3xl space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
-                <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
-                AI Startup Launchpad
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/60">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Venture Track
-              </span>
-            </div>
-            <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">
-              {project ? project.title : "AI Venture Incubation Pipeline"}
-            </h1>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Transform your AI research and capstones into investable deep-tech startups. Every stage, from idea to registered startup, is submitted with documents and must be approved by your mentor before the next one unlocks.
-            </p>
-          </div>
+      {/* Header Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            {project ? project.title : "AI Venture Incubation Pipeline"}
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+            Transform your AI capstones into startups. Submit documents for mentor approval to unlock the next stage.
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {!project ? (
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {!project ? (
+            <button
+              type="button"
+              onClick={() => setSubmitModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Submit Your Idea</span>
+            </button>
+          ) : (
+            !atFinalStage && (
               <button
                 type="button"
+                disabled={hasPendingMilestone}
                 onClick={() => setSubmitModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
+                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all active:scale-95 ${
+                  hasPendingMilestone
+                    ? "bg-slate-400 cursor-not-allowed shadow-none"
+                    : "bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8]"
+                }`}
               >
-                <Plus className="h-4 w-4" />
-                Submit Your Idea
+                <ArrowUpRight className="h-4 w-4" />
+                <span>Submit {NEXT_STAGE_NAME[verifiedStage as keyof typeof NEXT_STAGE_NAME]}</span>
               </button>
-            ) : (
-              !atFinalStage && (
-                <button
-                  type="button"
-                  disabled={hasPendingMilestone}
-                  onClick={() => setSubmitModalOpen(true)}
-                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95 ${
-                    hasPendingMilestone
-                      ? "bg-slate-400 cursor-not-allowed"
-                      : "bg-[#1755A7] hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20"
-                  }`}
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  {hasPendingMilestone ? "Awaiting Mentor Approval" : `Submit Stage ${nextStage}: ${STARTUP_STAGES[nextStage - 1]?.name}`}
-                </button>
-              )
-            )}
-          </div>
+            )
+          )}
         </div>
       </div>
 

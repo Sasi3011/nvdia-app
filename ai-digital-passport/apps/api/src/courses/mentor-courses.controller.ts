@@ -29,7 +29,7 @@ export class MentorCoursesController {
       pointsValue: e.course.points_value,
       submittedProofUrl: e.submitted_proof_url,
       submittedAt: e.submitted_at,
-      student: { userId: e.student.user_id, fullName: e.student.full_name, department: e.student.department },
+      student: { userId: e.student.user_id, fullName: e.student.full_name, department: e.student.student?.department ?? "" },
     }));
   }
 

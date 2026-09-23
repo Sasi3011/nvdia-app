@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Inbox, Library, FileCheck, Lock, Briefcase,
   Calendar, BookOpen, Server, Flag, Microscope, FileQuestion,
   Building, Medal, Users, Calculator, PieChart, ClipboardList,
-  LogOut, Menu, Shield, X, Trophy, Rocket, ChevronRight, UserCheck, Sparkles, TrendingUp
+  LogOut, Menu, Shield, X, Trophy, Rocket, ChevronRight, UserCheck, Sparkles, TrendingUp, Lightbulb
 } from "lucide-react";
 import { authApi } from "../../lib/api";
 import { useMe, useSession } from "../../lib/session";
@@ -40,6 +40,7 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
       { href: "/admin/hackathons", label: "Hackathons", icon: Flag },
       { href: "/admin/startups", label: "Startup Launchpad", icon: Rocket },
       { href: "/admin/problems", label: "Industry Problems", icon: FileQuestion },
+      { href: "/admin/problem-projects", label: "Problem Solutions", icon: Lightbulb },
       { href: "/admin/industry", label: "Industry GPU Requests", icon: Building },
       { href: "/admin/awards", label: "Awards", icon: Medal },
     ],
@@ -67,6 +68,7 @@ const MENTOR_NAV_GROUPS: ConsoleNavGroup[] = [
       { href: "/mentor/course-catalog", label: "Course Catalog", icon: Library },
       { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },
       { href: "/mentor/startups", label: "Student Startups", icon: Briefcase },
+      { href: "/mentor/problems", label: "Problem Solutions", icon: FileQuestion },
       { href: "/mentor/hackathons", label: "Hackathons", icon: Flag },
       { href: "/mentor/leaderboard", label: "Leaderboard", icon: Trophy },
       { href: "/mentor/awards", label: "Awards", icon: Medal },

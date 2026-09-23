@@ -1,39 +1,32 @@
 "use client";
-
 import { useState } from "react";
+
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalHackathons } from "../../components/modules/ExternalHackathons";
 import { StudentShell } from "../../components/shell/StudentShell";
-import { Spinner } from "../../components/ui/Spinner";
-import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { useScoringPoints } from "../../lib/use-scoring-points";
 import { externalHackathonsApi, hackathonsApi, type HackathonResponse } from "../../lib/api";
 import {
-  Flag,
   Sparkles,
   Calendar,
   Users,
-  ArrowUpRight,
   CheckCircle2,
-  X,
-  Send,
-  Layers,
   Trophy,
   TrendingUp,
+  Flag,
+  X,
+  Send,
+  ArrowUpRight,
 } from "lucide-react";
 
 export default function HackathonsPage() {
   const queryClient = useQueryClient();
   const winPoints = useScoringPoints("industry_hackathon_win");
 
-  // Internal, admin-published hackathons with real team registration.
   const hackathons = useQuery({ queryKey: ["hackathons"], queryFn: hackathonsApi.list });
-  const items = hackathons.data ?? [];
+  const internalItems = hackathons.data ?? [];
 
-  // External hackathons — same table & the exact same list() call the admin/mentor
-  // "Add hackathon" form writes to and the admin Hackathons page's own KPI cards
-  // are computed from, so anything either role adds shows up here identically.
   const external = useQuery({ queryKey: ["hackathons", "external"], queryFn: externalHackathonsApi.list });
   const extList = external.data ?? [];
   const now = Date.now();
@@ -67,38 +60,29 @@ export default function HackathonsPage() {
     registerTeam.reset();
   }
 
+
+
   return (
     <StudentShell>
       <div className="space-y-6">
 
-        {/* Top Header Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
-          <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
-                  <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
-                  AI Innovation & Hackathons
-                </span>
-              </div>
-              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Hackathons & Team Challenges</h1>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Every hackathon added here by admin or by a faculty mentor shows up below automatically. Register a team for an admin-published hackathon, or register for an external one.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <Link
-                href="/claims/new?category=industry_hackathon_win"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
-              >
-                Submit Hackathon Win Evidence
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Hackathons & Team Challenges
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+              Register a team for an admin-published hackathon, or participate in external ones.
+            </p>
           </div>
+          <Link
+            href="/claims/new?category=industry_hackathon_win"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all active:scale-95 shrink-0"
+          >
+            <Sparkles className="h-4 w-4 text-[#F8C401]" />
+            <span>Submit Hackathon Win</span>
+          </Link>
         </div>
 
         {/* KPI cards — same visual language as the admin/mentor Hackathons page,
@@ -165,99 +149,13 @@ export default function HackathonsPage() {
           </div>
         </div>
 
-        {/* Internal Hackathons — admin-published, with real team registration */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-900 tracking-tight">Admin-Published Hackathons</h2>
-          </div>
+        <ExternalHackathons
+          canManage={false}
+          internalHackathons={internalItems}
+          onRegisterInternal={setActiveHackathon}
+        />
 
-          {hackathons.isLoading ? (
-            <div className="flex min-h-[20vh] items-center justify-center"><Spinner label="Loading hackathons…" /></div>
-          ) : hackathons.isError ? (
-            <ErrorBanner error={hackathons.error} />
-          ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200/90 bg-white p-10 text-center text-sm text-slate-500">
-              No hackathons have been published yet. Check the list below for hackathons added by admin or faculty mentors.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              {items.map((hack) => (
-                <div
-                  key={hack.hackathon_id}
-                  className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs transition-all hover:border-[#1755A7]/40 hover:shadow-md"
-                >
-                  <div>
-                    <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-800 text-white flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-xs px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider">
-                        {hack.status}
-                      </span>
-                      <span className="text-[11px] font-bold">{hack.teams.length} team{hack.teams.length === 1 ? "" : "s"}</span>
-                    </div>
-
-                    <div className="p-6 space-y-4">
-                      <div>
-                        <h3 className="text-base font-black text-slate-900 leading-snug">{hack.title}</h3>
-                        <p className="mt-2 text-xs text-slate-600 leading-relaxed line-clamp-3">{hack.description}</p>
-                      </div>
-
-                      <div className="space-y-2 border-y border-slate-100 py-3 text-xs">
-                        <div className="flex items-center justify-between text-slate-600">
-                          <span className="flex items-center gap-1.5 font-medium"><Calendar className="h-3.5 w-3.5 text-slate-400" /> Timeline</span>
-                          <span className="font-bold text-slate-900">
-                            {new Date(hack.starts_at).toLocaleDateString()} – {new Date(hack.ends_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {hack.theme && (
-                          <div className="flex items-center justify-between text-slate-600">
-                            <span className="flex items-center gap-1.5 font-medium"><Layers className="h-3.5 w-3.5 text-slate-400" /> Theme</span>
-                            <span className="font-bold text-slate-900">{hack.theme}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {hack.problems.length > 0 && (
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Problem Tracks:</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {hack.problems.map((p) => (
-                              <span key={p.problem_id} className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                                {p.title}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-6 pt-0">
-                    <button
-                      type="button"
-                      onClick={() => setActiveHackathon(hack)}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1755A7] py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] active:scale-95"
-                    >
-                      Register Team
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* External Hackathons — identical table/component the admin and mentor Hackathons
-            pages use (components/modules/ExternalHackathons.tsx), read-only here. Anything
-            an admin OR a mentor adds/syncs lands in the same table and appears below. */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Flag className="h-4 w-4 text-[#1755A7]" />
-            <h2 className="text-lg font-black text-slate-900 tracking-tight">External Hackathons</h2>
-          </div>
-          <ExternalHackathons canManage={false} />
-        </div>
-
-        {/* Team Registration Modal — calls hackathonsApi.createTeam, persists to HackathonTeam */}
+        {/* Team Registration Modal */}
         {activeHackathon && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
             <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
@@ -301,7 +199,11 @@ export default function HackathonsPage() {
                   }}
                   className="space-y-4 text-xs font-medium text-slate-700"
                 >
-                  {registerTeam.isError && <ErrorBanner error={registerTeam.error} />}
+                  {registerTeam.isError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+                      Error registering team. Please try again.
+                    </div>
+                  )}
 
                   <div>
                     <label className="block font-bold text-slate-900 mb-1">Team Name</label>

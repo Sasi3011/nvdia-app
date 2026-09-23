@@ -161,6 +161,31 @@ export const ReviewStartupMilestoneSchema = z.object({
 export type ReviewStartupMilestoneInput = z.infer<typeof ReviewStartupMilestoneSchema>;
 
 // ---------------------------------------------------------------------------
+// Industry Problem Bank — staged solution flow (mirrors Startup Launchpad)
+// ---------------------------------------------------------------------------
+
+export const CreateProblemProjectSchema = z.object({
+  problemId: z.string().trim().min(1),
+});
+export type CreateProblemProjectInput = z.infer<typeof CreateProblemProjectSchema>;
+
+export const SubmitProblemMilestoneSchema = z.object({
+  targetStage: z.coerce.number().int().min(1).max(6),
+  evidenceUrl: z.string().trim().url().optional(),
+  // Stage-specific text fields (see PROBLEM_STAGE_FORMS in the web app).
+  details: z.record(z.string().max(4000)).optional(),
+});
+export type SubmitProblemMilestoneInput = z.infer<typeof SubmitProblemMilestoneSchema>;
+
+export const ReviewProblemMilestoneSchema = z.object({
+  decision: z.enum([ClaimStatus.APPROVED, ClaimStatus.REJECTED]),
+  feedback: z.string().trim().max(2000).optional(),
+}).refine((d) => d.decision !== ClaimStatus.REJECTED || !!d.feedback, {
+  message: "feedback is required when rejecting a milestone",
+});
+export type ReviewProblemMilestoneInput = z.infer<typeof ReviewProblemMilestoneSchema>;
+
+// ---------------------------------------------------------------------------
 // Admin — Scoring & Level Configuration (Page 28)
 // ---------------------------------------------------------------------------
 

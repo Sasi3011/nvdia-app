@@ -126,11 +126,11 @@ export class AdminProblemsController {
     if (!problem) throw new NotFoundException({ code: "PROBLEM_NOT_FOUND" });
 
     // Student work is never deleted with the problem; archive it instead.
-    const submissions = await prisma.problemSubmission.count({ where: { problem_id: id } });
-    if (submissions > 0) {
+    const projects = await prisma.problemProject.count({ where: { problem_id: id } });
+    if (projects > 0) {
       throw new BadRequestException({
         code: "PROBLEM_HAS_SUBMISSIONS",
-        message: "Students have already submitted solutions to this problem, so it cannot be deleted. Archive it instead.",
+        message: "Students have already started solutions for this problem, so it cannot be deleted. Archive it instead.",
       });
     }
 

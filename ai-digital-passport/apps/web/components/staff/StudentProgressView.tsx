@@ -351,14 +351,15 @@ export function StudentProgressView({ userId, backHref }: { userId: string | nul
               </Table>
             )}
           </Section>
-          <Section title="Industry Problem Submissions" count={p.projects.problemSubmissions.length}>
-            {p.projects.problemSubmissions.length === 0 ? <Empty text="No industry problem submissions." /> : (
-              <Table head={["Problem", "Summary", "Submitted"]}>
-                {p.projects.problemSubmissions.map((s) => (
-                  <tr key={s.submissionId}>
-                    <td className="px-5 py-3 font-bold text-slate-800">{s.problemTitle}</td>
-                    <td className="px-5 py-3 text-slate-600">{s.summary}</td>
-                    <td className="px-5 py-3 text-slate-500">{fmtDate(s.createdAt)}</td>
+          <Section title="Industry Problem Solutions" count={p.projects.problemProjects.length}>
+            {p.projects.problemProjects.length === 0 ? <Empty text="No industry problem solutions started." /> : (
+              <Table head={["Problem", "Stage", "Status", "Started"]}>
+                {p.projects.problemProjects.map((pr) => (
+                  <tr key={pr.projectId}>
+                    <td className="px-5 py-3 font-bold text-slate-800">{pr.problemTitle}</td>
+                    <td className="px-5 py-3 text-slate-600">Stage {pr.currentStage} / 6 (verified {pr.verifiedStage})</td>
+                    <td className="px-5 py-3 text-slate-500">{pr.pendingStage ? "Pending mentor review" : "—"}</td>
+                    <td className="px-5 py-3 text-slate-500">{fmtDate(pr.createdAt)}</td>
                   </tr>
                 ))}
               </Table>

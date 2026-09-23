@@ -114,9 +114,9 @@ export class AuthController {
     return {
       userId: user.user_id,
       email: user.email,
-      currentLevelId: user.current_level_id,
-      totalPoints: user.total_points,
-      gpuCreditBalance: user.gpu_credit_balance,
+      currentLevelId: user.student?.current_level_id ?? 1,
+      totalPoints: user.student?.total_points ?? 0,
+      gpuCreditBalance: user.student?.gpu_credit_balance ?? 0,
     };
   }
 

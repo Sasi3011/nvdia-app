@@ -54,7 +54,7 @@ export class ProgramService {
         },
       });
       if (input.status === RequestStatus.ALLOCATED && input.allocatedCredits) {
-        await tx.user.update({ where: { user_id: request.student_id }, data: { gpu_credit_balance: { increment: input.allocatedCredits } } });
+        await tx.student.update({ where: { user_id: request.student_id }, data: { gpu_credit_balance: { increment: input.allocatedCredits } } });
       }
       return row;
     });
@@ -203,11 +203,12 @@ export class ProgramService {
   }
 
   async applyBadgeRules(userId: string) {
-    const user = await prisma.user.findUniqueOrThrow({ where: { user_id: userId } });
+    const student = await prisma.student.findUnique({ where: { user_id: userId } });
+    const totalPoints = student?.total_points ?? 0;
     const rules = await prisma.badgeRule.findMany({ where: { active: true }, include: { badge: true } });
     const awarded = [];
     for (const rule of rules) {
-      const qualifies = rule.trigger === "TOTAL_POINTS" ? user.total_points >= rule.threshold : false;
+      const qualifies = rule.trigger === "TOTAL_POINTS" ? totalPoints >= rule.threshold : false;
       if (!qualifies) continue;
       const badge = await prisma.userBadge.upsert({
         where: { user_id_badge_id: { user_id: userId, badge_id: rule.badge_id } },

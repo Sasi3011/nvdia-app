@@ -32,27 +32,15 @@ export default function ScanPage() {
     <StudentShell>
       <div className="space-y-6">
         
-        {/* Top Header Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
-          <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
-                  <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
-                  Live Event Attendance
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/60">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  TOTP QR Scanner Active
-                </span>
-              </div>
-              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Event QR Check-in & Point Crediting</h1>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Scan the dynamic rolling TOTP QR code displayed on the podium screen during workshops, symposiums, and NVIDIA tech seminars. Attendance points credit immediately to your AI competence score.
-              </p>
-            </div>
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Event QR Check-in & Point Crediting
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+              Scan live event QR codes to instantly earn attendance points for your AI competence score.
+            </p>
           </div>
         </div>
 

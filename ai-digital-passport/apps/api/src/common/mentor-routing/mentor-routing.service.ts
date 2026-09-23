@@ -23,7 +23,7 @@ export class MentorRoutingService {
     payload: { type: NotificationType; title: string; message: string },
   ): Promise<string[]> {
     const assigned = await prisma.user.findMany({
-      where: { mentor_department: department, user_roles: { some: { role: { name: RoleName.MENTOR } } } },
+      where: { faculty: { mentor_department: department }, user_roles: { some: { role: { name: RoleName.MENTOR } } } },
     });
     const targets =
       assigned.length > 0

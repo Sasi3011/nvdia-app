@@ -27,11 +27,12 @@ export class CoursesService {
   }
 
   async listPublishedForStudent(userId: string) {
-    const user = await prisma.user.findUniqueOrThrow({ where: { user_id: userId } });
+    const student = await prisma.student.findUnique({ where: { user_id: userId } });
+    const levelId = student?.current_level_id ?? 1;
     const courses = await prisma.course.findMany({
       where: {
         status: CourseStatus.PUBLISHED,
-        OR: [{ level_requirement: null }, { level_requirement: { lte: user.current_level_id } }],
+        OR: [{ level_requirement: null }, { level_requirement: { lte: levelId } }],
       },
       orderBy: { created_at: "desc" },
     });
@@ -89,9 +90,9 @@ export class CoursesService {
 
     // Route to the student's department mentor (or every mentor as a
     // fallback) — reuses the shared notification table, not a new one.
-    const student = await prisma.user.findUniqueOrThrow({ where: { user_id: userId } });
+    const student = await prisma.user.findUniqueOrThrow({ where: { user_id: userId }, include: { student: true } });
     const course = await prisma.course.findUniqueOrThrow({ where: { course_id: courseId } });
-    await this.mentorRoutingService.notifyDepartmentMentors(student.department, {
+    await this.mentorRoutingService.notifyDepartmentMentors(student.student?.department ?? "", {
       type: NotificationType.MENTOR_REVIEW_REMINDER,
       title: "Course proof submitted for review",
       message: `${student.full_name} submitted proof for "${course.title}".`,
@@ -237,7 +238,7 @@ export class CoursesService {
     return prisma.courseEnrollment.findMany({
       where: { status: EnrollmentStatus.SUBMITTED },
       orderBy: { submitted_at: "asc" },
-      include: { course: true, student: true },
+      include: { course: true, student: { include: { student: { select: { department: true } } } } },
     });
   }
 
@@ -305,8 +306,8 @@ export class CoursesService {
     if (!course) throw new NotFoundException({ code: "COURSE_NOT_FOUND" });
     if (course.status !== CourseStatus.PUBLISHED) throw new ForbiddenException({ code: "COURSE_NOT_PUBLISHED" });
     if (course.level_requirement != null) {
-      const user = await prisma.user.findUniqueOrThrow({ where: { user_id: userId } });
-      if (user.current_level_id < course.level_requirement) {
+      const student = await prisma.student.findUnique({ where: { user_id: userId } });
+      if ((student?.current_level_id ?? 1) < course.level_requirement) {
         throw new ForbiddenException({ code: "LEVEL_TOO_LOW", message: `This course requires level ${course.level_requirement}.` });
       }
     }

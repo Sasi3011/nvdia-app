@@ -84,7 +84,7 @@ export class ClassTeachingLogsService {
       orderBy: { class_date: "desc" },
       include: {
         event: { select: { title: true, department: true, year: true, session_type: true } },
-        mentor: { select: { full_name: true, email: true, department: true } },
+        mentor: { select: { full_name: true, email: true, faculty: { select: { department: true } } } },
       },
     });
   }

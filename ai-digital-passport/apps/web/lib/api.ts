@@ -276,6 +276,24 @@ export interface FileAttachment {
   sizeBytes: number;
 }
 
+export interface ProblemMilestoneResponse {
+  milestoneId: string;
+  targetStage: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  feedback: string | null;
+  evidenceUrl?: string | null;
+  details?: { fields: Record<string, string> } | null;
+  createdAt: string;
+}
+
+export interface ProblemProjectResponse {
+  projectId: string;
+  currentStage: number;
+  currentStageName: string;
+  verifiedStage: number;
+  milestones: ProblemMilestoneResponse[];
+}
+
 export interface ProblemResponse {
   problemId: string;
   title: string;
@@ -283,22 +301,87 @@ export interface ProblemResponse {
   organization: string | null;
   levelRequirement: number;
   attachment: FileAttachment | null;
-  submission: {
-    submissionId: string;
-    summary: string;
-    fileKey: string | null;
-    createdAt: string;
-  } | null;
+  // The student's own staged solution for this problem, if they've started one — same
+  // staged, mentor-approved pattern as the Startup Launchpad (6 sequential phases).
+  project: ProblemProjectResponse | null;
 }
 
 export const problemsApi = {
   list: (params: { page?: number; pageSize?: number } = {}) =>
     apiClient.get<PaginatedResult<ProblemResponse>>(`/problems${toQueryString(params)}`),
-  submit: (problemId: string, input: { summary: string; fileKey?: string }) =>
-    apiClient.post<{ submissionId: string; problemId: string; summary: string; fileKey: string | null; createdAt: string }>(
-      `/problems/${problemId}/submissions`,
+  startProject: (problemId: string) =>
+    apiClient.post<{ projectId: string; problemId: string; currentStage: number }>(`/problems/${problemId}/projects`, { problemId }),
+  submitMilestone: (projectId: string, input: { targetStage: number; evidenceUrl?: string; details?: Record<string, string> }) =>
+    apiClient.post<{ milestoneId: string; projectId: string; targetStage: number; status: string; createdAt: string }>(
+      `/problems/projects/${projectId}/milestones`,
       input,
     ),
+};
+
+export interface PendingProblemMilestoneResponse {
+  milestoneId: string;
+  targetStage: number;
+  evidenceUrl: string | null;
+  details?: { fields: Record<string, string> } | null;
+  createdAt: string;
+  project: { projectId: string; problemTitle: string; organization: string | null; studentName: string };
+}
+
+export const mentorProblemsApi = {
+  pending: (params: { page?: number; pageSize?: number } = {}) =>
+    apiClient.get<PaginatedResult<PendingProblemMilestoneResponse>>(`/mentor/problems${toQueryString(params)}`),
+  review: (milestoneId: string, decision: "APPROVED" | "REJECTED", feedback?: string) =>
+    apiClient.post<{ milestoneId: string; status: string }>(`/mentor/problems/${milestoneId}/review`, { decision, feedback }),
+};
+
+export interface AdminProblemProjectListItem {
+  projectId: string;
+  problemTitle: string;
+  organization: string | null;
+  currentStage: number;
+  currentStageName: string;
+  student: { userId: string; fullName: string; email: string; department: string; cohortYear: number | null };
+  milestones: { approved: number; pending: number; rejected: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminProblemProjectSummary {
+  total: number;
+  stageCounts: Record<string, number>;
+  pendingReviews: number;
+  newLast30Days: number;
+}
+
+export interface AdminProblemMilestone {
+  milestoneId: string;
+  targetStage: number;
+  stageName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  evidenceUrl: string | null;
+  fields: Record<string, string>;
+  feedback: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  submittedAt: string;
+}
+
+export interface AdminProblemProjectDetail {
+  projectId: string;
+  problemTitle: string;
+  organization: string | null;
+  currentStage: number;
+  currentStageName: string;
+  createdAt: string;
+  updatedAt: string;
+  student: { userId: string; fullName: string; email: string; registerNum: string; department: string; cohortYear: number | null };
+  milestones: AdminProblemMilestone[];
+}
+
+export const adminProblemProjectsApi = {
+  list: (params: { page?: number; pageSize?: number; search?: string; stage?: number; status?: string } = {}) =>
+    apiClient.get<PaginatedResult<AdminProblemProjectListItem> & { summary: AdminProblemProjectSummary }>(`/admin/problem-projects${toQueryString(params)}`),
+  detail: (projectId: string) => apiClient.get<AdminProblemProjectDetail>(`/admin/problem-projects/${projectId}`),
 };
 
 // ---------------------------------------------------------------------------
@@ -1213,7 +1296,7 @@ export interface StudentProgressResponse {
       projectId: string; title: string; projectType: string; status: string; githubUrl: string | null; demoUrl: string | null; createdAt: string;
       milestones: { milestoneId: string; title: string; status: string; feedback: string | null; dueAt: string | null }[];
     }[];
-    problemSubmissions: { submissionId: string; problemTitle: string; summary: string; createdAt: string }[];
+    problemProjects: { projectId: string; problemTitle: string; currentStage: number; verifiedStage: number; pendingStage: boolean; createdAt: string }[];
   };
   achievements: {
     certificates: { certificateId: string; title: string; type: string; issuedAt: string }[];

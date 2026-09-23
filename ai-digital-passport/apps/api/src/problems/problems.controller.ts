@@ -1,20 +1,27 @@
 import { Body, Controller, ForbiddenException, Get, Param, Post, Query } from "@nestjs/common";
-import { PaginationQuerySchema, PROBLEM_BANK_MIN_LEVEL } from "@ai-digital-passport/shared-types";
-import { z } from "zod";
+import { CreateProblemProjectSchema, PaginationQuerySchema, PROBLEM_BANK_MIN_LEVEL, problemStageName, SubmitProblemMilestoneSchema } from "@ai-digital-passport/shared-types";
 import { CurrentUser } from "../common/auth/current-user.decorator";
 import type { RequestUser } from "../common/auth/types";
 import { pageSkipTake, toPaginatedResult } from "../common/pagination/pagination";
 import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
 import { ProblemsService } from "./problems.service";
 
-const SubmitProblemSchema = z.object({
-  summary: z.string().trim().min(1).max(4000),
-  fileKey: z.string().trim().min(1).optional(),
-});
+function assertLevel(user: RequestUser) {
+  if (user.currentLevelId < PROBLEM_BANK_MIN_LEVEL) {
+    throw new ForbiddenException({
+      code: "LEVEL_TOO_LOW",
+      message: `Requires Level ${PROBLEM_BANK_MIN_LEVEL} (AI Builder) to access the Industry Problem Bank.`,
+    });
+  }
+}
 
 // GET /problems — Industry Problem Bank (Page 11). BR-07 / SEC-06: level
 // re-checked server-side on every request, never trusting the frontend
 // having hidden the tile.
+//
+// Students work a problem through 6 sequential, mentor-approved stages
+// (ProblemProject/ProblemMilestone) — the same staged pattern as the
+// Startup Launchpad, not a single free-form submission.
 @Controller("problems")
 export class ProblemsController {
   constructor(private readonly problemsService: ProblemsService) {}
@@ -24,17 +31,12 @@ export class ProblemsController {
     @CurrentUser() user: RequestUser,
     @Query(new ZodValidationPipe(PaginationQuerySchema)) query: { page: number; pageSize: number },
   ) {
-    if (user.currentLevelId < PROBLEM_BANK_MIN_LEVEL) {
-      throw new ForbiddenException({
-        code: "LEVEL_TOO_LOW",
-        message: `Requires Level ${PROBLEM_BANK_MIN_LEVEL} (AI Builder) to access the Industry Problem Bank.`,
-      });
-    }
+    assertLevel(user);
     const { skip, take } = pageSkipTake(query);
     const { items, total } = await this.problemsService.listPublished(user.userId, skip, take);
     return toPaginatedResult(
       items.map((p) => {
-        const sub = p.submissions?.[0];
+        const project = p.projects?.[0];
         return {
           problemId: p.problem_id,
           title: p.title,
@@ -49,12 +51,21 @@ export class ProblemsController {
                 sizeBytes: p.attachment_size_bytes ?? 0,
               }
             : null,
-          submission: sub
+          project: project
             ? {
-                submissionId: sub.submission_id,
-                summary: sub.summary,
-                fileKey: sub.file_key,
-                createdAt: sub.created_at.toISOString(),
+                projectId: project.project_id,
+                currentStage: project.current_stage,
+                currentStageName: problemStageName(project.current_stage),
+                verifiedStage: Math.max(0, ...project.milestones.filter((m) => m.status === "APPROVED").map((m) => m.target_stage)),
+                milestones: project.milestones.map((m) => ({
+                  milestoneId: m.milestone_id,
+                  targetStage: m.target_stage,
+                  status: m.status,
+                  feedback: m.feedback,
+                  details: m.details,
+                  evidenceUrl: m.evidence_url,
+                  createdAt: m.created_at,
+                })),
               }
             : null,
         };
@@ -64,25 +75,31 @@ export class ProblemsController {
     );
   }
 
-  @Post(":id/submissions")
-  async submit(
+  @Post(":id/projects")
+  async startProject(
     @CurrentUser() user: RequestUser,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(SubmitProblemSchema)) body: z.infer<typeof SubmitProblemSchema>,
+    @Body(new ZodValidationPipe(CreateProblemProjectSchema)) _body: ReturnType<typeof CreateProblemProjectSchema.parse>,
   ) {
-    if (user.currentLevelId < PROBLEM_BANK_MIN_LEVEL) {
-      throw new ForbiddenException({
-        code: "LEVEL_TOO_LOW",
-        message: `Requires Level ${PROBLEM_BANK_MIN_LEVEL} (AI Builder) to access the Industry Problem Bank.`,
-      });
-    }
-    const submission = await this.problemsService.submit(id, user.userId, body.summary, body.fileKey);
+    assertLevel(user);
+    const project = await this.problemsService.createProject(user.userId, id);
+    return { projectId: project.project_id, problemId: project.problem_id, currentStage: project.current_stage };
+  }
+
+  @Post("projects/:projectId/milestones")
+  async submitMilestone(
+    @CurrentUser() user: RequestUser,
+    @Param("projectId") projectId: string,
+    @Body(new ZodValidationPipe(SubmitProblemMilestoneSchema)) body: ReturnType<typeof SubmitProblemMilestoneSchema.parse>,
+  ) {
+    assertLevel(user);
+    const milestone = await this.problemsService.submitMilestone(user.userId, projectId, body.targetStage, body.evidenceUrl, body.details);
     return {
-      submissionId: submission.submission_id,
-      problemId: submission.problem_id,
-      summary: submission.summary,
-      fileKey: submission.file_key,
-      createdAt: submission.created_at,
+      milestoneId: milestone.milestone_id,
+      projectId: milestone.project_id,
+      targetStage: milestone.target_stage,
+      status: milestone.status,
+      createdAt: milestone.created_at,
     };
   }
 }

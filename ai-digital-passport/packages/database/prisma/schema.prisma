@@ -13,7 +13,7 @@
 // Configurable-by-design per spec file 05 Section 16 "Open Decisions" —
 // see inline notes:
 //   - Level 6 "High Impact" (#1): `levels.requires_high_impact` + a
-//     per-user `users.high_impact_flag` an admin sets manually (via the
+//     per-student `students.high_impact_flag` an admin sets manually (via the
 //     points/level correction tool) until a numeric rule is defined.
 //   - GPU credit rules (#2): `gpu_credit_balance` is admin-adjustable only
 //     (via an audited correction), no auto-accrual/expiry logic invented.
@@ -168,42 +168,29 @@ model Level {
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
-  users User[]
+  students Student[]
 
   @@map("levels")
 }
 
+// Shared login identity for every account, whatever its role. Role-specific
+// data lives in the per-role profile tables below (students, faculty,
+// admins; plus industry_partners and evaluator_profiles), each 1:1 with a
+// user. Every other table keeps pointing at users.user_id.
 model User {
-  user_id            String   @id @default(uuid())
-  email              String   @unique
-  full_name          String
-  register_num       String   @unique
-  department         String
-  cohort_year        Int
-  current_level_id   Int      @default(1)
-  total_points       Int      @default(0)
-  gpu_credit_balance Int      @default(0)
+  user_id    String   @id @default(uuid())
+  email      String   @unique
+  full_name  String
   // Additive beyond the spec's minimal listing (Section 8.2 invites this):
   // stable Google identity + avatar, needed once Phase 3 wires real OAuth.
-  google_id          String?  @unique
-  avatar_url         String?
-  // Open decision #1 — admin-settable pending a numeric Level 6 rule.
-  high_impact_flag   Boolean  @default(false)
-  // Assigned Courses feature: one mentor is assigned responsibility for a
-  // given department's course-submission and proctoring-violation
-  // notifications (product-owner request — "one dept, one mentor"), set by
-  // an Admin. Only meaningful for users holding the MENTOR role; nullable
-  // because not every mentor need own a department, and there's
-  // deliberately no schema-level constraint capping one mentor per
-  // department (an Admin could assign two) — kept simple as a routing
-  // hint rather than a hard invariant, matching the spec's existing
-  // "no assignment table, shared pool by default" pattern for claim
-  // review (open decision #3) which this extends rather than replaces.
-  mentor_department  String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  google_id  String?  @unique
+  avatar_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  current_level Level @relation(fields: [current_level_id], references: [level_id])
+  student Student?
+  faculty Faculty?
+  admin   Admin?
 
   user_roles              UserRole[]
   claims_made             ActivityClaim[]        @relation("ActivityClaimant")
@@ -214,7 +201,8 @@ model User {
   points_transactions     PointsTransaction[]
   attendances             Attendance[]
   notifications           Notification[]
-  problem_submissions     ProblemSubmission[]
+  problem_projects        ProblemProject[]
+  problem_milestone_reviews ProblemMilestone[]
   problems_created        IndustryProblem[]
   user_badges             UserBadge[]
   award_nominations       AwardNomination[]
@@ -242,9 +230,68 @@ model User {
   project_milestones_reviewed ProjectMilestone[]
   certificates            GeneratedCertificate[]
 
-  @@index([current_level_id])
-  @@index([mentor_department])
   @@map("users")
+}
+
+// Profile for users holding the STUDENT role — points, level and credits
+// only exist for students.
+model Student {
+  student_id         String   @id @default(uuid())
+  user_id            String   @unique
+  register_num       String   @unique
+  department         String
+  cohort_year        Int
+  current_level_id   Int      @default(1)
+  total_points       Int      @default(0)
+  gpu_credit_balance Int      @default(0)
+  // Open decision #1 — admin-settable pending a numeric Level 6 rule.
+  high_impact_flag   Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  user          User  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  current_level Level @relation(fields: [current_level_id], references: [level_id])
+
+  @@index([current_level_id])
+  @@index([department])
+  @@map("students")
+}
+
+// Profile for users holding the MENTOR role (faculty).
+model Faculty {
+  faculty_id        String   @id @default(uuid())
+  user_id           String   @unique
+  employee_id       String?  @unique
+  department        String
+  designation       String?
+  // Assigned Courses feature: one mentor is assigned responsibility for a
+  // given department's course-submission and proctoring-violation
+  // notifications (product-owner request — "one dept, one mentor"), set by
+  // an Admin. Nullable because not every mentor need own a department, and
+  // there's deliberately no constraint capping one mentor per department —
+  // a routing hint rather than a hard invariant (open decision #3).
+  mentor_department String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([mentor_department])
+  @@map("faculty")
+}
+
+// Profile for users holding the ADMIN role.
+model Admin {
+  admin_id    String   @id @default(uuid())
+  user_id     String   @unique
+  employee_id String?  @unique
+  designation String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("admins")
 }
 
 model ActivityClaim {
@@ -519,7 +566,7 @@ model IndustryProblem {
   updated_at        DateTime      @updatedAt
 
   creator     User?               @relation(fields: [created_by], references: [user_id])
-  submissions ProblemSubmission[]
+  projects    ProblemProject[]
   project_records ProjectRecord[]
 
   @@index([status])
@@ -789,19 +836,40 @@ model BadgeRule {
   @@map("badge_rules")
 }
 
-model ProblemSubmission {
-  submission_id String   @id @default(uuid())
-  problem_id    String
-  user_id       String
-  summary       String
-  file_key      String?
+model ProblemProject {
+  project_id   String   @id @default(uuid())
+  problem_id   String
+  user_id      String
+  current_stage Int     @default(1)
   created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
-  problem IndustryProblem @relation(fields: [problem_id], references: [problem_id])
-  user    User            @relation(fields: [user_id], references: [user_id])
+  problem    IndustryProblem @relation(fields: [problem_id], references: [problem_id])
+  user       User            @relation(fields: [user_id], references: [user_id])
+  milestones ProblemMilestone[]
 
   @@index([problem_id])
-  @@map("problem_submissions")
+  @@index([user_id])
+  @@map("problem_projects")
+}
+
+model ProblemMilestone {
+  milestone_id String      @id @default(uuid())
+  project_id   String
+  target_stage Int
+  evidence_url String?
+  details      Json?
+  status       ClaimStatus @default(PENDING)
+  feedback     String?
+  reviewed_by  String?
+  reviewed_at  DateTime?
+  created_at   DateTime    @default(now())
+
+  project  ProblemProject @relation(fields: [project_id], references: [project_id])
+  reviewer User?          @relation(fields: [reviewed_by], references: [user_id])
+
+  @@index([project_id])
+  @@map("problem_milestones")
 }
 
 // Open decision #5 — same approve/reject-with-feedback pattern as claim

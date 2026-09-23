@@ -11,22 +11,24 @@ export interface StudentListQuery {
 }
 
 const STUDENT_ROLE = { user_roles: { some: { role: { name: "STUDENT" as const } } } };
+// Student profiles whose user currently holds the STUDENT role.
+const STUDENT_PROFILE = { user: STUDENT_ROLE };
 
 @Injectable()
 export class StudentProgressService {
   // Mentors and admins both see every student: claim review is a shared pool in this
-  // codebase (open decision #3), and `mentor_department` is only a notification-routing hint.
+  // codebase (open decision #3), and `faculty.mentor_department` is only a notification-routing hint.
   async list(query: StudentListQuery) {
-    const where: Prisma.UserWhereInput = {
-      ...STUDENT_ROLE,
+    const where: Prisma.StudentWhereInput = {
+      ...STUDENT_PROFILE,
       ...(query.department ? { department: query.department } : {}),
       ...(query.year ? { cohort_year: query.year } : {}),
       ...(query.level ? { current_level_id: query.level } : {}),
       ...(query.search
         ? {
             OR: [
-              { full_name: { contains: query.search, mode: "insensitive" } },
-              { email: { contains: query.search, mode: "insensitive" } },
+              { user: { full_name: { contains: query.search, mode: "insensitive" } } },
+              { user: { email: { contains: query.search, mode: "insensitive" } } },
               { register_num: { contains: query.search, mode: "insensitive" } },
             ],
           }
@@ -34,17 +36,17 @@ export class StudentProgressService {
     };
 
     const [users, total, allStudents, pendingClaims, departments] = await Promise.all([
-      prisma.user.findMany({
+      prisma.student.findMany({
         where,
-        orderBy: [{ total_points: "desc" }, { created_at: "asc" }],
+        orderBy: [{ total_points: "desc" }, { user: { created_at: "asc" } }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
-        include: { current_level: true },
+        include: { current_level: true, user: { select: { full_name: true, email: true } } },
       }),
-      prisma.user.count({ where }),
-      prisma.user.groupBy({ by: ["current_level_id"], where: STUDENT_ROLE, _count: { _all: true }, _sum: { total_points: true } }),
+      prisma.student.count({ where }),
+      prisma.student.groupBy({ by: ["current_level_id"], where: STUDENT_PROFILE, _count: { _all: true }, _sum: { total_points: true } }),
       prisma.activityClaim.count({ where: { status: ClaimStatus.PENDING, claimant: STUDENT_ROLE } }),
-      prisma.user.findMany({ where: STUDENT_ROLE, distinct: ["department"], select: { department: true }, orderBy: { department: "asc" } }),
+      prisma.student.findMany({ where: STUDENT_PROFILE, distinct: ["department"], select: { department: true }, orderBy: { department: "asc" } }),
     ]);
 
     const ids = users.map((u) => u.user_id);
@@ -75,8 +77,8 @@ export class StudentProgressService {
         const last = a && b ? (a > b ? a : b) : (a ?? b ?? null);
         return {
           userId: u.user_id,
-          fullName: u.full_name,
-          email: u.email,
+          fullName: u.user.full_name,
+          email: u.user.email,
           registerNum: u.register_num,
           department: u.department,
           cohortYear: u.cohort_year,
@@ -101,18 +103,22 @@ export class StudentProgressService {
   }
 
   async progress(userId: string) {
-    const user = await prisma.user.findUnique({ where: { user_id: userId }, include: { current_level: true } });
-    if (!user) throw new NotFoundException({ code: "STUDENT_NOT_FOUND" });
+    const student = await prisma.student.findUnique({ where: { user_id: userId }, include: { current_level: true, user: true } });
+    if (!student) throw new NotFoundException({ code: "STUDENT_NOT_FOUND" });
+    const { user } = student;
 
     const [
       nextLevel, rankAhead, transactions, claims, enrollments, hackRegs, teamMemberships, attendance,
-      startups, projects, certificates, badges, nominations, gpuRequests, problemSubmissions,
+      startups, projects, certificates, badges, nominations, gpuRequests, problemProjects,
     ] = await Promise.all([
-      prisma.level.findFirst({ where: { min_points: { gt: user.total_points } }, orderBy: { min_points: "asc" } }),
-      prisma.user.count({
+      prisma.level.findFirst({ where: { min_points: { gt: student.total_points } }, orderBy: { min_points: "asc" } }),
+      prisma.student.count({
         where: {
-          ...STUDENT_ROLE,
-          OR: [{ total_points: { gt: user.total_points } }, { total_points: user.total_points, created_at: { lt: user.created_at } }],
+          ...STUDENT_PROFILE,
+          OR: [
+            { total_points: { gt: student.total_points } },
+            { total_points: student.total_points, user: { created_at: { lt: user.created_at } } },
+          ],
         },
       }),
       prisma.pointsTransaction.findMany({
@@ -153,7 +159,11 @@ export class StudentProgressService {
         include: { award: { select: { name: true } } },
       }),
       prisma.gpuRequest.findMany({ where: { student_id: userId }, orderBy: { created_at: "desc" } }),
-      prisma.problemSubmission.findMany({ where: { user_id: userId }, orderBy: { created_at: "desc" }, include: { problem: { select: { title: true } } } }),
+      prisma.problemProject.findMany({
+        where: { user_id: userId },
+        orderBy: { created_at: "desc" },
+        include: { problem: { select: { title: true } }, milestones: { select: { status: true, target_stage: true } } },
+      }),
     ]);
 
     // Points by category: approved claims grouped by category, course completions as their own bucket.
@@ -178,21 +188,21 @@ export class StudentProgressService {
         userId: user.user_id,
         fullName: user.full_name,
         email: user.email,
-        registerNum: user.register_num,
-        department: user.department,
-        cohortYear: user.cohort_year,
+        registerNum: student.register_num,
+        department: student.department,
+        cohortYear: student.cohort_year,
         avatarUrl: user.avatar_url,
-        totalPoints: user.total_points,
-        gpuCreditBalance: user.gpu_credit_balance,
-        highImpactFlag: user.high_impact_flag,
+        totalPoints: student.total_points,
+        gpuCreditBalance: student.gpu_credit_balance,
+        highImpactFlag: student.high_impact_flag,
         joinedAt: user.created_at,
         rank: rankAhead + 1,
         level: {
-          levelId: user.current_level.level_id,
-          levelName: user.current_level.level_name,
-          minPoints: user.current_level.min_points,
+          levelId: student.current_level.level_id,
+          levelName: student.current_level.level_name,
+          minPoints: student.current_level.min_points,
           nextLevel: nextLevel
-            ? { levelId: nextLevel.level_id, levelName: nextLevel.level_name, minPoints: nextLevel.min_points, pointsNeeded: nextLevel.min_points - user.total_points }
+            ? { levelId: nextLevel.level_id, levelName: nextLevel.level_name, minPoints: nextLevel.min_points, pointsNeeded: nextLevel.min_points - student.total_points }
             : null,
         },
       },
@@ -286,7 +296,14 @@ export class StudentProgressService {
           createdAt: p.created_at,
           milestones: p.milestones.map((m) => ({ milestoneId: m.milestone_id, title: m.title, status: m.status, feedback: m.feedback, dueAt: m.due_at })),
         })),
-        problemSubmissions: problemSubmissions.map((s) => ({ submissionId: s.submission_id, problemTitle: s.problem.title, summary: s.summary, createdAt: s.created_at })),
+        problemProjects: problemProjects.map((p) => ({
+          projectId: p.project_id,
+          problemTitle: p.problem.title,
+          currentStage: p.current_stage,
+          verifiedStage: Math.max(0, ...p.milestones.filter((m) => m.status === "APPROVED").map((m) => m.target_stage)),
+          pendingStage: p.milestones.some((m) => m.status === "PENDING"),
+          createdAt: p.created_at,
+        })),
       },
       achievements: {
         certificates: certificates.map((c) => ({ certificateId: c.certificate_id, title: c.title, type: c.certificate_type, issuedAt: c.issued_at })),
@@ -302,7 +319,7 @@ export class StudentProgressService {
         })),
       },
       gpu: {
-        balance: user.gpu_credit_balance,
+        balance: student.gpu_credit_balance,
         requests: gpuRequests.map((g) => ({
           requestId: g.gpu_request_id,
           title: g.title,

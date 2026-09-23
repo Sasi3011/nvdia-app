@@ -34,7 +34,7 @@ export class AdminReportsService {
     const inRange = start ? { gte: start } : undefined;
     const studentWhere: Prisma.UserWhereInput = {
       user_roles: { some: { role: { name: "STUDENT" } } },
-      ...(department ? { department } : {}),
+      ...(department ? { student: { department } } : {}),
     };
 
     const activeSince = new Date(Date.now() - 30 * DAY_MS);
@@ -64,12 +64,12 @@ export class AdminReportsService {
       awardGroups,
       certificateCount,
     ] = await Promise.all([
-      prisma.user.findMany({
-        where: studentWhere,
+      prisma.student.findMany({
+        where: { user: studentWhere },
         select: { user_id: true, department: true, total_points: true, current_level_id: true },
       }),
-      prisma.user.findMany({
-        where: { user_roles: { some: { role: { name: "STUDENT" } } } },
+      prisma.student.findMany({
+        where: { user: { user_roles: { some: { role: { name: "STUDENT" } } } } },
         select: { department: true, total_points: true, user_id: true },
       }),
       prisma.activityClaim.findMany({
@@ -96,11 +96,11 @@ export class AdminReportsService {
         distinct: ["user_id"],
       }),
       prisma.scoringRule.findMany({ select: { category: true, label: true } }),
-      prisma.user.findMany({
-        where: studentWhere,
-        orderBy: [{ total_points: "desc" }, { full_name: "asc" }],
+      prisma.student.findMany({
+        where: { user: studentWhere },
+        orderBy: [{ total_points: "desc" }, { user: { full_name: "asc" } }],
         take: 10,
-        select: { user_id: true, full_name: true, department: true, total_points: true, current_level_id: true },
+        select: { user_id: true, department: true, total_points: true, current_level_id: true, user: { select: { full_name: true } } },
       }),
       prisma.course.findMany({
         where: { status: { not: "ARCHIVED" } },
@@ -125,7 +125,7 @@ export class AdminReportsService {
         select: { event_id: true, title: true, starts_at: true, category: true, sessions: { select: { session_id: true } } },
       }),
       prisma.industryProblem.groupBy({ by: ["status"], _count: { _all: true } }),
-      prisma.problemSubmission.findMany({
+      prisma.problemProject.findMany({
         where: { user: studentWhere, created_at: inRange },
         select: { user_id: true },
       }),
@@ -205,10 +205,11 @@ export class AdminReportsService {
     }
     const deptClaims = await prisma.activityClaim.findMany({
       where: { claimant: { user_roles: { some: { role: { name: "STUDENT" } } } }, created_at: inRange },
-      select: { status: true, claimant: { select: { department: true } } },
+      select: { status: true, claimant: { select: { student: { select: { department: true } } } } },
     });
     for (const c of deptClaims) {
-      const row = deptMap.get(c.claimant.department);
+      if (!c.claimant.student) continue;
+      const row = deptMap.get(c.claimant.student.department);
       if (!row) continue;
       row.claims++;
       if (c.status === ClaimStatus.APPROVED) row.approved++;
@@ -321,7 +322,7 @@ export class AdminReportsService {
       topStudents: topStudents.map((s, i) => ({
         rank: i + 1,
         userId: s.user_id,
-        fullName: s.full_name,
+        fullName: s.user.full_name,
         department: s.department,
         levelId: s.current_level_id,
         totalPoints: s.total_points,

@@ -139,13 +139,15 @@ export class EventsService {
     const rows = await prisma.attendance.findMany({
       where: { session: { event_id: eventId } },
       orderBy: { checked_in_at: "asc" },
-      include: { user: { select: { user_id: true, full_name: true, register_num: true, department: true } } },
+      include: {
+        user: { select: { user_id: true, full_name: true, student: { select: { register_num: true, department: true } } } },
+      },
     });
     return rows.map((r) => ({
       userId: r.user.user_id,
       fullName: r.user.full_name,
-      registerNum: r.user.register_num,
-      department: r.user.department,
+      registerNum: r.user.student?.register_num ?? "",
+      department: r.user.student?.department ?? "",
       checkedInAt: r.checked_in_at,
     }));
   }

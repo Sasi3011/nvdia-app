@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@ai-digital-passport/database";
 import { AuditLogService } from "../common/audit-log/audit-log.service";
+import { ensureRoleProfile } from "../common/profiles/role-profiles";
 
 export type WhitelistRole = "STUDENT" | "MENTOR" | "ADMIN";
 export type WhitelistStatus = "AUTHORIZED" | "SUSPENDED";
@@ -128,14 +129,16 @@ export class WhitelistService {
     if (!user) return;
     const roleRow = await prisma.role.findUnique({ where: { name: role } });
     if (!roleRow) return;
-    await prisma.$transaction([
-      prisma.userRole.deleteMany({ where: { user_id: user.user_id, NOT: { role_id: roleRow.role_id } } }),
-      prisma.userRole.upsert({
+    const entry = await prisma.accessWhitelist.findUnique({ where: { email }, select: { department: true } });
+    await prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { user_id: user.user_id, NOT: { role_id: roleRow.role_id } } });
+      await tx.userRole.upsert({
         where: { user_id_role_id: { user_id: user.user_id, role_id: roleRow.role_id } },
         update: {},
         create: { user_id: user.user_id, role_id: roleRow.role_id },
-      }),
-    ]);
+      });
+      await ensureRoleProfile(tx, user.user_id, role, entry?.department);
+    });
   }
 
   async upsertMany(

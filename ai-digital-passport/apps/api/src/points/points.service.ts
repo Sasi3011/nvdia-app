@@ -65,7 +65,8 @@ export class PointsService {
           },
         });
 
-        const user = await tx.user.update({
+        // Points and levels live on the student profile.
+        const user = await tx.student.update({
           where: { user_id: params.userId },
           data: { total_points: { increment: params.points } },
         });
@@ -73,7 +74,7 @@ export class PointsService {
         const newLevel = await this.levelsService.determineLevel(user.total_points, user.high_impact_flag);
         const leveledUp = newLevel.level_id !== user.current_level_id;
         if (leveledUp) {
-          await tx.user.update({
+          await tx.student.update({
             where: { user_id: params.userId },
             data: { current_level_id: newLevel.level_id },
           });
@@ -105,7 +106,7 @@ export class PointsService {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_CONSTRAINT_VIOLATION) {
         this.logger.warn(`Points already awarded for ${idempotencyLabel} — idempotent no-op.`);
-        const user = await prisma.user.findUniqueOrThrow({ where: { user_id: params.userId } });
+        const user = await prisma.student.findUniqueOrThrow({ where: { user_id: params.userId } });
         return { alreadyAwarded: true, totalPoints: user.total_points, leveledUp: false };
       }
       throw error;

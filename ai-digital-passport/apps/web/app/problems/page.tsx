@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PROBLEM_BANK_MIN_LEVEL } from "@ai-digital-passport/shared-types";
+import { PROBLEM_BANK_MIN_LEVEL, PROBLEM_STAGES } from "@ai-digital-passport/shared-types";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { problemsApi, type FileAttachment, type ProblemResponse } from "../../lib/api";
 import { AttachmentViewer } from "../../components/shared/AttachmentViewer";
+import { PROBLEM_STAGE_FORMS } from "../../lib/problem-stages";
 import { useMe } from "../../lib/session";
 import {
   Lightbulb,
@@ -20,34 +21,22 @@ import {
   X,
   Send,
   Shield,
-  Link as LinkIcon,
-  Eye,
+  Clock,
+  AlertCircle,
   FileText,
 } from "lucide-react";
 import Link from "next/link";
 
 export default function ProblemsPage() {
   const me = useMe(true);
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [activeModalProblem, setActiveModalProblem] = useState<ProblemResponse | null>(null);
+  const [openProblem, setOpenProblem] = useState<ProblemResponse | null>(null);
   const [fileProblem, setFileProblem] = useState<ProblemResponse | null>(null);
-  const [viewingSubmissionProblem, setViewingSubmissionProblem] = useState<ProblemResponse | null>(null);
-  const [summary, setSummary] = useState("");
-  const [solutionLink, setSolutionLink] = useState("");
 
   const problemsQuery = useQuery({
     queryKey: ["problems"],
     queryFn: () => problemsApi.list({ page: 1, pageSize: 50 }),
     enabled: !!me.data && me.data.level.levelId >= PROBLEM_BANK_MIN_LEVEL,
-  });
-
-  const submitMutation = useMutation({
-    mutationFn: async (problemId: string) =>
-      problemsApi.submit(problemId, { summary: `Solution link: ${solutionLink}\n\n${summary}` }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["problems"] });
-    },
   });
 
   if (me.isLoading) {
@@ -73,13 +62,6 @@ export default function ProblemsPage() {
     return p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || (p.organization ?? "").toLowerCase().includes(q);
   });
 
-  function closeModal() {
-    setActiveModalProblem(null);
-    setSummary("");
-    setSolutionLink("");
-    submitMutation.reset();
-  }
-
   return (
     <StudentShell>
       <div className="space-y-6">
@@ -101,77 +83,37 @@ export default function ProblemsPage() {
               </div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Industry Problem Statements & Challenges</h1>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Real problem statements published by admin-onboarded industry partners. Submit your solution write-up with a link (GitHub, Google Drive, or any other) directly against a challenge for mentor review.
+                Real problem statements published by admin-onboarded industry partners. Work each solution through 6 mentor-approved stages — same staged pipeline as the Startup Launchpad.
               </p>
             </div>
           </div>
         </div>
 
-        {/* KPI Metrics */}
+        {/* KPI Metrics — real counts only */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
-            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#1755A7] via-[#2563EB] to-[#38BDF8]" />
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Total Active Problems</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#1755A7]/15 to-[#2563EB]/10 text-[#1755A7]">
-                <Lightbulb className="h-4.5 w-4.5" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">{isLocked ? "—" : allProblems.length}</span>
-              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
-                Published
-              </span>
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
-              <span>Managed by Admin:</span>
-              <span className="font-bold text-slate-800">Yes</span>
-            </div>
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Active Problems</div>
+            <div className="mt-2 text-2xl font-black text-slate-900">{isLocked ? "—" : allProblems.length}</div>
+            <div className="mt-1 text-xs text-slate-500">Published by admin</div>
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-amber-400/40 hover:shadow-md transition-all">
-            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] via-[#F59E0B] to-[#EA580C]" />
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Partner Organizations</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#F8C401]/25 to-[#EA580C]/15 text-amber-600">
-                <Building2 className="h-4.5 w-4.5" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="bg-gradient-to-r from-[#1755A7] to-[#2563EB] bg-clip-text text-3xl font-black tracking-tight text-transparent">{isLocked ? "—" : organizationCount}</span>
-              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-slate-500">
-                Enterprises
-              </span>
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
-              <span>Sponsor Count:</span>
-              <span className="font-bold text-[#1755A7]">{isLocked ? "-" : organizationCount}</span>
-            </div>
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Partner Organizations</div>
+            <div className="mt-2 text-2xl font-black text-[#1755A7]">{isLocked ? "—" : organizationCount}</div>
+            <div className="mt-1 text-xs text-slate-500">Distinct sponsors listed</div>
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-emerald-400/40 hover:shadow-md transition-all">
-            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Access Tier</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-400/15 text-emerald-600">
-                {isLocked ? <Lock className="h-4.5 w-4.5" /> : <Shield className="h-4.5 w-4.5" />}
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className={`text-2xl font-black tracking-tight ${isLocked ? "text-slate-400" : "text-emerald-600"}`}>{isLocked ? "Locked" : "Unlocked"}</span>
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
-              <span>Required Level:</span>
-              <span className="font-bold text-slate-800">Level {PROBLEM_BANK_MIN_LEVEL}</span>
-            </div>
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Access Tier</div>
+            <div className="mt-2 text-2xl font-black text-emerald-600">{isLocked ? "Level Locked" : "Unlocked"}</div>
+            <div className="mt-1 text-xs text-slate-500">Requires Level {PROBLEM_BANK_MIN_LEVEL}</div>
           </div>
         </div>
 
         {/* Level Locked State */}
         {isLocked ? (
-          <div className="relative overflow-hidden rounded-2xl border border-[#F8C401]/30 bg-gradient-to-b from-white to-amber-50/30 p-8 shadow-sm text-center max-w-2xl mx-auto space-y-4">
-            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] to-[#F59E0B]" />
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F8C401]/10 text-amber-600 border border-[#F8C401]/20">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-8 shadow-xs text-center max-w-2xl mx-auto space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F8C401]/20 text-[#1755A7] border border-[#F8C401]/40">
               <Lock className="h-6 w-6" />
             </div>
             <h2 className="text-xl font-black text-slate-900">Reach Level {PROBLEM_BANK_MIN_LEVEL} to Unlock Problem Bank</h2>
@@ -184,8 +126,8 @@ export default function ProblemsPage() {
                 <span>Current: {currentPoints.toLocaleString()} pts (Level {currentLevel})</span>
                 <span>Target: {requiredPoints.toLocaleString()} pts</span>
               </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#1755A7] to-[#2563EB] transition-all duration-500" style={{ width: `${progressPct}%` }} />
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="h-full rounded-full bg-[#1755A7] transition-all duration-500" style={{ width: `${progressPct}%` }} />
               </div>
               <span className="block text-[11px] text-slate-500 font-mono">{(requiredPoints - currentPoints).toLocaleString()} points needed to unlock</span>
             </div>
@@ -193,7 +135,7 @@ export default function ProblemsPage() {
             <div className="pt-3">
               <Link
                 href="/courses"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-6 py-3 text-xs font-bold text-white hover:bg-[#134486] transition-all shadow-md hover:shadow-lg active:scale-95"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#134486] transition-all shadow-xs"
               >
                 Earn Points in Courses
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -228,132 +170,65 @@ export default function ProblemsPage() {
                   : "No problems match your search."}
               </div>
             ) : (
-              /* Problem Table */
-              <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-6 py-3.5">Problem Statement & Scope</th>
-                      <th className="px-6 py-3.5">Organization / Sponsor</th>
-                      <th className="px-6 py-3.5">Level Req.</th>
-                      <th className="px-6 py-3.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredProblems.map((prob) => (
-                      <tr key={prob.problemId} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-start gap-3.5 max-w-md">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-                              <Lightbulb className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <span className="font-bold text-slate-900 text-[13px]">{prob.title}</span>
-                              <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{prob.description}</p>
-                              {prob.attachment && (
-                                <button
-                                  type="button"
-                                  onClick={() => setFileProblem(prob)}
-                                  className="mt-2 text-[11px] font-bold text-slate-600 hover:text-[#1755A7] flex items-center gap-1 transition-colors"
-                                >
-                                  <FileText className="h-3.5 w-3.5" /> View original attachment
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 text-xs bg-slate-100 px-3 py-1 rounded-xl">
-                            <Building2 className="h-3.5 w-3.5 text-[#1755A7]" />
-                            {prob.organization || "Sri Eshwar Partner"}
+              /* Problem Cards Grid */
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {filteredProblems.map((prob) => {
+                  const project = prob.project;
+                  return (
+                    <div
+                      key={prob.problemId}
+                      className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs transition-all hover:border-[#1755A7]/40 hover:shadow-md"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-2.5 py-0.5 text-xs font-bold text-[#1755A7]">
+                            <Building2 className="h-3 w-3 text-[#1755A7]" />
+                            {prob.organization || "Sri Eshwar Industry Partner"}
                           </span>
-                        </td>
-
-                        <td className="px-6 py-4">
-                          {prob.levelRequirement ? (
+                          {prob.levelRequirement != null && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
                               <Shield className="h-3 w-3" /> Level {prob.levelRequirement}+
                             </span>
-                          ) : (
-                            <span className="text-slate-400">None</span>
                           )}
-                        </td>
+                        </div>
 
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {prob.submission ? (
-                              <button
-                                type="button"
-                                onClick={() => setViewingSubmissionProblem(prob)}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 transition-all hover:bg-emerald-100"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                View Submission
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setActiveModalProblem(prob)}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-[11px] font-bold text-white transition-all hover:bg-slate-800 active:scale-95"
-                              >
-                                Submit Solution
-                                <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
-                              </button>
-                            )}
+                        <h3 className="text-base font-black text-slate-900 leading-snug">{prob.title}</h3>
+                        <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">{prob.description}</p>
+
+                        {project && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <div className="h-1.5 flex-1 rounded-full bg-slate-100 overflow-hidden">
+                              <div className="h-full rounded-full bg-[#1755A7]" style={{ width: `${(project.verifiedStage / 6) * 100}%` }} />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-600 shrink-0">{project.verifiedStage} / 6 stages</span>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        )}
+                      </div>
+
+                      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                        {prob.attachment && (
+                          <button
+                            type="button"
+                            onClick={() => setFileProblem(prob)}
+                            className="text-xs font-bold text-slate-700 hover:underline"
+                          >
+                            View attached file
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setOpenProblem(prob)}
+                          className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition-all hover:bg-slate-800 active:scale-95"
+                        >
+                          {project ? "View Solution Progress" : "Start Solution"}
+                          <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </div>
-        )}
-
-        {/* View Submission Modal */}
-        {viewingSubmissionProblem && viewingSubmissionProblem.submission && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200" onClick={() => setViewingSubmissionProblem(null)}>
-            <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="truncate text-sm font-black text-slate-900">Your Submitted Solution</h3>
-                    <p className="text-xs font-semibold text-slate-500">
-                      Submitted on {new Date(viewingSubmissionProblem.submission.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <button type="button" onClick={() => setViewingSubmissionProblem(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="overflow-y-auto p-6 space-y-6">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Solution Summary</h4>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-                    {viewingSubmissionProblem.submission.summary}
-                  </div>
-                </div>
-                {viewingSubmissionProblem.submission.fileKey && (
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Attached Document</h4>
-                    <div className="rounded-xl border border-slate-200 overflow-hidden">
-                      <AttachmentViewer attachment={{
-                        fileKey: viewingSubmissionProblem.submission.fileKey,
-                        fileName: "Solution Attachment",
-                        mimeType: viewingSubmissionProblem.submission.fileKey.endsWith(".pdf") ? "application/pdf" : "image/jpeg",
-                        sizeBytes: 0,
-                      }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         )}
 
@@ -373,103 +248,303 @@ export default function ProblemsPage() {
           </div>
         )}
 
-        {/* Real Submission Modal — calls problemsApi.submit, persists to ProblemSubmission */}
-        {activeModalProblem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-            <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-                    <Lightbulb className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">Submit Solution</h3>
-                    <p className="text-[11px] text-slate-500 truncate max-w-[280px]">{activeModalProblem.title}</p>
-                  </div>
-                </div>
-                <button type="button" onClick={closeModal} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {submitMutation.isSuccess ? (
-                <div className="p-6 text-center space-y-3">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                    <CheckCircle2 className="h-6 w-6" />
-                  </div>
-                  <h4 className="text-base font-black text-slate-900">Submission Recorded</h4>
-                  <p className="text-xs text-slate-600">
-                    Your solution write-up has been saved against this problem statement for mentor review.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white hover:bg-[#134486] transition-all"
-                  >
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    submitMutation.mutate(activeModalProblem.problemId);
-                  }}
-                  className="space-y-4 text-xs font-medium text-slate-700"
-                >
-                  {submitMutation.isError && <ErrorBanner error={submitMutation.error} />}
-
-                  <div>
-                    <label className="block font-bold text-slate-900 mb-1 flex items-center gap-1.5">
-                      <LinkIcon className="h-3.5 w-3.5 text-[#1755A7]" /> Solution Link
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      value={solutionLink}
-                      onChange={(e) => setSolutionLink(e.target.value)}
-                      placeholder="https://github.com/... or https://drive.google.com/..."
-                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
-                    />
-                    <span className="block text-[11px] text-slate-400 mt-1">Any public link — GitHub repo, Google Drive, or a direct link to your solution.</span>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-900 mb-1">Solution Summary</label>
-                    <textarea
-                      required
-                      rows={4}
-                      value={summary}
-                      onChange={(e) => setSummary(e.target.value)}
-                      placeholder="Describe your technical approach, models used, and results…"
-                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600 hover:bg-slate-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitMutation.isPending}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 font-bold text-white hover:bg-[#134486] transition-all shadow-xs disabled:opacity-50"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      {submitMutation.isPending ? "Submitting…" : "Submit Solution"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        )}
+        {openProblem && <ProblemSolutionPanel problem={openProblem} onClose={() => setOpenProblem(null)} />}
 
       </div>
     </StudentShell>
+  );
+}
+
+// Full 6-stage solution pipeline for one problem — mirrors the Startup
+// Launchpad's stage grid, milestone history and stage-submission modal.
+function ProblemSolutionPanel({ problem, onClose }: { problem: ProblemResponse; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [stageModalOpen, setStageModalOpen] = useState(false);
+
+  const startProject = useMutation({
+    mutationFn: () => problemsApi.startProject(problem.problemId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["problems"] }),
+  });
+
+  const project = problem.project;
+  const verifiedStage = project?.verifiedStage ?? 0;
+  const nextStage = verifiedStage + 1;
+  const hasPendingMilestone = project?.milestones.some((m) => m.status === "PENDING") ?? false;
+  const atFinalStage = verifiedStage >= 6;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4">
+      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-6 pb-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+              <Lightbulb className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-black text-slate-900 truncate">{problem.title}</h3>
+              <p className="text-[11px] text-slate-500">{problem.organization || "Sri Eshwar Industry Partner"}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 shrink-0">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-6">
+          {!project ? (
+            <div className="rounded-2xl border border-slate-200/90 bg-slate-50/50 p-10 text-center space-y-4">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1755A7]/10 text-[#1755A7]">
+                <Lightbulb className="h-6 w-6" />
+              </div>
+              <h4 className="text-base font-black text-slate-900">Start Your Solution</h4>
+              <p className="text-xs text-slate-600 max-w-md mx-auto">
+                Begin Stage 1: Problem Understanding. Every stage after this needs your faculty mentor's approval before the next one unlocks.
+              </p>
+              {startProject.isError && <ErrorBanner error={startProject.error} />}
+              <button
+                type="button"
+                onClick={() => startProject.mutate()}
+                disabled={startProject.isPending}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#134486] transition-all disabled:opacity-60"
+              >
+                {startProject.isPending ? "Starting…" : "Start Solution"}
+                <ArrowUpRight className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* 6-Stage Pipeline Graphic */}
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-slate-900">6-Stage Solution Pipeline</h4>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                    {verifiedStage} of 6 Approved
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {PROBLEM_STAGES.map((s) => {
+                    const isPassed = s.stage <= verifiedStage;
+                    const isCurrent = !atFinalStage && s.stage === nextStage;
+                    return (
+                      <div
+                        key={s.stage}
+                        className={`relative flex flex-col justify-between rounded-xl p-3 border transition-all ${
+                          isCurrent
+                            ? "border-[#1755A7] bg-[#1755A7]/5 shadow-xs"
+                            : isPassed
+                            ? "border-emerald-200 bg-emerald-50/40"
+                            : "border-slate-200 bg-slate-50/50 opacity-60"
+                        }`}
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-black ${
+                                isCurrent ? "bg-[#1755A7] text-white" : isPassed ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"
+                              }`}
+                            >
+                              {isPassed ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.stage}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-medium text-slate-600 leading-snug">{s.name}</div>
+                        </div>
+                        <div className="mt-2 pt-1.5 border-t border-slate-200/60 text-[9px] font-bold text-slate-400">
+                          {isPassed ? "Approved" : isCurrent ? (hasPendingMilestone ? "Under Review" : "Submit Now") : "Locked"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {hasPendingMilestone && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 shadow-xs flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-amber-600 shrink-0" />
+                  <div className="text-xs">
+                    <span className="font-bold text-amber-900">Stage Review in Progress: </span>
+                    <span className="text-amber-800">Your Stage {nextStage} submission is being evaluated by your mentor.</span>
+                  </div>
+                </div>
+              )}
+
+              {!atFinalStage && !hasPendingMilestone && (
+                <button
+                  type="button"
+                  onClick={() => setStageModalOpen(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] py-3 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all active:scale-95"
+                >
+                  <Send className="h-4 w-4" />
+                  Submit Stage {nextStage}: {PROBLEM_STAGES[nextStage - 1]?.name}
+                </button>
+              )}
+
+              {atFinalStage && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-center text-xs font-bold text-emerald-800">
+                  All 6 stages approved — solution complete! Submit hackathon/problem win evidence from Evidence & Claims to credit points.
+                </div>
+              )}
+
+              {/* Milestone History */}
+              <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs">
+                <div className="p-4 border-b border-slate-100">
+                  <h4 className="text-xs font-black text-slate-900">Stage History & Mentor Feedback</h4>
+                </div>
+                {project.milestones.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500">No stages submitted yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                        <tr>
+                          <th className="px-4 py-2.5">Stage</th>
+                          <th className="px-4 py-2.5">Status</th>
+                          <th className="px-4 py-2.5">Submitted / Link</th>
+                          <th className="px-4 py-2.5">Feedback</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {project.milestones.map((m) => (
+                          <tr key={m.milestoneId} className="hover:bg-slate-50/60">
+                            <td className="px-4 py-2.5 font-bold text-slate-900">
+                              Stage {m.targetStage}: {PROBLEM_STAGES[m.targetStage - 1]?.name}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  m.status === "APPROVED"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                                    : m.status === "PENDING"
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200/60"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200/60"
+                                }`}
+                              >
+                                {m.status === "APPROVED" && <CheckCircle2 className="h-3 w-3" />}
+                                {m.status === "PENDING" && <Clock className="h-3 w-3" />}
+                                {m.status === "REJECTED" && <AlertCircle className="h-3 w-3" />}
+                                {m.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 font-mono text-slate-600">
+                              {new Date(m.createdAt).toLocaleDateString()}
+                              {m.details?.fields?.documentLink && (
+                                <a href={m.details.fields.documentLink} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 font-sans font-semibold text-[#1755A7] hover:underline">
+                                  <FileText className="h-3 w-3" /> Link
+                                </a>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-slate-600">
+                              {m.feedback || <span className="text-slate-400 italic">No feedback yet</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {stageModalOpen && project && (
+        <ProblemStageModal
+          projectId={project.projectId}
+          targetStage={nextStage}
+          onClose={() => setStageModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProblemStageModal({ projectId, targetStage, onClose }: { projectId: string; targetStage: number; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const form = PROBLEM_STAGE_FORMS[targetStage - 1] ?? PROBLEM_STAGE_FORMS[0]!;
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  const submit = useMutation({
+    mutationFn: () => problemsApi.submitMilestone(projectId, { targetStage, details: values }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["problems"] });
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/70 p-4">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-6 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+              <Send className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900">
+                Stage {targetStage}: {PROBLEM_STAGES[targetStage - 1]?.name}
+              </h3>
+              <p className="text-[11px] text-slate-500">{form.intro}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit.mutate();
+          }}
+          className="flex min-h-0 flex-1 flex-col text-xs font-medium text-slate-700"
+        >
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+            {submit.isError && <ErrorBanner error={submit.error} />}
+
+            {form.fields.map((f) => {
+              const common = {
+                required: f.required,
+                value: values[f.key] ?? "",
+                placeholder: f.placeholder,
+                className: "w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none",
+              };
+              const set = (v: string) => setValues((prev) => ({ ...prev, [f.key]: v }));
+              return (
+                <div key={f.key}>
+                  <label className="mb-1 block font-bold text-slate-900">
+                    {f.label} {f.required && <span className="text-rose-500">*</span>}
+                  </label>
+                  {f.type === "textarea" ? (
+                    <textarea rows={3} {...common} onChange={(e) => set(e.target.value)} />
+                  ) : (
+                    <input type={f.type === "url" ? "url" : "text"} {...common} onChange={(e) => set(e.target.value)} />
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600">
+              <strong className="text-slate-800">Mentor approval required:</strong> your mentor will review this stage submission.
+              The next stage unlocks only after approval.
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 p-4 px-6">
+            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600 hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submit.isPending}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 font-bold text-white shadow-xs hover:bg-[#134486] disabled:opacity-60"
+            >
+              <Send className="h-3.5 w-3.5" />
+              {submit.isPending ? "Submitting…" : "Submit for Mentor Review"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

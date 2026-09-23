@@ -57,8 +57,8 @@ export class AdminDashboardController {
       prisma.user.count({ where: { ...studentWhere, created_at: { gte: monthAgo } } }),
       prisma.activityClaim.count({ where: { status: ClaimStatus.PENDING } }),
       prisma.event.count({ where: { ends_at: { gt: now } } }),
-      prisma.user.groupBy({ by: ["current_level_id"], where: studentWhere, _count: { _all: true } }),
-      prisma.user.aggregate({ where: studentWhere, _sum: { total_points: true } }),
+      prisma.student.groupBy({ by: ["current_level_id"], where: { user: studentWhere }, _count: { _all: true } }),
+      prisma.student.aggregate({ where: { user: studentWhere }, _sum: { total_points: true } }),
       prisma.activityClaim.findMany({
         where: { reviewed_at: { not: null } },
         select: { created_at: true, reviewed_at: true, status: true },

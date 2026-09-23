@@ -1,5 +1,5 @@
 import { Controller, Get } from "@nestjs/common";
-import type { ClassTeachingLog, Event, User } from "@ai-digital-passport/database";
+import type { ClassTeachingLog, Event, Faculty, User } from "@ai-digital-passport/database";
 import { UserRole } from "@ai-digital-passport/shared-types";
 import { Roles } from "../common/auth/roles.decorator";
 import { ClassTeachingLogsService } from "./class-teaching-logs.service";
@@ -7,7 +7,7 @@ import { ClassTeachingLogsService } from "./class-teaching-logs.service";
 function adminLogDto(
   l: ClassTeachingLog & {
     event?: Pick<Event, "title" | "department" | "year" | "session_type">;
-    mentor?: Pick<User, "full_name" | "email" | "department">;
+    mentor?: Pick<User, "full_name" | "email"> & { faculty: Pick<Faculty, "department"> | null };
   },
 ) {
   return {
@@ -19,7 +19,7 @@ function adminLogDto(
     eventSessionType: l.event?.session_type ?? null,
     mentorName: l.mentor?.full_name ?? null,
     mentorEmail: l.mentor?.email ?? null,
-    mentorDepartment: l.mentor?.department ?? null,
+    mentorDepartment: l.mentor?.faculty?.department ?? null,
     classDate: l.class_date,
     topicsCovered: l.topics_covered,
     materialsUrl: l.materials_url,

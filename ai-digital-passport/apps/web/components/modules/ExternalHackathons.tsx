@@ -4,7 +4,7 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, CheckCircle2, Clock, XCircle, Upload, Globe2, MapPin, Pencil, Plus, RefreshCw, Trash2, Trophy, X, Search } from "lucide-react";
-import { externalHackathonsApi, type ExternalHackathon } from "../../lib/api";
+import { externalHackathonsApi, type ExternalHackathon, type HackathonResponse } from "../../lib/api";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
 
@@ -28,8 +28,8 @@ export interface ExternalHackathonsHandle {
   isSyncing: boolean;
 }
 
-export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canManage: boolean; hideHeaderActions?: boolean }>(
-  ({ canManage, hideHeaderActions }, ref) => {
+export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canManage: boolean; hideHeaderActions?: boolean; internalHackathons?: HackathonResponse[]; onRegisterInternal?: (h: HackathonResponse) => void }>(
+  ({ canManage, hideHeaderActions, internalHackathons = [], onRegisterInternal }, ref) => {
     const queryClient = useQueryClient();
   const [source, setSource] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -65,11 +65,27 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
   });
   const remove = useMutation({ mutationFn: (id: string) => externalHackathonsApi.remove(id), onSuccess: refresh });
 
-  const rows = (list.data ?? []).filter(
-    (h) =>
-      (source === "ALL" || h.source === source) &&
-      (!search.trim() || `${h.title} ${h.organizer ?? ""} ${h.tags.join(" ")}`.toLowerCase().includes(search.toLowerCase())),
-  );
+  const combined = [
+    ...(list.data ?? []),
+    ...internalHackathons.map((h) => ({ ...h, isInternal: true as const })),
+  ];
+
+  const rows = combined.filter((h) => {
+    const isInternal = "isInternal" in h;
+    const hSource = isInternal ? "MANUAL" : h.source;
+    const hTitle = h.title;
+    const hOrganizer = isInternal ? "Internal" : (h.organizer ?? "");
+    const hTags = isInternal ? h.problems.map((p) => p.title) : h.tags;
+
+    if (source !== "ALL" && hSource !== source) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!`${hTitle} ${hOrganizer} ${hTags.join(" ")}`.toLowerCase().includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   useImperativeHandle(ref, () => ({
     sync: () => sync.mutate(),
@@ -141,19 +157,35 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
           No hackathons found.{canManage ? " Click \"Fetch latest\" to pull from Devpost, Unstop and Devfolio, or add one yourself." : ""}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((h) => (
-            <HackathonCard
-              key={h.external_id}
-              h={h}
-              canManage={canManage}
-              onEdit={() => setEditing(h)}
-              onDelete={() => {
-                if (window.confirm(`Remove "${h.title}" from the portal?`)) remove.mutate(h.external_id);
-              }}
-              onRegister={() => setProofFor(h)}
-            />
-          ))}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {rows.map((item) => {
+            if ("isInternal" in item) {
+              return (
+                <InternalHackathonCard
+                  key={item.hackathon_id}
+                  hackathon={item}
+                  onRegister={() => onRegisterInternal?.(item)}
+                />
+              );
+            }
+            return (
+              <HackathonCard
+                key={item.external_id}
+                h={item}
+                canManage={canManage}
+                onEdit={() => {
+                  setEditing(item);
+                  setShowAdd(true);
+                }}
+                onDelete={() => {
+                  if (confirm("Delete this hackathon?")) {
+                    remove.mutate(item.external_id);
+                  }
+                }}
+                onRegister={() => setProofFor(item)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -436,6 +468,52 @@ function ProofModal({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function InternalHackathonCard({ hackathon: hack, onRegister }: { hackathon: HackathonResponse; onRegister: () => void }) {
+  const over = new Date(hack.ends_at).getTime() < Date.now();
+  return (
+    <div className="flex flex-col rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md hover:border-[#1755A7]/40">
+      <div className="flex items-start justify-between gap-2">
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+          Added by staff
+        </span>
+        <span className="text-[11px] font-bold">{hack.teams.length} team{hack.teams.length === 1 ? "" : "s"}</span>
+      </div>
+      <h3 className="mt-3 text-sm font-black leading-snug text-slate-900">{hack.title}</h3>
+      <p className="mt-2 text-xs text-slate-600 leading-relaxed line-clamp-3">{hack.description}</p>
+      
+      <div className="mt-3 space-y-1 text-[11px] text-slate-500">
+        <div className="flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5" />
+          {new Date(hack.starts_at).toLocaleDateString()} – {new Date(hack.ends_at).toLocaleDateString()}
+        </div>
+        {hack.theme && (
+          <div className="flex items-center gap-1.5 font-medium text-slate-700">
+            {hack.theme}
+          </div>
+        )}
+      </div>
+
+      {hack.problems.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {hack.problems.map((p) => (
+            <span key={p.problem_id} className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+              {p.title}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onRegister}
+        className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white hover:bg-[#134486] transition-all"
+      >
+        Register Team <ArrowUpRight className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }

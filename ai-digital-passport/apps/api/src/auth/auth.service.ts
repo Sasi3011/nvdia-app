@@ -50,20 +50,35 @@ export class AuthService {
     // The role comes from the access list (students by default).
     const role = await this.whitelist.roleFor(email);
 
+    // Each role gets its own profile table; the register number doubles as
+    // the employee ID for faculty and admins.
     const user = await prisma.user.create({
       data: {
         email,
         full_name: fullName,
-        register_num: input.registerNum,
-        department: input.department,
-        cohort_year: input.cohortYear,
-        current_level_id: 1,
-        total_points: 0,
-        gpu_credit_balance: 0,
         user_roles: {
           create: { role: { connect: { name: role as UserRole } } },
         },
+        ...(role === UserRole.STUDENT && {
+          student: {
+            create: {
+              register_num: input.registerNum,
+              department: input.department,
+              cohort_year: input.cohortYear,
+              current_level_id: 1,
+              total_points: 0,
+              gpu_credit_balance: 0,
+            },
+          },
+        }),
+        ...(role === UserRole.MENTOR && {
+          faculty: { create: { employee_id: input.registerNum, department: input.department } },
+        }),
+        ...(role === UserRole.ADMIN && {
+          admin: { create: { employee_id: input.registerNum } },
+        }),
       },
+      include: { student: true },
     });
 
     // Keeps the Redis leaderboard consistent with its PostgreSQL fallback

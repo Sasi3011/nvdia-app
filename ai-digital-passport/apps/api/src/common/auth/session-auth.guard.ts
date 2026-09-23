@@ -40,7 +40,7 @@ export class SessionAuthGuard implements CanActivate {
 
     const user = await prisma.user.findUnique({
       where: { email: identity.email },
-      include: { user_roles: { include: { role: true } } },
+      include: { user_roles: { include: { role: true } }, student: { select: { current_level_id: true } } },
     });
 
     const access = await prisma.accessWhitelist.findUnique({
@@ -71,7 +71,8 @@ export class SessionAuthGuard implements CanActivate {
       userId: user.user_id,
       email: user.email,
       roles: user.user_roles.map((ur) => ur.role.name as UserRole),
-      currentLevelId: user.current_level_id,
+      // Levels only apply to students; everyone else counts as Level 1.
+      currentLevelId: user.student?.current_level_id ?? 1,
     };
     req.appUser = requestUser;
     if (allowPending) req.pendingIdentity = identity;

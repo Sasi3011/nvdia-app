@@ -3,7 +3,8 @@ import { prisma } from "@ai-digital-passport/database";
 import { RedisService } from "../common/redis/redis.service";
 
 const LEADERBOARD_KEY = "leaderboard:total_points";
-const STUDENT_ONLY = { user_roles: { some: { role: { name: "STUDENT" as const } } } };
+// Students who currently hold the STUDENT role (a profile outlives a role change).
+const STUDENT_ONLY = { user: { user_roles: { some: { role: { name: "STUDENT" as const } } } } };
 
 @Injectable()
 export class LeaderboardService {
@@ -40,9 +41,9 @@ export class LeaderboardService {
           userIds.push(userId);
           scoreByUser.set(userId, Number(score));
         }
-        const users = await prisma.user.findMany({
+        const users = await prisma.student.findMany({
           where: { user_id: { in: userIds }, ...STUDENT_ONLY },
-          include: { current_level: true },
+          include: { current_level: true, user: { select: { full_name: true } } },
         });
         const byId = new Map(users.map((u) => [u.user_id, u]));
         return userIds
@@ -51,7 +52,7 @@ export class LeaderboardService {
           .slice(0, limit)
           .map((u) => ({
             userId: u.user_id,
-            fullName: u.full_name,
+            fullName: u.user.full_name,
             department: u.department,
             totalPoints: scoreByUser.get(u.user_id) ?? u.total_points,
             levelName: u.current_level.level_name,
@@ -61,15 +62,15 @@ export class LeaderboardService {
       this.logger.warn(`Redis unavailable, falling back to PostgreSQL for leaderboard: ${(error as Error).message}`);
     }
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.student.findMany({
       where: STUDENT_ONLY,
-      orderBy: [{ total_points: "desc" }, { created_at: "asc" }],
+      orderBy: [{ total_points: "desc" }, { user: { created_at: "asc" } }],
       take: limit,
-      include: { current_level: true },
+      include: { current_level: true, user: { select: { full_name: true } } },
     });
     return users.map((u) => ({
       userId: u.user_id,
-      fullName: u.full_name,
+      fullName: u.user.full_name,
       department: u.department,
       totalPoints: u.total_points,
       levelName: u.current_level.level_name,
@@ -79,11 +80,11 @@ export class LeaderboardService {
   // Real cohort-wide numbers for the leaderboard KPI cards.
   async summary() {
     const [totalStudents, agg, topLevel] = await Promise.all([
-      prisma.user.count({ where: STUDENT_ONLY }),
-      prisma.user.aggregate({ where: STUDENT_ONLY, _avg: { total_points: true }, _max: { total_points: true } }),
+      prisma.student.count({ where: STUDENT_ONLY }),
+      prisma.student.aggregate({ where: STUDENT_ONLY, _avg: { total_points: true }, _max: { total_points: true } }),
       prisma.level.findFirst({ orderBy: { level_id: "desc" } }),
     ]);
-    const topLevelCount = topLevel ? await prisma.user.count({ where: { ...STUDENT_ONLY, current_level_id: topLevel.level_id } }) : 0;
+    const topLevelCount = topLevel ? await prisma.student.count({ where: { ...STUDENT_ONLY, current_level_id: topLevel.level_id } }) : 0;
     return {
       totalStudents,
       averagePoints: Math.round(agg._avg.total_points ?? 0),
@@ -95,7 +96,7 @@ export class LeaderboardService {
   }
 
   async rebuildFromPostgres(): Promise<number> {
-    const users = await prisma.user.findMany({ select: { user_id: true, total_points: true } });
+    const users = await prisma.student.findMany({ select: { user_id: true, total_points: true } });
     if (users.length === 0) return 0;
     await this.redisService.client.del(LEADERBOARD_KEY);
     const args: (string | number)[] = [];

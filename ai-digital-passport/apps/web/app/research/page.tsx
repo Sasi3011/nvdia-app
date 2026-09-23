@@ -17,34 +17,23 @@ export default function ResearchPage() {
     <StudentShell>
       <div className="space-y-6">
 
-        {/* Top Header Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
-          <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
-                  <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
-                  Research & Patents
-                </span>
-              </div>
-              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Research Papers & Patent Filings</h1>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Publish a research paper or file an AI patent, then submit your proof of publication or filing for mentor review. Approved submissions credit points directly to your AI Passport.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <Link
-                href="/claims/new?category=research_patent"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
-              >
-                Submit Paper / Patent Evidence
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Research Papers & Patent Filings
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+              Submit proof of published research or AI patents to earn points directly to your AI Passport.
+            </p>
           </div>
+          <Link
+            href="/claims/new?category=research_patent"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all active:scale-95 shrink-0"
+          >
+            <Sparkles className="h-4 w-4 text-[#F8C401]" />
+            <span>Submit Paper / Patent Evidence</span>
+          </Link>
         </div>
 
         {/* Real KPI — the only fact this feature actually has: the live scoring-matrix point value */}

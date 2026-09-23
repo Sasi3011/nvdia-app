@@ -132,10 +132,29 @@ export function startupStageName(stage: number): string {
   return STARTUP_STAGES.find((s) => s.stage === stage)?.name ?? "Unknown";
 }
 
+// Industry Problem Bank — Solution Stages (mirrors the Startup Launchpad's
+// staged, mentor-approved flow: a student works a problem statement through
+// 6 sequential phases, each unlocked only after a faculty mentor approves
+// the previous one).
+export const PROBLEM_STAGES = [
+  { stage: 1, name: "Problem Understanding" },
+  { stage: 2, name: "Proposed Approach" },
+  { stage: 3, name: "Prototype" },
+  { stage: 4, name: "Testing & Validation" },
+  { stage: 5, name: "Mentor Demo" },
+  { stage: 6, name: "Final Solution" },
+] as const;
+
+export type ProblemStageNumber = (typeof PROBLEM_STAGES)[number]["stage"];
+
+export function problemStageName(stage: number): string {
+  return PROBLEM_STAGES.find((s) => s.stage === stage)?.name ?? "Unknown";
+}
+
 // Section 11.2 — Level & Privilege Matrix.
 // `requiresHighImpact` is open decision #1: Level 6's numeric "High
 // Impact" condition isn't defined in the source spec. It's enforced as a
-// per-user `high_impact_flag` an admin sets manually (see
+// per-student `students.high_impact_flag` an admin sets manually (see
 // packages/database's schema.prisma) until a measurable rule is chosen —
 // flagged here rather than silently assumed.
 export const LEVEL_DEFINITIONS = [

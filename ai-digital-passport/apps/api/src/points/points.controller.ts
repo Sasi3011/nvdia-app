@@ -20,11 +20,11 @@ export class PointsController {
     const { skip, take } = pageSkipTake(query);
     const [{ items, total }, currentUser] = await Promise.all([
       this.pointsService.listForUser(user.userId, skip, take),
-      prisma.user.findUniqueOrThrow({ where: { user_id: user.userId } }),
+      prisma.student.findUnique({ where: { user_id: user.userId } }),
     ]);
 
     return {
-      balance: currentUser.total_points,
+      balance: currentUser?.total_points ?? 0,
       transactions: toPaginatedResult(
         items.map((t) => ({
           transactionId: t.transaction_id,

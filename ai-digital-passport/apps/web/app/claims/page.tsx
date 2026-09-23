@@ -53,38 +53,23 @@ export default function ClaimsPage() {
     <StudentShell>
       <div className="space-y-6">
         
-        {/* Top Header Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
-          <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="max-w-3xl space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#1755A7]">
-                  <Sparkles className="h-3.5 w-3.5 text-[#F8C401]" />
-                  Evidence & Claims Tracker
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/60">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Verification
-                </span>
-              </div>
-              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Submitted Evidence & Claims History</h1>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Track the live review status of your submitted certifications, hackathon projects, research papers, and GPU workloads. Approved points are credited instantly to your AI competence score.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <Link
-                href="/claims/new"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 active:scale-95"
-              >
-                <Plus className="h-4 w-4" />
-                Submit New Evidence
-              </Link>
-            </div>
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Submitted Evidence & Claims History
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+              Track live review status of submitted evidence. Approved points are credited instantly to your AI competence score.
+            </p>
           </div>
+          <Link
+            href="/claims/new"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] via-[#1A5EB7] to-[#2563EB] px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1D4ED8] transition-all active:scale-95 shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Submit New Evidence</span>
+          </Link>
         </div>
 
         {/* 4 KPI Metrics */}

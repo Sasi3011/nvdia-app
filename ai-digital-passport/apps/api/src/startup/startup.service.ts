@@ -127,7 +127,9 @@ export class StartupService {
         skip,
         take,
         include: {
-          lead: { select: { user_id: true, full_name: true, email: true, department: true, cohort_year: true } },
+          lead: {
+            select: { user_id: true, full_name: true, email: true, student: { select: { department: true, cohort_year: true } } },
+          },
           milestones: { select: { status: true } },
         },
       }),
@@ -140,7 +142,14 @@ export class StartupService {
     const project = await prisma.startupProject.findUnique({
       where: { project_id: projectId },
       include: {
-        lead: { select: { user_id: true, full_name: true, email: true, register_num: true, department: true, cohort_year: true } },
+        lead: {
+          select: {
+            user_id: true,
+            full_name: true,
+            email: true,
+            student: { select: { register_num: true, department: true, cohort_year: true } },
+          },
+        },
         milestones: {
           orderBy: [{ target_stage: "asc" }, { created_at: "asc" }],
           include: { reviewer: { select: { full_name: true } } },
