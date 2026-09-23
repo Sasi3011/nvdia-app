@@ -480,7 +480,24 @@ export interface ScanResponse {
   totalPoints?: number;
 }
 
+export interface StudentClassScheduleItem {
+  eventId: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  category: string;
+  year: string | null;
+  department: string | null;
+  sessionType: string | null;
+  startsAt: string;
+  endsAt: string;
+  attended: boolean;
+  qrActive: boolean;
+  isPast: boolean;
+}
+
 export const eventsApi = {
+  list: () => apiClient.get<StudentClassScheduleItem[]>("/events"),
   scan: (sessionId: string, token: string) => apiClient.post<ScanResponse>(`/events/${sessionId}/scan`, { token }),
   // Resolves the active event session purely from the 6-digit TOTP code — no Session ID required.
   scanGlobal: (token: string) => apiClient.post<ScanResponse>(`/events/scan`, { token }),

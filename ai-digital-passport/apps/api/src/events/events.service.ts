@@ -135,6 +135,47 @@ export class EventsService {
     }));
   }
 
+  // ---- Student: CoE Class schedule (Page 17 companion) -------------------
+  // Every published class is visible to every student regardless of
+  // department/year (see admin-events.controller.ts — department/year are
+  // display metadata, never a visibility filter), so this is a flat,
+  // unfiltered list with just the current user's own attendance/QR status
+  // layered on top.
+  async listForStudent(userId: string) {
+    const now = new Date();
+    const events = await prisma.event.findMany({
+      orderBy: { starts_at: "asc" },
+      include: {
+        sessions: {
+          orderBy: { starts_at: "asc" },
+          include: { attendances: { where: { user_id: userId }, select: { attendance_id: true } } },
+        },
+      },
+    });
+    return events.map((e) => {
+      const attended = e.sessions.some((s) => s.attendances.length > 0);
+      // Matches assertQrWindowOpen's real gating logic (time window, not the
+      // stored qr_active flag — see admin-events.controller.ts's sessionDto).
+      const qrActive = e.sessions.some((s) => s.starts_at.getTime() <= now.getTime() && s.ends_at.getTime() >= now.getTime());
+      const isPast = e.ends_at < now;
+      return {
+        eventId: e.event_id,
+        title: e.title,
+        description: e.description,
+        location: e.location,
+        category: e.category,
+        year: e.year,
+        department: e.department,
+        sessionType: e.session_type,
+        startsAt: e.starts_at,
+        endsAt: e.ends_at,
+        attended,
+        qrActive,
+        isPast,
+      };
+    });
+  }
+
   async eventRoster(eventId: string) {
     const rows = await prisma.attendance.findMany({
       where: { session: { event_id: eventId } },

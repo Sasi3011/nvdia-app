@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { StudentShell } from "../../components/shell/StudentShell";
+import { Spinner } from "../../components/ui/Spinner";
+import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { ApiError } from "../../lib/api-client";
-import { eventsApi } from "../../lib/api";
+import { eventsApi, type StudentClassScheduleItem } from "../../lib/api";
 import {
   ScanLine,
   Sparkles,
@@ -13,13 +15,10 @@ import {
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  ShieldCheck,
-  RefreshCw,
-  Clock,
-  Zap,
-  Layers,
-  HelpCircle,
-  GraduationCap
+  GraduationCap,
+  Calendar,
+  MapPin,
+  Radio
 } from "lucide-react";
 
 export default function CoeClassesPage() {
@@ -73,42 +72,84 @@ export default function CoeClassesPage() {
           </div>
         </div>
 
+        {/* Class Schedule */}
+        <ClassSchedule />
+
         {/* Scanner & Manual Entry Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isNative ? <NativeScanner /> : <WebCameraScanner />}
           <ManualEntry />
         </div>
 
-        {/* Attendance Protocols Info */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900">Class Attendance Protocol & Rules</h3>
-              <p className="text-[11px] text-slate-500">Security precautions for valid check-in</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
-            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
-              <strong className="text-slate-900 block font-bold">1. Live Dynamic Codes:</strong>
-              <p>Screenshots cannot be shared. Each TOTP code expires after 30 seconds and is cryptographically validated.</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
-              <strong className="text-slate-900 block font-bold">2. One Check-in Per Session:</strong>
-              <p>Each authenticated student scholar can claim attendance points exactly once per class session.</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
-              <strong className="text-slate-900 block font-bold">3. Manual Fallback:</strong>
-              <p>If your camera is unavailable, type just the 6-digit code displayed below the QR code — no Session ID required.</p>
-            </div>
-          </div>
-        </div>
-
       </div>
     </StudentShell>
+  );
+}
+
+function ClassSchedule() {
+  const schedule = useQuery({ queryKey: ["events", "schedule"], queryFn: eventsApi.list });
+  const items = schedule.data ?? [];
+  const now = Date.now();
+  const upcoming = items.filter((e) => new Date(e.endsAt).getTime() >= now);
+  const past = items.filter((e) => new Date(e.endsAt).getTime() < now);
+  // Upcoming first (soonest first), then recent past (most recent first).
+  const ordered: StudentClassScheduleItem[] = [...upcoming, ...[...past].reverse()];
+
+  return (
+    <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+      <div className="flex items-center gap-2.5 p-5 border-b border-slate-100">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+          <Calendar className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-black text-slate-900">Class Schedule</h2>
+          <p className="text-[11px] text-slate-500">Every scheduled CoE Class, live sessions highlighted</p>
+        </div>
+      </div>
+
+      {schedule.isLoading ? (
+        <div className="p-8 text-center"><Spinner label="Loading class schedule…" /></div>
+      ) : schedule.isError ? (
+        <div className="p-5"><ErrorBanner error={schedule.error} /></div>
+      ) : ordered.length === 0 ? (
+        <div className="p-8 text-center text-xs text-slate-500">No CoE Classes have been scheduled yet.</div>
+      ) : (
+        <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+          {ordered.map((e) => (
+            <div key={e.eventId} className={`flex items-center justify-between gap-4 p-4 ${e.isPast ? "opacity-60" : ""}`}>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-sm text-slate-900 truncate">{e.title}</span>
+                  {e.qrActive && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                      <Radio className="h-2.5 w-2.5 animate-pulse" /> Live Now
+                    </span>
+                  )}
+                  {e.attended && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#1755A7]/10 px-2 py-0.5 text-[10px] font-bold text-[#1755A7]">
+                      <CheckCircle2 className="h-2.5 w-2.5" /> Attended
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                  <span>
+                    {new Date(e.startsAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    {" · "}
+                    {new Date(e.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {" – "}
+                    {new Date(e.endsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {e.location && (
+                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {e.location}</span>
+                  )}
+                  {e.sessionType && <span>{e.sessionType}</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -1,16 +1,21 @@
-import { Body, Controller, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ScanQrSchema } from "@ai-digital-passport/shared-types";
 import { CurrentUser } from "../common/auth/current-user.decorator";
 import type { RequestUser } from "../common/auth/types";
 import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
 import { EventsService } from "./events.service";
 
-// POST /events/:id/scan — live-event QR attendance (Page 17). `:id` is the
-// event_session id — the scanned token is bound to one session/time
-// window (Section 13.1).
+// GET /events, POST /events/:id/scan — CoE Class schedule + live QR
+// attendance (Page 17). `:id` on scan is the event_session id — the
+// scanned token is bound to one session/time window (Section 13.1).
 @Controller("events")
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
+
+  @Get()
+  async list(@CurrentUser() user: RequestUser) {
+    return this.eventsService.listForStudent(user.userId);
+  }
 
   @Post("scan")
   async scanGlobal(
