@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ClaimStatus, Prisma, ProofType, prisma } from "@ai-digital-passport/database";
-import { QR_REFRESH_SECONDS } from "@ai-digital-passport/shared-types";
+import { QR_REFRESH_SECONDS, studentYearLabel } from "@ai-digital-passport/shared-types";
 import { AuditLogService } from "../common/audit-log/audit-log.service";
 import { PointsService } from "../points/points.service";
 import { currentToken, generateQrSecret, verifyToken } from "./totp.util";
@@ -143,7 +143,15 @@ export class EventsService {
   // layered on top.
   async listForStudent(userId: string) {
     const now = new Date();
+    const student = await prisma.student.findUnique({ where: { user_id: userId }, select: { cohort_year: true } });
+    // A class scheduled for a specific year only reaches students actually
+    // in that year (resolved live from their cohort, not stored per-user);
+    // a class with no year set is department/year-agnostic and reaches
+    // everyone, same as before. Non-students (mentors previewing, etc.)
+    // see everything unfiltered.
+    const myYear = student ? studentYearLabel(student.cohort_year, now) : null;
     const events = await prisma.event.findMany({
+      where: myYear ? { OR: [{ year: null }, { year: myYear }] } : undefined,
       orderBy: { starts_at: "asc" },
       include: {
         sessions: {
@@ -358,6 +366,15 @@ export class EventsService {
       include: { event: { include: { scoring_rule: true } } },
     });
     if (!session) throw new NotFoundException({ code: "SESSION_NOT_FOUND" });
+    if (session.event.year) {
+      const student = await prisma.student.findUnique({ where: { user_id: userId }, select: { cohort_year: true } });
+      if (student && studentYearLabel(student.cohort_year) !== session.event.year) {
+        throw new BadRequestException({
+          code: "WRONG_YEAR",
+          message: `This class is scheduled for ${session.event.year} students only.`,
+        });
+      }
+    }
     this.assertQrWindowOpen(session);
     if (!session.qr_secret) {
       throw new BadRequestException({ code: "QR_EXPIRED_OR_INVALID", message: "This QR code has expired. Ask the event host to refresh it." });

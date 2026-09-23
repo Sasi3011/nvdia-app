@@ -9,7 +9,7 @@ import { LiveQrDisplay } from "../../../components/admin/LiveQrDisplay";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { useConfirm } from "../../../components/ui/ConfirmDialogProvider";
-import { QR_REFRESH_SECONDS } from "@ai-digital-passport/shared-types";
+import { QR_REFRESH_SECONDS, CLASS_YEAR_OPTIONS } from "@ai-digital-passport/shared-types";
 import { adminEventsApi, adminScoringApi, type AdminEventInput, type AdminEventResponse, type AdminEventSessionResponse } from "../../../lib/api";
 import { 
   Calendar, 
@@ -41,7 +41,7 @@ import { CustomDateTimePicker } from "../../../components/ui/CustomDateTimePicke
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] transition-colors";
 const labelClass = "text-xs font-bold text-slate-700 flex items-center gap-1.5";
 
-const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+const YEAR_OPTIONS: readonly string[] = CLASS_YEAR_OPTIONS;
 const VENUE_OPTIONS = ["IT Centre", "Code Studio", "Collab Space", "Full Stack Lab"];
 
 // "YYYY-MM-DDTHH:mm" in the browser's local time, which is what the date picker works in.

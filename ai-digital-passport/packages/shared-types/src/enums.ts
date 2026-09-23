@@ -188,3 +188,20 @@ export type ScoringCategory = (typeof SCORING_MATRIX)[number]["category"];
 
 // QR refresh interval (FR-VERIF-01).
 export const QR_REFRESH_SECONDS = 30;
+
+// CoE Class scheduling — the four year labels admin picks from when
+// creating a class (apps/web/app/admin/events/page.tsx's YEAR_OPTIONS),
+// and the same labels a student's own academic year resolves to below.
+export const CLASS_YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"] as const;
+export type ClassYearOption = (typeof CLASS_YEAR_OPTIONS)[number];
+
+// Resolves a student's current academic year label from their cohort
+// (admission) year, so a class scheduled for "1st Year" only reaches
+// students actually in their 1st year — clamped to the 4 labels above
+// so a 5th-year-or-later student still resolves to "4th Year" rather
+// than falling outside every class's audience.
+export function studentYearLabel(cohortYear: number, now: Date = new Date()): ClassYearOption {
+  const yearNumber = now.getFullYear() - cohortYear + 1;
+  const clamped = Math.min(Math.max(yearNumber, 1), CLASS_YEAR_OPTIONS.length);
+  return CLASS_YEAR_OPTIONS[clamped - 1]!;
+}
