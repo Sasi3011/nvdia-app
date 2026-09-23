@@ -209,6 +209,22 @@ export const CreateEventSessionSchema = z.object({
 export type CreateEventSessionInput = z.infer<typeof CreateEventSessionSchema>;
 
 // ---------------------------------------------------------------------------
+// Mentor — CoE Class Teaching Logs ("what I taught in this class")
+// ---------------------------------------------------------------------------
+
+export const CreateClassTeachingLogSchema = z.object({
+  eventId: z.string().trim().min(1),
+  classDate: z.coerce.date(),
+  topicsCovered: z.string().trim().min(1).max(4000),
+  materialsUrl: z.string().trim().url().optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+export type CreateClassTeachingLogInput = z.infer<typeof CreateClassTeachingLogSchema>;
+
+export const UpdateClassTeachingLogSchema = CreateClassTeachingLogSchema.omit({ eventId: true }).partial();
+export type UpdateClassTeachingLogInput = z.infer<typeof UpdateClassTeachingLogSchema>;
+
+// ---------------------------------------------------------------------------
 // Admin — Problem Bank Management (Page 26)
 // ---------------------------------------------------------------------------
 

@@ -11,12 +11,7 @@ export interface StageForm {
   stage: number;
   intro: string;
   fields: StageField[];
-  documentLabel: string;
-  documentRequired: boolean;
 }
-
-export const STARTUP_DOC_ACCEPT = ".pdf,.ppt,.pptx,.doc,.docx";
-export const STARTUP_DOC_HINT = "PDF, PPT/PPTX or DOC/DOCX";
 
 export const STARTUP_STAGE_FORMS: StageForm[] = [
   {
@@ -29,9 +24,8 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
       { key: "targetCustomer", label: "Target Customers / Market", type: "text", placeholder: "e.g. Small farmers in Tamil Nadu", required: true },
       { key: "teamMembers", label: "Team Members", type: "text", placeholder: "Names and roles, comma separated", required: true },
       { key: "uniqueValue", label: "Uniqueness / Competitors", type: "textarea", placeholder: "What makes this different from existing solutions?" },
+      { key: "documentLink", label: "Idea Pitch Deck Link (PPT / Drive)", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
-    documentLabel: "Idea Pitch Deck (PPT)",
-    documentRequired: true,
   },
   {
     stage: 2,
@@ -41,9 +35,8 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
       { key: "techStack", label: "Tech Stack / Models Used", type: "text", placeholder: "e.g. PyTorch, YOLOv8, FastAPI", required: true },
       { key: "repoUrl", label: "GitHub Repository", type: "url", placeholder: "https://github.com/..." },
       { key: "demoUrl", label: "Demo Video / Live Link", type: "url", placeholder: "https://..." },
+      { key: "documentLink", label: "Prototype Documents Link (design doc, report, screenshots)", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
-    documentLabel: "Prototype Documents (design doc, report, screenshots)",
-    documentRequired: true,
   },
   {
     stage: 3,
@@ -53,9 +46,8 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
       { key: "trainingDetails", label: "Model Training / Inference Details", type: "textarea", placeholder: "Dataset size, epochs, training time, batch size…", required: true },
       { key: "benchmark", label: "Benchmark Results", type: "textarea", placeholder: "Accuracy, latency, speedup vs CPU…", required: true },
       { key: "logsUrl", label: "Training Logs / W&B Link", type: "url", placeholder: "https://..." },
+      { key: "documentLink", label: "GPU Validation Report Link", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
-    documentLabel: "GPU Validation Report",
-    documentRequired: true,
   },
   {
     stage: 4,
@@ -65,9 +57,8 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
       { key: "mvpUrl", label: "MVP Live Link / App Link", type: "url", placeholder: "https://...", required: true },
       { key: "usersCount", label: "Number of Test Users", type: "text", placeholder: "e.g. 50" },
       { key: "feedbackSummary", label: "User Feedback Summary", type: "textarea" },
+      { key: "documentLink", label: "MVP Documentation / User Feedback Report Link", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
-    documentLabel: "MVP Documentation / User Feedback Report",
-    documentRequired: true,
   },
   {
     stage: 5,
@@ -77,9 +68,8 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
       { key: "pilotScope", label: "Pilot Scope & Duration", type: "textarea", required: true },
       { key: "pilotOutcome", label: "Pilot Outcome / Results", type: "textarea", required: true },
       { key: "contactPerson", label: "Partner Contact Person", type: "text" },
+      { key: "documentLink", label: "Pilot Proof Link (LoI / MoU / Completion Letter)", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
-    documentLabel: "Pilot Proof (LoI / MoU / Completion Letter)",
-    documentRequired: true,
   },
   {
     stage: 6,
@@ -89,9 +79,8 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
       { key: "revenuePlan", label: "Revenue / Funding Plan", type: "textarea", required: true },
       { key: "proposedEntity", label: "Proposed Entity Type", type: "select", options: ["Private Limited Company", "LLP", "One Person Company (OPC)", "Partnership Firm", "Sole Proprietorship"], required: true },
       { key: "founders", label: "Founders & Shareholding", type: "text", required: true },
+      { key: "documentLink", label: "Final Pitch Deck / Business Plan Link", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
-    documentLabel: "Final Pitch Deck / Business Plan",
-    documentRequired: true,
   },
 ];
 

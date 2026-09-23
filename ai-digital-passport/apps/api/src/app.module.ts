@@ -7,6 +7,7 @@ import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { AwardsModule } from "./awards/awards.module";
 import { AuditLogModule } from "./common/audit-log/audit-log.module";
+import { ClassTeachingLogsModule } from "./class-teaching-logs/class-teaching-logs.module";
 import { SessionAuthGuard } from "./common/auth/session-auth.guard";
 import { RolesGuard } from "./common/auth/roles.guard";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
@@ -47,6 +48,7 @@ import { WhitelistModule } from "./whitelist/whitelist.module";
     ClaimsModule,
     MentorModule,
     EventsModule,
+    ClassTeachingLogsModule,
     ProblemsModule,
     ProgramModule,
     ExternalHackathonsModule,

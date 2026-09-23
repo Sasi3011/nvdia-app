@@ -62,6 +62,7 @@ const MENTOR_NAV_GROUPS: ConsoleNavGroup[] = [
     items: [
       { href: "/mentor", label: "Dashboard", icon: LayoutDashboard },
       { href: "/mentor/queue", label: "Verification Queue", icon: Inbox },
+      { href: "/mentor/coe-classes", label: "CoE Classes", icon: Calendar },
       { href: "/mentor/students", label: "Student Progress", icon: TrendingUp },
       { href: "/mentor/course-catalog", label: "Course Catalog", icon: Library },
       { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },

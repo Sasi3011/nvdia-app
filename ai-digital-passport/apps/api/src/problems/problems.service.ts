@@ -3,10 +3,22 @@ import { prisma, ProblemStatus } from "@ai-digital-passport/database";
 
 @Injectable()
 export class ProblemsService {
-  async listPublished(skip: number, take: number) {
+  async listPublished(userId: string, skip: number, take: number) {
     const where = { status: ProblemStatus.PUBLISHED };
     const [items, total] = await Promise.all([
-      prisma.industryProblem.findMany({ where, orderBy: { created_at: "desc" }, skip, take }),
+      prisma.industryProblem.findMany({ 
+        where, 
+        orderBy: { created_at: "desc" }, 
+        skip, 
+        take,
+        include: {
+          submissions: {
+            where: { user_id: userId },
+            orderBy: { created_at: "desc" },
+            take: 1
+          }
+        }
+      }),
       prisma.industryProblem.count({ where }),
     ]);
     return { items, total };

@@ -14,7 +14,7 @@ import { claimsApi, levelsApi, meApi } from "../../lib/api";
 import { useMe } from "../../lib/session";
 import {
   Award, BookOpen, Cpu, Flag, GraduationCap, Microscope, Plus,
-  Rocket, ShieldCheck, Sparkles, TrendingUp, Trophy, Users,
+  Rocket, ShieldCheck, Sparkles, TrendingUp, Trophy,
   ChevronRight, Lightbulb, FileCheck, Layers, ArrowUpRight,
   ExternalLink, Activity, Calendar,
 } from "lucide-react";
@@ -38,7 +38,6 @@ const STUDENT_MODULES = [
   { href: "/problems",   label: "Industry Grand Challenges", desc: "Solve enterprise AI statements",      icon: Lightbulb,  tag: "Level 3+",     color: "from-[#F8C401] to-[#EAB308]" },
   { href: "/hackathons", label: "AI Hackathons",             desc: "Competitive team sprints",            icon: Flag,       tag: "Competition",  color: "from-[#F59E0B] to-[#F8C401]" },
   { href: "/research",   label: "Research Fellowships",      desc: "Lab grants and publications",         icon: Microscope, tag: "Fellowship",   color: "from-[#1755A7] to-[#1E40AF]" },
-  { href: "/industry",   label: "Industry Connect",          desc: "Internships and corporate placements",icon: Users,      tag: "Placement",    color: "from-[#2563EB] to-[#60A5FA]" },
   { href: "/startup",    label: "Startup Launchpad",         desc: "AI venture incubation",               icon: Rocket,     tag: "Innovation",   color: "from-[#F8C401] to-[#F59E0B]" },
   { href: "/claims",     label: "Evidence and Claims",       desc: "Submit proof and verify points",      icon: FileCheck,  tag: "Verification", color: "from-[#1755A7] to-[#2563EB]" },
   { href: "/awards",     label: "Awards and Credentials",    desc: "Official certificates and badges",    icon: Award,      tag: "Distinction",  color: "from-[#10B981] to-[#059669]" },

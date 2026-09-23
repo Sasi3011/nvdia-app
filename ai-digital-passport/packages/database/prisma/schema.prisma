@@ -221,6 +221,7 @@ model User {
   fellowship_candidacies  FellowshipCandidate[]
   audit_logs              AuditLog[]
   events_created          Event[]
+  class_teaching_logs     ClassTeachingLog[]
   audit_runs_triggered    AnnualAuditRun[]
   ota_bundles_published   OtaBundle[]
   courses_created         Course[]
@@ -336,9 +337,10 @@ model Event {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  creator      User?          @relation(fields: [created_by], references: [user_id])
-  scoring_rule ScoringRule    @relation(fields: [category], references: [category])
+  creator      User?              @relation(fields: [created_by], references: [user_id])
+  scoring_rule ScoringRule        @relation(fields: [category], references: [category])
   sessions     EventSession[]
+  teaching_logs ClassTeachingLog[]
 
   @@index([category])
   @@map("events")
@@ -399,6 +401,30 @@ model Attendance {
   // student.
   @@unique([user_id, session_id])
   @@map("attendance")
+}
+
+// Faculty-authored record of what was actually taught in a CoE Class
+// session — separate from Attendance (which just proves a student showed
+// up). Mentors log/update their own entries; admin reads every entry
+// across all departments/mentors (no department scoping, same convention
+// as the rest of the app — department is metadata, not an access filter).
+model ClassTeachingLog {
+  log_id         String   @id @default(uuid())
+  event_id       String
+  mentor_id      String
+  class_date     DateTime
+  topics_covered String
+  materials_url  String?
+  notes          String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  event  Event @relation(fields: [event_id], references: [event_id])
+  mentor User  @relation(fields: [mentor_id], references: [user_id])
+
+  @@index([event_id])
+  @@index([mentor_id])
+  @@map("class_teaching_logs")
 }
 
 // Append-only points ledger (BR-12 traceability). `claim_id` is unique so

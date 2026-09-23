@@ -4,7 +4,7 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, CheckCircle2, Clock, XCircle, Upload, Globe2, MapPin, Pencil, Plus, RefreshCw, Trash2, Trophy, X, Search } from "lucide-react";
-import { externalHackathonsApi, uploadsApi, type ExternalHackathon } from "../../lib/api";
+import { externalHackathonsApi, type ExternalHackathon } from "../../lib/api";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
 
@@ -51,25 +51,8 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
   });
   const [proofFor, setProofFor] = useState<ExternalHackathon | null>(null);
   const register = useMutation({
-    mutationFn: async ({ id, file, link }: { id: string; file: File | null; link: string }) => {
-      if (file) {
-        const uploaded = await uploadsApi.uploadPdf({
-          fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          base64Data: await fileToBase64(file),
-          entityType: "activity_claim",
-        });
-        return externalHackathonsApi.register(id, {
-          proofType: "PDF_FILE",
-          fileKey: uploaded.fileKey,
-          fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-        });
-      }
-      return externalHackathonsApi.register(id, { proofType: "DOI_LINK", proofUrl: link });
-    },
+    mutationFn: async ({ id, link }: { id: string; link: string }) =>
+      externalHackathonsApi.register(id, { proofType: "DOI_LINK", proofUrl: link }),
     onSuccess: (r) => {
       refresh();
       setProofFor(null);
@@ -179,7 +162,7 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
           hackathon={proofFor}
           pending={register.isPending}
           error={register.error}
-          onSubmit={(file, link) => register.mutate({ id: proofFor.external_id, file, link })}
+          onSubmit={(link) => register.mutate({ id: proofFor.external_id, link })}
           onClose={() => {
             register.reset();
             setProofFor(null);
@@ -408,27 +391,13 @@ function AddModal({ existing, onClose, onAdded }: { existing: ExternalHackathon 
   );
 }
 
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 function ProofModal({
   hackathon, pending, error, onSubmit, onClose,
 }: {
-  hackathon: ExternalHackathon; pending: boolean; error: unknown; onSubmit: (file: File | null, link: string) => void; onClose: () => void;
+  hackathon: ExternalHackathon; pending: boolean; error: unknown; onSubmit: (link: string) => void; onClose: () => void;
 }) {
-  const [mode, setMode] = useState<"FILE" | "LINK">("FILE");
-  const [file, setFile] = useState<File | null>(null);
   const [link, setLink] = useState("");
-  const ready = mode === "FILE" ? !!file : /^https?:\/\/\S+$/.test(link.trim());
+  const ready = /^https?:\/\/\S+$/.test(link.trim());
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
@@ -436,7 +405,7 @@ function ProofModal({
         className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-2xl"
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit(mode === "FILE" ? file : null, link.trim());
+          onSubmit(link.trim());
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -449,26 +418,10 @@ function ProofModal({
           </button>
         </div>
         <p className="text-xs text-slate-600">
-          Register on the hackathon site first, then upload a photo/screenshot or PDF of the confirmation, or share a link to it. A mentor will verify it;
+          Register on the hackathon site first, then share a link to your confirmation (screenshot on Google Drive, or a direct link). A mentor will verify it;
           you get +{hackathon.register_points} points only if it is approved.
         </p>
-        <div className="flex gap-2">
-          {(["FILE", "LINK"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={`flex-1 rounded-xl border px-3 py-2 text-xs font-bold ${mode === m ? "border-[#1755A7] bg-blue-50 text-[#1755A7]" : "border-slate-200 text-slate-600"}`}
-            >
-              {m === "FILE" ? "Upload photo / PDF" : "Proof link"}
-            </button>
-          ))}
-        </div>
-        {mode === "FILE" ? (
-          <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className={inputClass} />
-        ) : (
-          <input type="url" placeholder="https://..." value={link} onChange={(e) => setLink(e.target.value)} className={inputClass} />
-        )}
+        <input type="url" placeholder="https://drive.google.com/... or any direct link" value={link} onChange={(e) => setLink(e.target.value)} className={inputClass} />
         {error ? <ErrorBanner error={error} /> : null}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600">

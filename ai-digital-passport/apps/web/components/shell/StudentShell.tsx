@@ -11,8 +11,7 @@ import {
   Gauge, 
   LogOut, 
   ScanLine, 
-  Trophy, 
-  Users, 
+  Trophy,
   FileCheck,
   Flag,
   Microscope,
@@ -45,24 +44,23 @@ const NAV_GROUPS: StudentNavGroup[] = [
       { href: "/dashboard", label: "Overview & Analytics", icon: Gauge },
       { href: "/courses", label: "Courses & Curricula", icon: BookOpen },
       { href: "/gpu", label: "GPU Supercomputing", icon: Cpu, badge: "Live" },
-      { href: "/problems", label: "Industry Problems", icon: Lightbulb },
     ],
   },
   {
     label: "Innovation & Labs",
     items: [
+      { href: "/problems", label: "Industry Problems", icon: Lightbulb },
       { href: "/hackathons", label: "Hackathons & Challenges", icon: Flag, badge: "Active" },
-      { href: "/industry", label: "Industry Connect", icon: Users },
       { href: "/startup", label: "Startup Launchpad", icon: Rocket },
     ],
   },
   {
     label: "Credentials & Rewards",
     items: [
+      { href: "/scan", label: "Event QR Check-in", icon: ScanLine },
       { href: "/claims", label: "Evidence & Claims", icon: FileCheck },
       { href: "/awards", label: "Awards", icon: Award },
       { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-      { href: "/scan", label: "Event QR Check-in", icon: ScanLine },
     ],
   },
 ];

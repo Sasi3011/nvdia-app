@@ -22,7 +22,8 @@ import {
   ShieldCheck, 
   Clock, 
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Briefcase
 } from "lucide-react";
 
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] transition-colors";
@@ -60,51 +61,71 @@ function Content() {
   const c = course.data;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Link 
-          href="/admin/courses" 
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <span className="text-xs font-bold text-slate-400">Back to Curriculum Catalog</span>
-      </div>
+    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+      
+      {/* Top Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 lg:p-8 shadow-xs">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-gradient-to-br from-[#1755A7]/10 to-[#F8C401]/15 blur-3xl pointer-events-none" />
+        <div className="relative z-10 space-y-4">
+          <Link
+            href="/admin/courses"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1755A7] hover:underline mb-2"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Curriculum Catalog
+          </Link>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#1755A7]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#1755A7]">
+                  <Briefcase className="h-3 w-3" />
+                  {c.provider}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
+                  {c.difficulty}
+                </span>
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">{c.title}</h1>
+              <p className="text-sm text-slate-500 mt-1 max-w-2xl">{c.category}</p>
+            </div>
 
-      <ConsolePageHeader
-        title={c.title}
-        description={`${c.provider} • ${c.category} • ${c.difficulty} • +${c.pointsValue} pts`}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setEditingCourse((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all"
-            >
-              <Edit3 className="h-3.5 w-3.5 text-[#1755A7]" />
-              <span>{editingCourse ? "Close Editor" : "Edit Details"}</span>
-            </button>
-            {c.status !== "PUBLISHED" ? (
-              <button
-                disabled={publish.isPending}
-                onClick={() => publish.mutate()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#124282] transition-all disabled:opacity-50"
-              >
-                <CheckCircle className="h-3.5 w-3.5" />
-                <span>Publish Course</span>
-              </button>
-            ) : (
-              <button
-                disabled={archive.isPending}
-                onClick={() => archive.mutate()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-all disabled:opacity-50"
-              >
-                <Archive className="h-3.5 w-3.5" />
-                <span>Archive</span>
-              </button>
-            )}
+            <div className="flex flex-col sm:items-end gap-3 self-start sm:self-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F8C401]/15 px-4 py-2 font-mono text-sm font-black text-amber-900 border border-[#F8C401]/30 shadow-sm">
+                <Award className="h-4 w-4 text-[#F8C401]" />
+                +{c.pointsValue} Points
+              </span>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditingCourse((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all"
+                >
+                  <Edit3 className="h-3.5 w-3.5 text-[#1755A7]" />
+                  <span>{editingCourse ? "Close Editor" : "Edit Details"}</span>
+                </button>
+                {c.status !== "PUBLISHED" ? (
+                  <button
+                    disabled={publish.isPending}
+                    onClick={() => publish.mutate()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#124282] transition-all disabled:opacity-50"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span>Publish Course</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled={archive.isPending}
+                    onClick={() => archive.mutate()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-all disabled:opacity-50"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    <span>Archive</span>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        }
-      />
+        </div>
+      </div>
 
       {(publish.isError || archive.isError) && <ErrorBanner error={publish.error ?? archive.error} />}
 

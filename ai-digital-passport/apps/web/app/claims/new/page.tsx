@@ -7,44 +7,35 @@ import { ProofType } from "@ai-digital-passport/shared-types";
 import { StudentShell } from "../../../components/shell/StudentShell";
 import { Spinner } from "../../../components/ui/Spinner";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
-import { activitiesApi, uploadsApi } from "../../../lib/api";
-import { 
-  FileCheck, 
-  Sparkles, 
-  Upload, 
-  Code2, 
+import { activitiesApi } from "../../../lib/api";
+import {
+  FileCheck,
+  Sparkles,
   GitBranch,
-  BookOpen, 
-  CheckCircle2, 
-  ShieldCheck, 
-  ArrowLeft, 
+  BookOpen,
+  CheckCircle2,
+  ShieldCheck,
+  ArrowLeft,
   Send,
-  HelpCircle,
-  FileText,
-  AlertCircle
+  AlertCircle,
+  Link as LinkIcon,
 } from "lucide-react";
 import Link from "next/link";
 
-type SubmittableProofType = typeof ProofType.PDF_FILE | typeof ProofType.GITHUB_LINK | typeof ProofType.DOI_LINK;
+type SubmittableProofType = typeof ProofType.GITHUB_LINK | typeof ProofType.DOI_LINK;
 
-const PROOF_TYPES: { value: SubmittableProofType; label: string; icon: typeof Upload; desc: string }[] = [
-  { 
-    value: ProofType.PDF_FILE, 
-    label: "PDF Certificate / Report", 
-    icon: Upload, 
-    desc: "NVIDIA certificate, paper preprint, or event receipt (Max 10MB)" 
+const PROOF_TYPES: { value: SubmittableProofType; label: string; icon: typeof GitBranch; desc: string }[] = [
+  {
+    value: ProofType.GITHUB_LINK,
+    label: "Repository / Project Link",
+    icon: GitBranch,
+    desc: "GitHub repo, code, models, or any project link"
   },
-  { 
-    value: ProofType.GITHUB_LINK, 
-    label: "GitHub Repository", 
-    icon: GitBranch, 
-    desc: "Open source repo with code, models, and comprehensive README" 
-  },
-  { 
-    value: ProofType.DOI_LINK, 
-    label: "Published DOI / Patent Link", 
-    icon: BookOpen, 
-    desc: "Permanent DOI from IEEE, ACM, Springer, or Patent Office" 
+  {
+    value: ProofType.DOI_LINK,
+    label: "Document / Certificate Link",
+    icon: BookOpen,
+    desc: "Google Drive, DOI, patent office, or any other document link"
   },
 ];
 
@@ -66,36 +57,12 @@ function SubmitClaimForm() {
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
   const [proofType, setProofType] = useState<SubmittableProofType>(ProofType.GITHUB_LINK);
   const [proofUrl, setProofUrl] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadError, setUploadError] = useState<unknown>(null);
 
   const selectedActivity = (activities.data ?? []).find((a) => a.category === category);
 
   const submit = useMutation({
-    mutationFn: async () => {
-      if (proofType === ProofType.PDF_FILE) {
-        if (!file) throw new Error("Please select a valid PDF file to upload.");
-        setUploadError(null);
-        const uploaded = await uploadsApi.uploadPdf({
-          fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          base64Data: await fileToBase64(file),
-          entityType: "activity_claim",
-        });
-        return activitiesApi.createClaim({
-          category,
-          proofType,
-          fileKey: uploaded.fileKey,
-          fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-        });
-      }
-      return activitiesApi.createClaim({ category, proofType, proofUrl });
-    },
+    mutationFn: async () => activitiesApi.createClaim({ category, proofType, proofUrl }),
     onSuccess: () => router.push("/claims"),
-    onError: (err) => setUploadError(err),
   });
 
   return (
@@ -133,9 +100,7 @@ function SubmitClaimForm() {
             }}
             className="space-y-6"
           >
-            {Boolean(submit.isError || uploadError) && (
-              <ErrorBanner error={uploadError ?? submit.error} />
-            )}
+            {submit.isError && <ErrorBanner error={submit.error} />}
 
             {/* Category Select */}
             <div className="space-y-2">
@@ -198,48 +163,29 @@ function SubmitClaimForm() {
               </div>
             </div>
 
-            {/* Proof Input */}
+            {/* Proof Input — link only (GitHub, Google Drive, DOI, or any other direct/shareable link) */}
             <div className="space-y-2">
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-900">
-                3. Provide Proof Artifact
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                <LinkIcon className="h-3.5 w-3.5 text-[#1755A7]" />
+                3. Provide Evidence Link
               </label>
-
-              {proofType === ProofType.PDF_FILE ? (
-                <div className="relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center hover:bg-slate-50 transition-colors">
-                  <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-                  <div className="text-xs font-bold text-slate-700">
-                    {file ? file.name : "Click to choose or drag & drop PDF certificate"}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-1">
-                    {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · Ready to upload` : "PDF format only, maximum 10MB"}
-                  </div>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    required
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <input
-                    type="url"
-                    required
-                    value={proofUrl}
-                    onChange={(e) => setProofUrl(e.target.value)}
-                    placeholder={
-                      proofType === ProofType.GITHUB_LINK
-                        ? "https://github.com/username/project-repo"
-                        : "https://doi.org/10.1109/..."
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-xs font-medium text-slate-900 focus:border-[#1755A7] focus:outline-none transition-all"
-                  />
-                  <span className="block text-[11px] text-slate-400">
-                    Ensure the URL is public and accessible to reviewers without login restrictions.
-                  </span>
-                </div>
-              )}
+              <div className="space-y-1">
+                <input
+                  type="url"
+                  required
+                  value={proofUrl}
+                  onChange={(e) => setProofUrl(e.target.value)}
+                  placeholder={
+                    proofType === ProofType.GITHUB_LINK
+                      ? "https://github.com/username/project-repo"
+                      : "https://drive.google.com/... or https://doi.org/10.1109/..."
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-xs font-medium text-slate-900 focus:border-[#1755A7] focus:outline-none transition-all"
+                />
+                <span className="block text-[11px] text-slate-400">
+                  Paste any public link — GitHub, Google Drive, DOI, or a direct download link. Ensure it's accessible to reviewers without login restrictions.
+                </span>
+              </div>
             </div>
 
             {/* Submit Action */}
@@ -311,16 +257,4 @@ function SubmitClaimForm() {
       </div>
     </div>
   );
-}
-
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }

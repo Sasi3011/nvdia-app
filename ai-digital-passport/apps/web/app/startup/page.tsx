@@ -6,8 +6,8 @@ import { STARTUP_STAGES } from "@ai-digital-passport/shared-types";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
-import { startupApi, uploadsApi, API_BASE_URL } from "../../lib/api";
-import { STARTUP_STAGE_FORMS, STARTUP_DOC_ACCEPT, STARTUP_DOC_HINT, STARTUP_REGISTRATION_GUIDE } from "../../lib/startup-stages";
+import { startupApi, API_BASE_URL } from "../../lib/api";
+import { STARTUP_STAGE_FORMS, STARTUP_REGISTRATION_GUIDE } from "../../lib/startup-stages";
 import { 
   Rocket, 
   Sparkles, 
@@ -300,6 +300,11 @@ function StartupContent() {
                         </td>
                         <td className="px-5 py-3 font-mono text-slate-600">
                           {new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {m.details?.fields?.documentLink && (
+                            <a href={m.details.fields.documentLink} target="_blank" rel="noreferrer" className="mt-1 block truncate font-sans font-semibold text-[#1755A7] hover:underline">
+                              Document Link
+                            </a>
+                          )}
                           {m.details?.documents?.map((d) => (
                             <a key={d.fileKey} href={`${API_BASE_URL}/uploads/files/${d.fileKey}`} target="_blank" rel="noreferrer" className="mt-1 block truncate font-sans font-semibold text-[#1755A7] hover:underline">
                               {d.fileName}
@@ -346,26 +351,11 @@ function StageSubmissionModal({
   const form = STARTUP_STAGE_FORMS[targetStage - 1] ?? STARTUP_STAGE_FORMS[0]!;
   const [title, setTitle] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
-  const [files, setFiles] = useState<File[]>([]);
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (form.documentRequired && files.length === 0) {
-        throw new Error(`Please upload the ${form.documentLabel}.`);
-      }
-      const documents = [];
-      for (const file of files) {
-        const uploaded = await uploadsApi.uploadPdf({
-          fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          base64Data: await fileToBase64(file),
-          entityType: "startup_milestone",
-        });
-        documents.push({ fileKey: uploaded.fileKey, fileName: file.name });
-      }
       const projectId = project?.projectId ?? (await startupApi.create(title)).projectId;
-      return startupApi.submitMilestone(projectId, { targetStage, details: values, documents });
+      return startupApi.submitMilestone(projectId, { targetStage, details: values });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["startup", "projects"] });
@@ -446,20 +436,6 @@ function StageSubmissionModal({
             );
           })}
 
-          <div>
-            <label className="mb-1 block font-bold text-slate-900">
-              {form.documentLabel} {form.documentRequired && <span className="text-rose-500">*</span>}
-            </label>
-            <input
-              type="file"
-              multiple
-              accept={STARTUP_DOC_ACCEPT}
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 5))}
-              className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-3"
-            />
-            <p className="mt-1 text-[11px] text-slate-500">{STARTUP_DOC_HINT} · up to 5 files</p>
-          </div>
-
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600">
             <strong className="text-slate-800">Mentor approval required:</strong> your mentor will review this submission.
             The next stage unlocks only after approval.
@@ -529,16 +505,4 @@ function RegistrationGuide() {
       </div>
     </div>
   );
-}
-
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }

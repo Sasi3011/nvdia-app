@@ -81,18 +81,22 @@ export default function CoursesPage() {
           </Link>
         </div>
 
-        {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+        {/* KPI Overview Tiles */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Card 1: Available Modules */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#1755A7] via-[#2563EB] to-[#38BDF8]" />
+            <div className="flex items-center justify-between mt-1">
               <span className="text-xs font-semibold text-slate-500">Available Modules</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#1755A7]/15 to-[#2563EB]/10 text-[#1755A7]">
                 <BookOpen className="h-4.5 w-4.5" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{allCourses.length || 18}</span>
-              <span className="text-xs font-semibold text-emerald-600">Active Catalog</span>
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{allCourses.length || 18}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+                Active Catalog
+              </span>
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
               <span>NVIDIA DLI Accreditation:</span>
@@ -100,56 +104,45 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+          {/* Card 2: In Progress Modules */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400" />
+            <div className="flex items-center justify-between mt-1">
               <span className="text-xs font-semibold text-slate-500">In Progress Modules</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8C401]/20 text-slate-900">
-                <Clock className="h-4.5 w-4.5 text-amber-700" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-400/10 text-emerald-600">
+                <Clock className="h-4.5 w-4.5" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{inProgressCount || 2}</span>
-              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{inProgressCount || 2}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
                 Active Learning
               </span>
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
               <span>Estimated Finish:</span>
-              <span className="font-bold text-slate-800">This Week</span>
+              <span className="font-bold text-[#1755A7]">This Week</span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+          {/* Card 3: Completed & Verified */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] via-amber-500 to-orange-500" />
+            <div className="flex items-center justify-between mt-1">
               <span className="text-xs font-semibold text-slate-500">Completed & Verified</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 text-amber-600">
                 <CheckCircle2 className="h-4.5 w-4.5" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-emerald-700">{completedCount || 4}</span>
-              <span className="text-xs font-bold text-emerald-600">Pathways</span>
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{completedCount || 4}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+                Pathways
+              </span>
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
               <span>Points Earned:</span>
-              <span className="font-bold text-slate-800">550 pts</span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Total Bounty Pool</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-                <Award className="h-4.5 w-4.5" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-[#1755A7]">{(totalPointsPool || 2400).toLocaleString()}</span>
-              <span className="text-xs font-bold text-slate-500">pts available</span>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
-              <span>Avg per Course:</span>
-              <span className="font-bold text-slate-800">120 pts</span>
+              <span className="font-bold text-[#1755A7]">550 pts</span>
             </div>
           </div>
         </div>

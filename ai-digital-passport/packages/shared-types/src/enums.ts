@@ -150,7 +150,7 @@ export const LEVEL_DEFINITIONS = [
 export type LevelId = (typeof LEVEL_DEFINITIONS)[number]["levelId"];
 
 // The Industry Problem Bank gate (BR-07, Page 11).
-export const PROBLEM_BANK_MIN_LEVEL = 3;
+export const PROBLEM_BANK_MIN_LEVEL = 0;
 
 // Section 11.1 — Scoring Matrix (fixed point values).
 // `category` is the stable key `activity_claims.category` and

@@ -6,7 +6,7 @@ import { PROBLEM_BANK_MIN_LEVEL } from "@ai-digital-passport/shared-types";
 import { StudentShell } from "../../components/shell/StudentShell";
 import { Spinner } from "../../components/ui/Spinner";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
-import { problemsApi, uploadsApi, type FileAttachment, type ProblemResponse } from "../../lib/api";
+import { problemsApi, type FileAttachment, type ProblemResponse } from "../../lib/api";
 import { AttachmentViewer } from "../../components/shared/AttachmentViewer";
 import { useMe } from "../../lib/session";
 import {
@@ -20,20 +20,11 @@ import {
   X,
   Send,
   Shield,
+  Link as LinkIcon,
+  Eye,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
-
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function ProblemsPage() {
   const me = useMe(true);
@@ -41,8 +32,9 @@ export default function ProblemsPage() {
   const [search, setSearch] = useState("");
   const [activeModalProblem, setActiveModalProblem] = useState<ProblemResponse | null>(null);
   const [fileProblem, setFileProblem] = useState<ProblemResponse | null>(null);
+  const [viewingSubmissionProblem, setViewingSubmissionProblem] = useState<ProblemResponse | null>(null);
   const [summary, setSummary] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [solutionLink, setSolutionLink] = useState("");
 
   const problemsQuery = useQuery({
     queryKey: ["problems"],
@@ -51,20 +43,8 @@ export default function ProblemsPage() {
   });
 
   const submitMutation = useMutation({
-    mutationFn: async (problemId: string) => {
-      let fileKey: string | undefined;
-      if (file) {
-        const uploaded = await uploadsApi.uploadPdf({
-          fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          base64Data: await fileToBase64(file),
-          entityType: "problem_submission",
-        });
-        fileKey = uploaded.fileKey;
-      }
-      return problemsApi.submit(problemId, { summary, fileKey });
-    },
+    mutationFn: async (problemId: string) =>
+      problemsApi.submit(problemId, { summary: `Solution link: ${solutionLink}\n\n${summary}` }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["problems"] });
     },
@@ -96,7 +76,7 @@ export default function ProblemsPage() {
   function closeModal() {
     setActiveModalProblem(null);
     setSummary("");
-    setFile(null);
+    setSolutionLink("");
     submitMutation.reset();
   }
 
@@ -121,37 +101,77 @@ export default function ProblemsPage() {
               </div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Industry Problem Statements & Challenges</h1>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Real problem statements published by admin-onboarded industry partners. Submit your solution write-up (and optional proof file) directly against a challenge for mentor review.
+                Real problem statements published by admin-onboarded industry partners. Submit your solution write-up with a link (GitHub, Google Drive, or any other) directly against a challenge for mentor review.
               </p>
             </div>
           </div>
         </div>
 
-        {/* KPI Metrics — real counts only */}
+        {/* KPI Metrics */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Active Problems</div>
-            <div className="mt-2 text-2xl font-black text-slate-900">{isLocked ? "—" : allProblems.length}</div>
-            <div className="mt-1 text-xs text-slate-500">Published by admin</div>
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-[#1755A7]/40 hover:shadow-md transition-all">
+            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#1755A7] via-[#2563EB] to-[#38BDF8]" />
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Active Problems</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#1755A7]/15 to-[#2563EB]/10 text-[#1755A7]">
+                <Lightbulb className="h-4.5 w-4.5" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-slate-900 tracking-tight">{isLocked ? "—" : allProblems.length}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
+                Published
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
+              <span>Managed by Admin:</span>
+              <span className="font-bold text-slate-800">Yes</span>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Partner Organizations</div>
-            <div className="mt-2 text-2xl font-black text-[#1755A7]">{isLocked ? "—" : organizationCount}</div>
-            <div className="mt-1 text-xs text-slate-500">Distinct sponsors listed</div>
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-amber-400/40 hover:shadow-md transition-all">
+            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] via-[#F59E0B] to-[#EA580C]" />
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Partner Organizations</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#F8C401]/25 to-[#EA580C]/15 text-amber-600">
+                <Building2 className="h-4.5 w-4.5" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="bg-gradient-to-r from-[#1755A7] to-[#2563EB] bg-clip-text text-3xl font-black tracking-tight text-transparent">{isLocked ? "—" : organizationCount}</span>
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-slate-500">
+                Enterprises
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
+              <span>Sponsor Count:</span>
+              <span className="font-bold text-[#1755A7]">{isLocked ? "-" : organizationCount}</span>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Access Tier</div>
-            <div className="mt-2 text-2xl font-black text-emerald-600">{isLocked ? "Level Locked" : "Unlocked"}</div>
-            <div className="mt-1 text-xs text-slate-500">Requires Level {PROBLEM_BANK_MIN_LEVEL}</div>
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm hover:border-emerald-400/40 hover:shadow-md transition-all">
+            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Access Tier</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-400/15 text-emerald-600">
+                {isLocked ? <Lock className="h-4.5 w-4.5" /> : <Shield className="h-4.5 w-4.5" />}
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className={`text-2xl font-black tracking-tight ${isLocked ? "text-slate-400" : "text-emerald-600"}`}>{isLocked ? "Locked" : "Unlocked"}</span>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
+              <span>Required Level:</span>
+              <span className="font-bold text-slate-800">Level {PROBLEM_BANK_MIN_LEVEL}</span>
+            </div>
           </div>
         </div>
 
         {/* Level Locked State */}
         {isLocked ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-8 shadow-xs text-center max-w-2xl mx-auto space-y-4">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F8C401]/20 text-[#1755A7] border border-[#F8C401]/40">
+          <div className="relative overflow-hidden rounded-2xl border border-[#F8C401]/30 bg-gradient-to-b from-white to-amber-50/30 p-8 shadow-sm text-center max-w-2xl mx-auto space-y-4">
+            <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-[#F8C401] to-[#F59E0B]" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F8C401]/10 text-amber-600 border border-[#F8C401]/20">
               <Lock className="h-6 w-6" />
             </div>
             <h2 className="text-xl font-black text-slate-900">Reach Level {PROBLEM_BANK_MIN_LEVEL} to Unlock Problem Bank</h2>
@@ -164,8 +184,8 @@ export default function ProblemsPage() {
                 <span>Current: {currentPoints.toLocaleString()} pts (Level {currentLevel})</span>
                 <span>Target: {requiredPoints.toLocaleString()} pts</span>
               </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-[#1755A7] transition-all duration-500" style={{ width: `${progressPct}%` }} />
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#1755A7] to-[#2563EB] transition-all duration-500" style={{ width: `${progressPct}%` }} />
               </div>
               <span className="block text-[11px] text-slate-500 font-mono">{(requiredPoints - currentPoints).toLocaleString()} points needed to unlock</span>
             </div>
@@ -173,7 +193,7 @@ export default function ProblemsPage() {
             <div className="pt-3">
               <Link
                 href="/courses"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#134486] transition-all shadow-xs"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-6 py-3 text-xs font-bold text-white hover:bg-[#134486] transition-all shadow-md hover:shadow-lg active:scale-95"
               >
                 Earn Points in Courses
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -208,53 +228,132 @@ export default function ProblemsPage() {
                   : "No problems match your search."}
               </div>
             ) : (
-              /* Problem Cards Grid */
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {filteredProblems.map((prob) => (
-                  <div
-                    key={prob.problemId}
-                    className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs transition-all hover:border-[#1755A7]/40 hover:shadow-md"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1755A7]/10 px-2.5 py-0.5 text-xs font-bold text-[#1755A7]">
-                          <Building2 className="h-3 w-3 text-[#1755A7]" />
-                          {prob.organization || "Sri Eshwar Industry Partner"}
-                        </span>
-                        {prob.levelRequirement != null && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-                            <Shield className="h-3 w-3" /> Level {prob.levelRequirement}+
+              /* Problem Table */
+              <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-6 py-3.5">Problem Statement & Scope</th>
+                      <th className="px-6 py-3.5">Organization / Sponsor</th>
+                      <th className="px-6 py-3.5">Level Req.</th>
+                      <th className="px-6 py-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredProblems.map((prob) => (
+                      <tr key={prob.problemId} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-start gap-3.5 max-w-md">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
+                              <Lightbulb className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-900 text-[13px]">{prob.title}</span>
+                              <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{prob.description}</p>
+                              {prob.attachment && (
+                                <button
+                                  type="button"
+                                  onClick={() => setFileProblem(prob)}
+                                  className="mt-2 text-[11px] font-bold text-slate-600 hover:text-[#1755A7] flex items-center gap-1 transition-colors"
+                                >
+                                  <FileText className="h-3.5 w-3.5" /> View original attachment
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 text-xs bg-slate-100 px-3 py-1 rounded-xl">
+                            <Building2 className="h-3.5 w-3.5 text-[#1755A7]" />
+                            {prob.organization || "Sri Eshwar Partner"}
                           </span>
-                        )}
-                      </div>
+                        </td>
 
-                      <h3 className="text-base font-black text-slate-900 leading-snug">{prob.title}</h3>
-                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">{prob.description}</p>
-                    </div>
+                        <td className="px-6 py-4">
+                          {prob.levelRequirement ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                              <Shield className="h-3 w-3" /> Level {prob.levelRequirement}+
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">None</span>
+                          )}
+                        </td>
 
-                    <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-                      {prob.attachment && (
-                        <button
-                          type="button"
-                          onClick={() => setFileProblem(prob)}
-                          className="text-xs font-bold text-slate-700 hover:underline"
-                        >
-                          View attached file
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setActiveModalProblem(prob)}
-                        className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition-all hover:bg-slate-800 active:scale-95"
-                      >
-                        Submit Solution
-                        <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {prob.submission ? (
+                              <button
+                                type="button"
+                                onClick={() => setViewingSubmissionProblem(prob)}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 transition-all hover:bg-emerald-100"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                View Submission
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setActiveModalProblem(prob)}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-[11px] font-bold text-white transition-all hover:bg-slate-800 active:scale-95"
+                              >
+                                Submit Solution
+                                <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* View Submission Modal */}
+        {viewingSubmissionProblem && viewingSubmissionProblem.submission && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200" onClick={() => setViewingSubmissionProblem(null)}>
+            <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="truncate text-sm font-black text-slate-900">Your Submitted Solution</h3>
+                    <p className="text-xs font-semibold text-slate-500">
+                      Submitted on {new Date(viewingSubmissionProblem.submission.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setViewingSubmissionProblem(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="overflow-y-auto p-6 space-y-6">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Solution Summary</h4>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                    {viewingSubmissionProblem.submission.summary}
+                  </div>
+                </div>
+                {viewingSubmissionProblem.submission.fileKey && (
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Attached Document</h4>
+                    <div className="rounded-xl border border-slate-200 overflow-hidden">
+                      <AttachmentViewer attachment={{
+                        fileKey: viewingSubmissionProblem.submission.fileKey,
+                        fileName: "Solution Attachment",
+                        mimeType: viewingSubmissionProblem.submission.fileKey.endsWith(".pdf") ? "application/pdf" : "image/jpeg",
+                        sizeBytes: 0,
+                      }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -321,6 +420,21 @@ export default function ProblemsPage() {
                   {submitMutation.isError && <ErrorBanner error={submitMutation.error} />}
 
                   <div>
+                    <label className="block font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                      <LinkIcon className="h-3.5 w-3.5 text-[#1755A7]" /> Solution Link
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      value={solutionLink}
+                      onChange={(e) => setSolutionLink(e.target.value)}
+                      placeholder="https://github.com/... or https://drive.google.com/..."
+                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
+                    />
+                    <span className="block text-[11px] text-slate-400 mt-1">Any public link — GitHub repo, Google Drive, or a direct link to your solution.</span>
+                  </div>
+
+                  <div>
                     <label className="block font-bold text-slate-900 mb-1">Solution Summary</label>
                     <textarea
                       required
@@ -329,16 +443,6 @@ export default function ProblemsPage() {
                       onChange={(e) => setSummary(e.target.value)}
                       placeholder="Describe your technical approach, models used, and results…"
                       className="w-full rounded-xl border border-slate-200 px-3.5 py-2 focus:border-[#1755A7] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-900 mb-1">Supporting File (optional PDF)</label>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-bold"
                     />
                   </div>
 

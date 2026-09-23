@@ -283,6 +283,12 @@ export interface ProblemResponse {
   organization: string | null;
   levelRequirement: number;
   attachment: FileAttachment | null;
+  submission: {
+    submissionId: string;
+    summary: string;
+    fileKey: string | null;
+    createdAt: string;
+  } | null;
 }
 
 export const problemsApi = {
@@ -1022,6 +1028,55 @@ export const mentorCoursesApi = {
   approve: (enrollmentId: string) => apiClient.post(`/mentor/courses/${enrollmentId}/approve`),
   reject: (enrollmentId: string, feedback: string) => apiClient.post(`/mentor/courses/${enrollmentId}/reject`, { feedback }),
   proofDownloadUrl: (enrollmentId: string) => apiClient.get<{ downloadUrl: string; expiresInSeconds: number }>(`/mentor/courses/${enrollmentId}/proof-download-url`),
+};
+
+// ---------------------------------------------------------------------------
+// CoE Class Teaching Logs — faculty record what they taught in a CoE Class
+// session; admin reads every submission across all departments/mentors.
+// ---------------------------------------------------------------------------
+
+export interface CoeClassEventOption {
+  eventId: string;
+  title: string;
+  department: string | null;
+  year: string | null;
+  sessionType: string | null;
+  startsAt: string;
+}
+
+export interface ClassTeachingLogResponse {
+  logId: string;
+  eventId: string;
+  eventTitle: string | null;
+  eventDepartment: string | null;
+  eventYear: string | null;
+  classDate: string;
+  topicsCovered: string;
+  materialsUrl: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClassTeachingLogResponse extends ClassTeachingLogResponse {
+  eventSessionType: string | null;
+  mentorName: string | null;
+  mentorEmail: string | null;
+  mentorDepartment: string | null;
+}
+
+export const mentorCoeClassesApi = {
+  events: () => apiClient.get<CoeClassEventOption[]>("/mentor/coe-classes/events"),
+  myLogs: () => apiClient.get<ClassTeachingLogResponse[]>("/mentor/coe-classes/logs"),
+  create: (input: { eventId: string; classDate: string; topicsCovered: string; materialsUrl?: string; notes?: string }) =>
+    apiClient.post<ClassTeachingLogResponse>("/mentor/coe-classes/logs", input),
+  update: (logId: string, input: { classDate?: string; topicsCovered?: string; materialsUrl?: string; notes?: string }) =>
+    apiClient.patch<ClassTeachingLogResponse>(`/mentor/coe-classes/logs/${logId}`, input),
+  remove: (logId: string) => apiClient.delete<{ deleted: boolean }>(`/mentor/coe-classes/logs/${logId}`),
+};
+
+export const adminCoeClassLogsApi = {
+  list: () => apiClient.get<AdminClassTeachingLogResponse[]>("/admin/coe-classes/logs"),
 };
 
 export const adminMentorDepartmentApi = {

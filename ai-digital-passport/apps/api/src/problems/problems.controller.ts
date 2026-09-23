@@ -31,23 +31,34 @@ export class ProblemsController {
       });
     }
     const { skip, take } = pageSkipTake(query);
-    const { items, total } = await this.problemsService.listPublished(skip, take);
+    const { items, total } = await this.problemsService.listPublished(user.userId, skip, take);
     return toPaginatedResult(
-      items.map((p) => ({
-        problemId: p.problem_id,
-        title: p.title,
-        description: p.description,
-        organization: p.organization,
-        levelRequirement: p.level_requirement,
-        attachment: p.attachment_file_key
-          ? {
-              fileKey: p.attachment_file_key,
-              fileName: p.attachment_file_name ?? "attachment",
-              mimeType: p.attachment_mime_type ?? "application/octet-stream",
-              sizeBytes: p.attachment_size_bytes ?? 0,
-            }
-          : null,
-      })),
+      items.map((p) => {
+        const sub = p.submissions?.[0];
+        return {
+          problemId: p.problem_id,
+          title: p.title,
+          description: p.description,
+          organization: p.organization,
+          levelRequirement: p.level_requirement,
+          attachment: p.attachment_file_key
+            ? {
+                fileKey: p.attachment_file_key,
+                fileName: p.attachment_file_name ?? "attachment",
+                mimeType: p.attachment_mime_type ?? "application/octet-stream",
+                sizeBytes: p.attachment_size_bytes ?? 0,
+              }
+            : null,
+          submission: sub
+            ? {
+                submissionId: sub.submission_id,
+                summary: sub.summary,
+                fileKey: sub.file_key,
+                createdAt: sub.created_at.toISOString(),
+              }
+            : null,
+        };
+      }),
       total,
       query,
     );
