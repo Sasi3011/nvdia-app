@@ -432,7 +432,7 @@ function DashboardContent() {
             <span>View All</span><ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <p className="text-[11px] text-slate-400 mb-5">Live review status from faculty mentors</p>
+        <p className="text-[11px] text-slate-400 mb-5">Live review status from faculty</p>
         {recentClaims.isLoading ? (
           <div className="p-8 text-center"><Spinner label="Loading claims..." /></div>
         ) : recentClaims.isError ? (

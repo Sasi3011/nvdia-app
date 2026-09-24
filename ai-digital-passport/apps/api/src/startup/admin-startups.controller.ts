@@ -16,8 +16,10 @@ const AdminStartupsQuerySchema = PaginationQuerySchema.extend({
 type Details = { fields?: Record<string, string>; documents?: { fileKey: string; fileName: string }[] } | null;
 
 // Startup Launchpad — read-only overview for admins. Milestone approval stays with mentors.
+// Shared by the admin and faculty portals; milestone approval goes through
+// /mentor/startups/:id/review, which both roles can call.
 @Controller("admin/startups")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.MENTOR)
 export class AdminStartupsController {
   constructor(private readonly startupService: StartupService) {}
 

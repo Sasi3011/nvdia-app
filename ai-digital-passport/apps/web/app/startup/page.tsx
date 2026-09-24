@@ -74,7 +74,7 @@ function StartupContent() {
             {project ? project.title : "AI Venture Incubation Pipeline"}
           </h1>
           <p className="text-xs text-slate-500 mt-1 max-w-3xl">
-            Transform your AI capstones into startups. Submit documents for mentor approval to unlock the next stage.
+            Transform your AI capstones into startups. Submit documents for faculty approval to unlock the next stage.
           </p>
         </div>
 
@@ -123,7 +123,7 @@ function StartupContent() {
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Approved Milestones</div>
           <div className="mt-2 text-2xl font-black text-amber-600">{project?.milestones.filter((m) => m.status === "APPROVED").length ?? 0}</div>
-          <div className="mt-1 text-xs text-slate-500">Verified by your mentor</div>
+          <div className="mt-1 text-xs text-slate-500">Verified by your faculty</div>
         </div>
 
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
@@ -137,7 +137,7 @@ function StartupContent() {
         <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Review</div>
           <div className="mt-2 text-2xl font-black text-slate-900">{hasPendingMilestone ? "1 Milestone" : "None"}</div>
-          <div className="mt-1 text-xs text-slate-500">Awaiting mentor decision</div>
+          <div className="mt-1 text-xs text-slate-500">Awaiting faculty decision</div>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ function StartupContent() {
           </div>
           <h2 className="text-xl font-black text-slate-900">No AI Startup Project Created Yet</h2>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Incorporate your venture to begin Stage 1: Idea. You will be assigned a faculty mentor and access to the Sri Eshwar AI Incubation Fund.
+            Incorporate your venture to begin Stage 1: Idea. You will be assigned a faculty and access to the Sri Eshwar AI Incubation Fund.
           </p>
           <div className="pt-2">
             <button
@@ -170,7 +170,7 @@ function StartupContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-black text-slate-900">6-Stage Venture Acceleration Roadmap</h3>
-                <p className="text-xs text-slate-500">Each stage is submitted, reviewed and approved by your mentor</p>
+                <p className="text-xs text-slate-500">Each stage is submitted, reviewed and approved by your faculty</p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                 {verifiedStage} of 6 Approved
@@ -222,7 +222,7 @@ function StartupContent() {
                     </div>
 
                     <div className="mt-3 pt-2 border-t border-slate-200/60 text-[10px] font-bold text-slate-400">
-                      {isPassed ? "Mentor Approved" : isCurrent ? (hasPendingMilestone ? "Under Review" : "Submit Now") : "Locked"}
+                      {isPassed ? "Faculty Approved" : isCurrent ? (hasPendingMilestone ? "Under Review" : "Submit Now") : "Locked"}
                     </div>
                   </div>
                 );
@@ -237,7 +237,7 @@ function StartupContent() {
               <div className="text-xs">
                 <span className="font-bold text-amber-900">Milestone Review in Progress: </span>
                 <span className="text-amber-800">
-                  Your Stage {nextStage} submission is being evaluated by your mentor. You can submit the next stage once it is approved.
+                  Your Stage {nextStage} submission is being evaluated by your faculty. You can submit the next stage once it is approved.
                 </span>
               </div>
             </div>
@@ -247,7 +247,7 @@ function StartupContent() {
           <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs space-y-0">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-black text-slate-900">Milestone History & Mentor Audits</h3>
+                <h3 className="text-sm font-black text-slate-900">Milestone History & Faculty Audits</h3>
                 <p className="text-xs text-slate-500">Formal stage approvals and recorded evidence documents</p>
               </div>
             </div>
@@ -264,7 +264,7 @@ function StartupContent() {
                       <th className="px-5 py-3">Target Stage</th>
                       <th className="px-5 py-3">Status</th>
                       <th className="px-5 py-3">Submitted On / Documents</th>
-                      <th className="px-5 py-3">Mentor Feedback</th>
+                      <th className="px-5 py-3">Faculty Feedback</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -348,10 +348,10 @@ function StageSubmissionModal({
       const projectId = project?.projectId ?? (await startupApi.create(title)).projectId;
       return startupApi.submitMilestone(projectId, { targetStage, details: values });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["startup", "projects"] });
-      onClose();
-    },
+    onSuccess: () => onClose(),
+    // Even on failure the project may already exist, so refresh either way;
+    // the next attempt then reuses it instead of creating another one.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["startup", "projects"] }),
   });
 
   return (
@@ -382,7 +382,6 @@ function StageSubmissionModal({
           className="flex min-h-0 flex-1 flex-col text-xs font-medium text-slate-700"
         >
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
-          {submit.isError && <ErrorBanner error={submit.error} />}
 
           {!project && (
             <div>
@@ -428,12 +427,17 @@ function StageSubmissionModal({
           })}
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600">
-            <strong className="text-slate-800">Mentor approval required:</strong> your mentor will review this submission.
+            <strong className="text-slate-800">Faculty approval required:</strong> your faculty will review this submission.
             The next stage unlocks only after approval.
           </div>
 
           </div>
 
+          {submit.isError && (
+            <div className="shrink-0 border-t border-slate-100 px-6 pt-3">
+              <ErrorBanner error={submit.error} />
+            </div>
+          )}
           <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 p-4 px-6">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600 hover:bg-slate-50">
               Cancel
@@ -444,7 +448,7 @@ function StageSubmissionModal({
               className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 font-bold text-white shadow-xs hover:bg-[#134486] disabled:opacity-60"
             >
               <Send className="h-3.5 w-3.5" />
-              {submit.isPending ? "Submitting…" : "Submit for Mentor Review"}
+              {submit.isPending ? "Submitting…" : "Submit for Faculty Review"}
             </button>
           </div>
         </form>
@@ -463,7 +467,7 @@ function RegistrationGuide() {
         <div>
           <h3 className="text-sm font-black text-slate-900">Congratulations — Register Your Startup</h3>
           <p className="text-[11px] text-slate-500">
-            All 6 stages are mentor-approved. Follow these steps to make your venture a legally registered startup.
+            All 6 stages are faculty-approved. Follow these steps to make your venture a legally registered startup.
             Rules and fees change, so confirm details on each official portal.
           </p>
         </div>

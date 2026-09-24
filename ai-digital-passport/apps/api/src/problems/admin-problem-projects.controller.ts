@@ -17,8 +17,10 @@ type Details = { fields?: Record<string, string> } | null;
 
 // Industry Problem Bank — staged solutions, read-only overview for admins.
 // Milestone approval stays with mentors.
+// Shared by the admin and faculty portals; approval goes through
+// /mentor/problems/:id/review, which both roles can call.
 @Controller("admin/problem-projects")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.MENTOR)
 export class AdminProblemProjectsController {
   constructor(private readonly problemsService: ProblemsService) {}
 

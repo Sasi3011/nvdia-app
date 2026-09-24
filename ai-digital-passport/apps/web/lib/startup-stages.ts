@@ -16,7 +16,7 @@ export interface StageForm {
 export const STARTUP_STAGE_FORMS: StageForm[] = [
   {
     stage: 1,
-    intro: "Pitch your idea. Your mentor verifies it before you can move to the prototype stage.",
+    intro: "Pitch your idea. Your faculty verifies it before you can move to the prototype stage.",
     fields: [
       { key: "problem", label: "Problem Statement", type: "textarea", placeholder: "What problem are you solving and for whom?", required: true },
       { key: "solution", label: "Proposed AI Solution", type: "textarea", placeholder: "How does your AI approach solve it?", required: true },
@@ -73,7 +73,7 @@ export const STARTUP_STAGE_FORMS: StageForm[] = [
   },
   {
     stage: 6,
-    intro: "Final mentor review confirming your venture is ready to be launched as a startup.",
+    intro: "Final faculty review confirming your venture is ready to be launched as a startup.",
     fields: [
       { key: "businessModel", label: "Business Model", type: "textarea", required: true },
       { key: "revenuePlan", label: "Revenue / Funding Plan", type: "textarea", required: true },

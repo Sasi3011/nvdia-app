@@ -28,7 +28,7 @@ export default function ProjectsPage() {
   return (
     <StudentShell>
       <div className="flex flex-col gap-6">
-        <PageHeader title="AI Projects" description="Create real projects, track milestones, and submit evidence for mentor review." />
+        <PageHeader title="AI Projects" description="Create real projects, track milestones, and submit evidence for faculty review." />
 
         <Card>
           <h2 className="text-h2 text-ink">Create project</h2>

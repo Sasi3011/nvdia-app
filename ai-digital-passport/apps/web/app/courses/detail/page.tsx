@@ -139,7 +139,7 @@ function CourseDetailContent() {
             <p className="mt-2 text-xs font-bold text-slate-700">{c.targetAudience || "Students who qualify for this AI Passport level."}</p>
             <p className="mt-1 flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
               <ShieldCheck className="h-3.5 w-3.5 text-[#1755A7]" />
-              {c.levelRequirement ? `Unlock condition: AI Level ${c.levelRequirement} or above.` : "Unlock condition: open to all eligible students."}
+              {c.levelRequirement ? `Recommended: AI Level ${c.levelRequirement} or above. Open to all students.` : "Open to all students."}
             </p>
           </div>
         </div>
@@ -155,7 +155,7 @@ function CourseDetailContent() {
         {c.enrollment.status === "SUBMITTED" ? (
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 flex items-center gap-3">
             <Clock className="h-5 w-5 text-[#1755A7]" />
-            <p className="text-xs font-bold text-[#1755A7]">Your proof is submitted and awaiting faculty mentor review.</p>
+            <p className="text-xs font-bold text-[#1755A7]">Your proof is submitted and awaiting faculty review.</p>
           </div>
         ) : c.enrollment.status === "APPROVED" ? (
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">

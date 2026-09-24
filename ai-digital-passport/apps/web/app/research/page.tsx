@@ -65,8 +65,8 @@ export default function ResearchPage() {
               <p>Upload the DOI link, acceptance letter, or patent filing number as evidence.</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-1">
-              <strong className="text-slate-900 block font-bold flex items-center gap-1.5"><Award className="h-3.5 w-3.5 text-[#1755A7]" />3. Mentor review</strong>
-              <p>A faculty mentor verifies the claim, and points credit instantly to your AI Passport on approval.</p>
+              <strong className="text-slate-900 block font-bold flex items-center gap-1.5"><Award className="h-3.5 w-3.5 text-[#1755A7]" />3. Faculty review</strong>
+              <p>A faculty verifies the claim, and points credit instantly to your AI Passport on approval.</p>
             </div>
           </div>
         </div>

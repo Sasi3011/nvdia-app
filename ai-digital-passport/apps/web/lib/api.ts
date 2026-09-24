@@ -875,6 +875,28 @@ export interface ExternalHackathon {
   registered: boolean;
   registrationStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
   registrationFeedback: string | null;
+  participation_points: number;
+  winner_points: number;
+  teamName: string | null;
+  teamMembers: HackathonTeamMember[];
+  resultType: HackathonResultType | null;
+  resultStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+  resultFeedback: string | null;
+  resultPointsAwarded: number | null;
+}
+
+export type HackathonResultType = "PARTICIPATION" | "WINNER";
+
+export interface HackathonTeamMember {
+  name: string;
+  registerNum?: string;
+  email?: string;
+  department?: string;
+}
+
+export interface HackathonProofInfo {
+  proofUrl: string | null;
+  proofFileName: string | null;
 }
 
 export interface HackathonApplicationsRow {
@@ -895,6 +917,19 @@ export interface HackathonApplicationsRow {
     feedback: string | null;
     pointsAwarded: number;
     appliedAt: string;
+    studentDepartment: string | null;
+    studentRegisterNum: string | null;
+    registrationProof: HackathonProofInfo;
+    teamName: string | null;
+    teamMembers: HackathonTeamMember[];
+    result: (HackathonProofInfo & {
+      claimId: string;
+      type: HackathonResultType;
+      status: "PENDING" | "APPROVED" | "REJECTED";
+      feedback: string | null;
+      pointsRequested: number;
+      pointsAwarded: number | null;
+    }) | null;
   }[];
 }
 
@@ -913,8 +948,13 @@ export const externalHackathonsApi = {
   }) => apiClient.patch<ExternalHackathon>(`/hackathons/external/${id}`, input),
   register: (
     id: string,
-    proof: { proofType: "PDF_FILE" | "DOI_LINK"; proofUrl?: string; fileKey?: string; fileName?: string; mimeType?: string; sizeBytes?: number },
-  ) => apiClient.post<{ alreadyRegistered: boolean; status: string; pointsAwarded: number }>(`/hackathons/external/${id}/register`, proof),
+    input: {
+      proofType: "PDF_FILE" | "DOI_LINK"; proofUrl?: string; fileKey?: string; fileName?: string; mimeType?: string; sizeBytes?: number;
+      teamName: string; teamMembers: HackathonTeamMember[];
+    },
+  ) => apiClient.post<{ alreadyRegistered: boolean; status: string; pointsAwarded: number }>(`/hackathons/external/${id}/register`, input),
+  submitResult: (id: string, input: { resultType: HackathonResultType; proofType: "DOI_LINK"; proofUrl: string }) =>
+    apiClient.post<{ alreadySubmitted: boolean; status: string }>(`/hackathons/external/${id}/result`, input),
 };
 
 export interface ProjectRecordResponse {

@@ -64,10 +64,10 @@ export class AuthController {
     }
     await this.whitelist.touchLogin(profile.email);
 
+    await this.authService.ensureUser(profile.email, access.fullName || profile.fullName);
     this.sessionService.issueCookie(res, profile);
 
-    const existing = await this.authService.findByEmail(profile.email);
-    res.redirect(frontendUrl(existing ? "/dashboard" : "/onboarding"));
+    res.redirect(frontendUrl("/"));
   }
 
   // Frontend calls this on load to decide where to route: logged out ->
@@ -83,6 +83,8 @@ export class AuthController {
     const access = await this.whitelist.check(identity.email);
     if (!access.ok) return { authenticated: false as const, reason: access.reason };
 
+    // Covers sessions issued before profiles were auto-created at login.
+    await this.authService.ensureUser(identity.email, identity.fullName);
     const user = await this.authService.findByEmailWithRoles(identity.email);
     return {
       authenticated: true as const,
@@ -150,7 +152,9 @@ export class AuthController {
       return;
     }
     await this.whitelist.touchLogin(body.email);
-    this.sessionService.issueCookie(res, { googleId: `dev-${body.email}`, email: body.email, fullName: access.fullName || body.fullName });
+    const fullName = access.fullName || body.fullName;
+    await this.authService.ensureUser(body.email, fullName);
+    this.sessionService.issueCookie(res, { googleId: `dev-${body.email}`, email: body.email, fullName });
     res.status(204).send();
   }
 }

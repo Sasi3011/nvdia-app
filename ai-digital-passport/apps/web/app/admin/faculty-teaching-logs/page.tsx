@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GraduationCap, Search, ExternalLink, Users, BookOpen } from "lucide-react";
+import { GraduationCap, Search, ExternalLink, Users, BookOpen, Eye, X, Calendar, Mail, Link as LinkIcon } from "lucide-react";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
-import { adminCoeClassLogsApi } from "../../../lib/api";
+import { adminCoeClassLogsApi, type AdminClassTeachingLogResponse } from "../../../lib/api";
+
+const detailLabel = "text-[10px] font-bold uppercase tracking-wider text-slate-400";
 
 // Faculty-authored record of what was taught in each CoE Class session —
 // a separate page from CoE Classes/QR management, since it's content
@@ -15,6 +17,7 @@ import { adminCoeClassLogsApi } from "../../../lib/api";
 // department shows up here; department is display metadata only.
 export default function FacultyTeachingLogsPage() {
   const [search, setSearch] = useState("");
+  const [viewing, setViewing] = useState<AdminClassTeachingLogResponse | null>(null);
   const logs = useQuery({ queryKey: ["admin", "coe-classes", "logs"], queryFn: adminCoeClassLogsApi.list });
   const rows = logs.data ?? [];
   const filtered = rows.filter((l) => {
@@ -137,6 +140,7 @@ export default function FacultyTeachingLogsPage() {
                   <th className="px-6 py-3.5">Faculty</th>
                   <th className="px-6 py-3.5">Class Date</th>
                   <th className="px-6 py-3.5">Topics Covered</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -159,6 +163,16 @@ export default function FacultyTeachingLogsPage() {
                         </a>
                       )}
                     </td>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setViewing(l)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-[#1755A7]/40"
+                        title="View details"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-[#1755A7]" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -166,6 +180,96 @@ export default function FacultyTeachingLogsPage() {
           </div>
         )}
       </div>
+
+      {/* View Details Modal */}
+      {viewing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+          onClick={() => setViewing(null)}
+        >
+          <div
+            className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#1755A7] via-[#1E40AF] to-[#2563EB] px-4 py-4 text-white sm:px-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#F8C401]">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">{viewing.eventTitle ?? "Teaching Log"}</h3>
+                  <p className="text-xs text-blue-100">
+                    {[viewing.eventDepartment, viewing.eventYear, viewing.eventSessionType].filter(Boolean).join(" · ") || "CoE Class"}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setViewing(null)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-white minute-scrollbar">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <div className={detailLabel}>Faculty</div>
+                  <div className="mt-1 text-xs font-bold text-slate-900">{viewing.mentorName ?? "—"}</div>
+                  {viewing.mentorDepartment && <div className="text-[11px] text-slate-500">{viewing.mentorDepartment}</div>}
+                  {viewing.mentorEmail && (
+                    <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-slate-500">
+                      <Mail className="h-3 w-3" /> {viewing.mentorEmail}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className={detailLabel}>Class Date</div>
+                  <div className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-900">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400" /> {new Date(viewing.classDate).toLocaleDateString()}
+                  </div>
+                  <div className="text-[11px] text-slate-500">Logged {new Date(viewing.createdAt).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className={detailLabel}>Co-Faculty</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {viewing.coMentors?.length ? viewing.coMentors.map((m) => (
+                    <span key={m.id} className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200">
+                      {m.name}
+                    </span>
+                  )) : <span className="text-xs text-slate-400">—</span>}
+                </div>
+              </div>
+
+              <div>
+                <div className={detailLabel}>Topics Covered</div>
+                <p className="mt-1 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs text-slate-700 whitespace-pre-wrap">{viewing.topicsCovered}</p>
+              </div>
+
+              {viewing.materialsUrl && (
+                <div>
+                  <div className={detailLabel}>Materials</div>
+                  <a href={viewing.materialsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-xs font-bold text-[#1755A7] hover:underline">
+                    <LinkIcon className="h-3 w-3 shrink-0" /> {viewing.materialsUrl} <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                </div>
+              )}
+
+              {viewing.notes && (
+                <div>
+                  <div className={detailLabel}>Notes</div>
+                  <p className="mt-1 text-xs text-slate-600 whitespace-pre-wrap">{viewing.notes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setViewing(null)} className="rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white hover:bg-[#134486] transition-all">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ConsoleShell>
   );
 }

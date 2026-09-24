@@ -1264,6 +1264,13 @@ model ExternalHackathonRegistration {
   user_id         String
   points_awarded  Int
   claim_id        String?  @unique
+  // Team entered at registration: [{ name, email, registerNum, department }].
+  team_name       String?
+  team_members    Json     @default("[]")
+  // After registration is verified: PARTICIPATION or WINNER proof, verified
+  // by faculty through its own activity claim.
+  result_type     String?
+  result_claim_id String?  @unique
   created_at      DateTime @default(now())
 
   hackathon ExternalHackathon @relation(fields: [external_id], references: [external_id], onDelete: Cascade)

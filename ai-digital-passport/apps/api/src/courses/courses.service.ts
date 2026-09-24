@@ -26,14 +26,12 @@ export class CoursesService {
     return rule?.points ?? fallback;
   }
 
+  // Every published course — whether an admin or a faculty member created
+  // it — is visible to every student in every department. The level
+  // requirement is shown as guidance only; it no longer hides a course.
   async listPublishedForStudent(userId: string) {
-    const student = await prisma.student.findUnique({ where: { user_id: userId } });
-    const levelId = student?.current_level_id ?? 1;
     const courses = await prisma.course.findMany({
-      where: {
-        status: CourseStatus.PUBLISHED,
-        OR: [{ level_requirement: null }, { level_requirement: { lte: levelId } }],
-      },
+      where: { status: CourseStatus.PUBLISHED },
       orderBy: { created_at: "desc" },
     });
     const enrollments = await prisma.courseEnrollment.findMany({
@@ -149,7 +147,28 @@ export class CoursesService {
       },
     });
     await this.auditLogService.record({ actorId, action: "COURSE_CREATED", entityType: "course", entityId: course.course_id });
+    if (course.status === CourseStatus.PUBLISHED) await this.announcePublished(course);
     return course;
+  }
+
+  // A newly published course goes out to every department at once: all
+  // students and all mentors.
+  private async announcePublished(course: Course) {
+    const [students, mentors] = await Promise.all([
+      prisma.student.findMany({ select: { user_id: true } }),
+      prisma.userRole.findMany({ where: { role: { name: "MENTOR" } }, select: { user_id: true } }),
+    ]);
+    const userIds = [...new Set([...students, ...mentors].map((r) => r.user_id))];
+    if (userIds.length === 0) return;
+
+    await prisma.notification.createMany({
+      data: userIds.map((userId) => ({
+        user_id: userId,
+        type: NotificationType.SYSTEM,
+        title: "New course published",
+        message: `"${course.title}" (${course.provider}) is now available in Courses & Curricula.`,
+      })),
+    });
   }
 
   async update(actorId: string, courseId: string, input: {
@@ -159,7 +178,7 @@ export class CoursesService {
     deliveryMode: string; enrollmentType: string; certificateAvailable: boolean; isFeatured: boolean;
     skillsCovered: string[]; prerequisites: string[]; learningOutcomes: string[]; toolsRequired: string[]; targetAudience?: string;
   }) {
-    await this.getForAdmin(courseId);
+    const before = await this.getForAdmin(courseId);
     const course = await prisma.course.update({
       where: { course_id: courseId },
       data: {
@@ -187,13 +206,15 @@ export class CoursesService {
       },
     });
     await this.auditLogService.record({ actorId, action: "COURSE_UPDATED", entityType: "course", entityId: courseId });
+    if (before.status !== CourseStatus.PUBLISHED && course.status === CourseStatus.PUBLISHED) await this.announcePublished(course);
     return course;
   }
 
   async setStatus(actorId: string, courseId: string, status: CourseStatus) {
-    await this.getForAdmin(courseId);
+    const before = await this.getForAdmin(courseId);
     const course = await prisma.course.update({ where: { course_id: courseId }, data: { status } });
     await this.auditLogService.record({ actorId, action: `COURSE_${status}`, entityType: "course", entityId: courseId });
+    if (before.status !== CourseStatus.PUBLISHED && status === CourseStatus.PUBLISHED) await this.announcePublished(course);
     return course;
   }
 
@@ -301,16 +322,10 @@ export class CoursesService {
   // Internal helpers
   // ---------------------------------------------------------------------
 
-  private async findVisibleOrThrow(courseId: string, userId: string): Promise<Course> {
+  private async findVisibleOrThrow(courseId: string, _userId: string): Promise<Course> {
     const course = await prisma.course.findUnique({ where: { course_id: courseId } });
     if (!course) throw new NotFoundException({ code: "COURSE_NOT_FOUND" });
     if (course.status !== CourseStatus.PUBLISHED) throw new ForbiddenException({ code: "COURSE_NOT_PUBLISHED" });
-    if (course.level_requirement != null) {
-      const student = await prisma.student.findUnique({ where: { user_id: userId } });
-      if ((student?.current_level_id ?? 1) < course.level_requirement) {
-        throw new ForbiddenException({ code: "LEVEL_TOO_LOW", message: `This course requires level ${course.level_requirement}.` });
-      }
-    }
     return course;
   }
 

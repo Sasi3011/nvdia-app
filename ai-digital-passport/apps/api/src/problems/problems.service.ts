@@ -48,8 +48,10 @@ export class ProblemsService {
   // A project always starts at Stage 1 (Problem Understanding).
   async createProject(userId: string, problemId: string) {
     await this.findByIdOrThrow(problemId);
-    const existing = await prisma.problemProject.findFirst({ where: { user_id: userId, problem_id: problemId } });
-    if (existing) throw new BadRequestException({ code: "PROJECT_ALREADY_EXISTS", message: "You already have a project for this problem." });
+    // Starting again (double click, retry after a failed stage submit) reuses
+    // the student's project for this problem instead of creating another.
+    const existing = await prisma.problemProject.findFirst({ where: { user_id: userId, problem_id: problemId }, orderBy: { created_at: "asc" } });
+    if (existing) return existing;
     return prisma.problemProject.create({
       data: { user_id: userId, problem_id: problemId, current_stage: 1 },
     });
@@ -61,10 +63,24 @@ export class ProblemsService {
     if (project.user_id !== userId) {
       throw new ForbiddenException({ code: "NOT_YOUR_PROJECT" });
     }
-    if (targetStage !== project.current_stage + 1) {
+    // Next stage = one after the highest faculty-approved stage, so a new
+    // project submits Stage 1 first (same rule as the student UI and the
+    // Startup Launchpad). Only one submission may await review at a time.
+    const milestones = await prisma.problemMilestone.findMany({
+      where: { project_id: projectId },
+      select: { target_stage: true, status: true },
+    });
+    if (milestones.some((m) => m.status === ClaimStatus.PENDING)) {
+      throw new ConflictException({
+        code: "MILESTONE_ALREADY_PENDING",
+        message: "Your previous stage submission is still awaiting faculty review.",
+      });
+    }
+    const verified = Math.max(0, ...milestones.filter((m) => m.status === ClaimStatus.APPROVED).map((m) => m.target_stage));
+    if (targetStage !== verified + 1) {
       throw new BadRequestException({
         code: "INVALID_STAGE_TRANSITION",
-        message: `Stages advance sequentially — expected stage ${project.current_stage + 1}.`,
+        message: `Stages advance sequentially — expected stage ${verified + 1}.`,
       });
     }
 

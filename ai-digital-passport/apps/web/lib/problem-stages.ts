@@ -15,7 +15,7 @@ export const PROBLEM_STAGES = [
 export const PROBLEM_STAGE_FORMS: StageForm[] = [
   {
     stage: 1,
-    intro: "Show you understand the problem before proposing a fix. Your mentor verifies it before you can move to the approach stage.",
+    intro: "Show you understand the problem before proposing a fix. Your faculty verifies it before you can move to the approach stage.",
     fields: [
       { key: "problemRestatement", label: "Problem Restatement (in your own words)", type: "textarea", placeholder: "What exactly is the problem, and who does it affect?", required: true },
       { key: "targetUsers", label: "Who Faces This Problem?", type: "text", placeholder: "e.g. Manufacturing QA inspectors", required: true },
@@ -55,11 +55,11 @@ export const PROBLEM_STAGE_FORMS: StageForm[] = [
   },
   {
     stage: 5,
-    intro: "Present your solution live to your faculty mentor.",
+    intro: "Present your solution live to your faculty.",
     fields: [
-      { key: "demoSummary", label: "Demo Summary", type: "textarea", placeholder: "What was shown, key highlights, mentor questions…", required: true },
+      { key: "demoSummary", label: "Demo Summary", type: "textarea", placeholder: "What was shown, key highlights, faculty questions…", required: true },
       { key: "demoVideoUrl", label: "Demo Video Link", type: "url", placeholder: "https://...", required: true },
-      { key: "feedbackNotes", label: "Feedback Received", type: "textarea", placeholder: "Notes from the mentor demo session" },
+      { key: "feedbackNotes", label: "Feedback Received", type: "textarea", placeholder: "Notes from the faculty demo session" },
       { key: "documentLink", label: "Presentation Deck Link", type: "url", placeholder: "https://drive.google.com/...", required: true },
     ],
   },

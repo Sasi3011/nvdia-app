@@ -3,8 +3,15 @@
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, CheckCircle2, Clock, XCircle, Upload, Globe2, MapPin, Pencil, Plus, RefreshCw, Trash2, Trophy, X, Search } from "lucide-react";
-import { externalHackathonsApi, type ExternalHackathon, type HackathonResponse } from "../../lib/api";
+import { ArrowUpRight, CheckCircle2, Clock, XCircle, Upload, Globe2, MapPin, Pencil, Plus, RefreshCw, Trash2, Trophy, X, Search, Medal, Users, UserPlus } from "lucide-react";
+import {
+  externalHackathonsApi,
+  type ExternalHackathon,
+  type HackathonResponse,
+  type HackathonResultType,
+  type HackathonTeamMember,
+} from "../../lib/api";
+import { useSession } from "../../lib/session";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
 import { useConfirm } from "../ui/ConfirmDialogProvider";
@@ -52,16 +59,30 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
     },
   });
   const [proofFor, setProofFor] = useState<ExternalHackathon | null>(null);
+  const [resultFor, setResultFor] = useState<{ h: ExternalHackathon; type: HackathonResultType } | null>(null);
   const register = useMutation({
-    mutationFn: async ({ id, link }: { id: string; link: string }) =>
-      externalHackathonsApi.register(id, { proofType: "DOI_LINK", proofUrl: link }),
+    mutationFn: async ({ id, link, teamName, teamMembers }: { id: string; link: string; teamName: string; teamMembers: HackathonTeamMember[] }) =>
+      externalHackathonsApi.register(id, { proofType: "DOI_LINK", proofUrl: link, teamName, teamMembers }),
     onSuccess: (r) => {
       refresh();
       setProofFor(null);
       setNotice(
         r.alreadyRegistered
           ? "You have already submitted proof for this hackathon."
-          : "Proof submitted! A mentor will verify it, and you'll get points once it is approved.",
+          : "Registration submitted! Faculty will verify your proof. Once approved, you can submit your participation or winner proof.",
+      );
+    },
+  });
+  const submitResult = useMutation({
+    mutationFn: ({ id, type, link }: { id: string; type: HackathonResultType; link: string }) =>
+      externalHackathonsApi.submitResult(id, { resultType: type, proofType: "DOI_LINK", proofUrl: link }),
+    onSuccess: (r) => {
+      refresh();
+      setResultFor(null);
+      setNotice(
+        r.alreadySubmitted
+          ? "You have already submitted a result proof for this hackathon."
+          : "Proof submitted! Faculty will verify it, and you'll get points once it is approved.",
       );
     },
   });
@@ -185,6 +206,7 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
                   }
                 }}
                 onRegister={() => setProofFor(item)}
+                onSubmitResult={(type) => setResultFor({ h: item, type })}
               />
             );
           })}
@@ -192,14 +214,28 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
       )}
 
       {proofFor && (
-        <ProofModal
+        <RegisterModal
           hackathon={proofFor}
           pending={register.isPending}
           error={register.error}
-          onSubmit={(link) => register.mutate({ id: proofFor.external_id, link })}
+          onSubmit={(input) => register.mutate({ id: proofFor.external_id, ...input })}
           onClose={() => {
             register.reset();
             setProofFor(null);
+          }}
+        />
+      )}
+
+      {resultFor && (
+        <ResultModal
+          hackathon={resultFor.h}
+          type={resultFor.type}
+          pending={submitResult.isPending}
+          error={submitResult.error}
+          onSubmit={(link) => submitResult.mutate({ id: resultFor.h.external_id, type: resultFor.type, link })}
+          onClose={() => {
+            submitResult.reset();
+            setResultFor(null);
           }}
         />
       )}
@@ -224,9 +260,10 @@ export const ExternalHackathons = forwardRef<ExternalHackathonsHandle, { canMana
 ExternalHackathons.displayName = "ExternalHackathons";
 
 function HackathonCard({
-  h, canManage, onEdit, onDelete, onRegister,
+  h, canManage, onEdit, onDelete, onRegister, onSubmitResult,
 }: {
   h: ExternalHackathon; canManage: boolean; onEdit: () => void; onDelete: () => void; onRegister: () => void;
+  onSubmitResult: (type: HackathonResultType) => void;
 }) {
   const src = SOURCES.find((s) => s.key === h.source);
   const deadline = fmt(h.deadline_at);
@@ -291,14 +328,22 @@ function HackathonCard({
           View &amp; register <ArrowUpRight className="h-3.5 w-3.5" />
         </a>
       )}
+      {!canManage && h.teamName && h.registrationStatus !== "NONE" && (
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+          <Users className="h-3.5 w-3.5" /> Team <span className="font-bold text-slate-700">{h.teamName}</span> · {h.teamMembers.length} member{h.teamMembers.length === 1 ? "" : "s"}
+        </div>
+      )}
       {!canManage && (
         h.registrationStatus === "APPROVED" ? (
-          <div className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Registration verified (+{h.register_points} pts)
-          </div>
+          <>
+            <div className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Registration verified (+{h.register_points} pts)
+            </div>
+            <ResultSection h={h} onSubmitResult={onSubmitResult} />
+          </>
         ) : h.registrationStatus === "PENDING" ? (
           <div className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700">
-            <Clock className="h-3.5 w-3.5" /> Proof submitted - awaiting mentor verification
+            <Clock className="h-3.5 w-3.5" /> Registration proof submitted - awaiting faculty verification
           </div>
         ) : (
           <>
@@ -315,7 +360,7 @@ function HackathonCard({
               className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#1755A7] px-4 py-2 text-xs font-bold text-[#1755A7] hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
             >
               <Upload className="h-3.5 w-3.5" />
-              {h.registrationStatus === "REJECTED" ? "Resubmit proof" : `Submit proof of registration (+${h.register_points} pts)`}
+              {h.registrationStatus === "REJECTED" ? "Resubmit registration" : `Register team & submit proof (+${h.register_points} pts)`}
             </button>
           </>
         )
@@ -426,52 +471,217 @@ function AddModal({ existing, onClose, onAdded }: { existing: ExternalHackathon 
   );
 }
 
-function ProofModal({
-  hackathon, pending, error, onSubmit, onClose,
-}: {
-  hackathon: ExternalHackathon; pending: boolean; error: unknown; onSubmit: (link: string) => void; onClose: () => void;
-}) {
-  const [link, setLink] = useState("");
-  const ready = /^https?:\/\/\S+$/.test(link.trim());
+const isLink = (s: string) => /^https?:\/\/\S+$/.test(s.trim());
+const MAX_TEAM = 10;
 
+/** Step 2 on a card whose registration is verified: participation / winner proof. */
+function ResultSection({ h, onSubmitResult }: { h: ExternalHackathon; onSubmitResult: (type: HackathonResultType) => void }) {
+  const label = h.resultType === "WINNER" ? "Winner" : "Participation";
+  if (h.resultStatus === "APPROVED") {
+    return (
+      <div className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700">
+        {h.resultType === "WINNER" ? <Trophy className="h-3.5 w-3.5" /> : <Medal className="h-3.5 w-3.5" />}
+        {label} verified{h.resultPointsAwarded != null ? ` (+${h.resultPointsAwarded} pts)` : ""}
+      </div>
+    );
+  }
+  if (h.resultStatus === "PENDING") {
+    return (
+      <div className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700">
+        <Clock className="h-3.5 w-3.5" /> {label} proof submitted - awaiting faculty verification
+      </div>
+    );
+  }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <form
-        className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-2xl"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit(link.trim());
-        }}
-      >
-        <div className="flex items-start justify-between gap-3">
+    <div className="mt-2 space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+      {h.resultStatus === "REJECTED" && (
+        <div className="flex items-start gap-1.5 text-[11px] font-semibold text-red-700">
+          <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{label} proof rejected{h.resultFeedback ? `: ${h.resultFeedback}` : "."} You can resubmit.</span>
+        </div>
+      )}
+      <p className="text-[11px] font-semibold text-slate-600">After the event, submit your result proof:</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => onSubmitResult("PARTICIPATION")}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#1755A7] bg-white px-3 py-2 text-[11px] font-bold text-[#1755A7] hover:bg-blue-50"
+        >
+          <Medal className="h-3.5 w-3.5" /> Participated (+{h.participation_points})
+        </button>
+        <button
+          type="button"
+          onClick={() => onSubmitResult("WINNER")}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#F8C401] px-3 py-2 text-[11px] font-bold text-slate-900 hover:bg-amber-400"
+        >
+          <Trophy className="h-3.5 w-3.5" /> Won (+{h.winner_points})
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ModalShell({ title, subtitle, onClose, children }: { title: string; subtitle: string; onClose: () => void; children: React.ReactNode }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+      <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-6 py-4">
           <div>
-            <h3 className="text-sm font-black text-slate-900">Submit proof of registration</h3>
-            <p className="mt-0.5 text-xs text-slate-500">{hackathon.title}</p>
+            <h3 className="text-sm font-black text-slate-900">{title}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-700">
             <X className="h-4 w-4" />
           </button>
         </div>
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function RegisterModal({
+  hackathon, pending, error, onSubmit, onClose,
+}: {
+  hackathon: ExternalHackathon;
+  pending: boolean;
+  error: unknown;
+  onSubmit: (input: { link: string; teamName: string; teamMembers: HackathonTeamMember[] }) => void;
+  onClose: () => void;
+}) {
+  const session = useSession();
+  // Resubmitting after a rejection starts from the team entered last time.
+  const [teamName, setTeamName] = useState(hackathon.teamName ?? "");
+  const [members, setMembers] = useState<HackathonTeamMember[]>(() =>
+    hackathon.teamMembers.length
+      ? hackathon.teamMembers
+      : [{ name: session.data?.fullName ?? "", email: session.data?.email ?? "", registerNum: "", department: "" }],
+  );
+  const [link, setLink] = useState("");
+
+  const setMember = (i: number, k: keyof HackathonTeamMember, v: string) =>
+    setMembers((prev) => prev.map((m, j) => (j === i ? { ...m, [k]: v } : m)));
+  const clean = members
+    .map((m) => ({
+      name: m.name.trim(),
+      registerNum: m.registerNum?.trim() || undefined,
+      email: m.email?.trim() || undefined,
+      department: m.department?.trim() || undefined,
+    }))
+    .filter((m) => m.name);
+  const ready = teamName.trim() && clean.length > 0 && isLink(link);
+
+  return (
+    <ModalShell title="Register your team" subtitle={hackathon.title} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({ link: link.trim(), teamName: teamName.trim(), teamMembers: clean });
+        }}
+        className="min-h-0 space-y-4 overflow-y-auto px-6 py-5"
+      >
         <p className="text-xs text-slate-600">
-          Register on the hackathon site first, then share a link to your confirmation (screenshot on Google Drive, or a direct link). A mentor will verify it;
-          you get +{hackathon.register_points} points only if it is approved.
+          Register on the hackathon site first, then add your team and a link to your registration confirmation. Faculty will verify it; you get +
+          {hackathon.register_points} points once approved, and can then submit your participation or winner proof.
         </p>
-        <input type="url" placeholder="https://drive.google.com/... or any direct link" value={link} onChange={(e) => setLink(e.target.value)} className={inputClass} />
+
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-800">Team name *</label>
+          <input required value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. NeuralVanguard" className={inputClass} />
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800"><Users className="h-3.5 w-3.5" /> Team members *</label>
+            <span className="text-[11px] text-slate-400">{members.length}/{MAX_TEAM}</span>
+          </div>
+          <div className="space-y-2.5">
+            {members.map((m, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                  <span>{i === 0 ? "Member 1 (you / team lead)" : `Member ${i + 1}`}</span>
+                  {members.length > 1 && (
+                    <button type="button" onClick={() => setMembers((p) => p.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-600" aria-label="Remove member">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input required placeholder="Full name *" value={m.name} onChange={(e) => setMember(i, "name", e.target.value)} className={inputClass} />
+                  <input placeholder="Register number" value={m.registerNum ?? ""} onChange={(e) => setMember(i, "registerNum", e.target.value)} className={inputClass} />
+                  <input type="email" placeholder="Email" value={m.email ?? ""} onChange={(e) => setMember(i, "email", e.target.value)} className={inputClass} />
+                  <input placeholder="Department" value={m.department ?? ""} onChange={(e) => setMember(i, "department", e.target.value)} className={inputClass} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {members.length < MAX_TEAM && (
+            <button
+              type="button"
+              onClick={() => setMembers((p) => [...p, { name: "", registerNum: "", email: "", department: "" }])}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[#1755A7]/50 px-3 py-2 text-xs font-bold text-[#1755A7] hover:bg-blue-50"
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Add member
+            </button>
+          )}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-800">Proof of registration *</label>
+          <input type="url" required placeholder="https://drive.google.com/... (screenshot or confirmation link)" value={link} onChange={(e) => setLink(e.target.value)} className={inputClass} />
+        </div>
+
+        {error ? <ErrorBanner error={error} /> : null}
+        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600">
+            Cancel
+          </button>
+          <button type="submit" disabled={!ready || pending} className="rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+            {pending ? "Submitting..." : "Submit for verification"}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function ResultModal({
+  hackathon, type, pending, error, onSubmit, onClose,
+}: {
+  hackathon: ExternalHackathon; type: HackathonResultType; pending: boolean; error: unknown; onSubmit: (link: string) => void; onClose: () => void;
+}) {
+  const [link, setLink] = useState("");
+  const winner = type === "WINNER";
+  const points = winner ? hackathon.winner_points : hackathon.participation_points;
+  return (
+    <ModalShell title={winner ? "Submit winner proof" : "Submit participation proof"} subtitle={hackathon.title} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(link.trim());
+        }}
+        className="space-y-4 px-6 py-5"
+      >
+        <p className="text-xs text-slate-600">
+          {winner
+            ? "Share a link to your winner certificate, results announcement or prize email."
+            : "Share a link to your participation certificate or project submission confirmation."}{" "}
+          Faculty will verify it; you get +{points} points once approved.
+        </p>
+        <input type="url" required placeholder="https://drive.google.com/... or any direct link" value={link} onChange={(e) => setLink(e.target.value)} className={inputClass} />
         {error ? <ErrorBanner error={error} /> : null}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={!ready || pending}
-            className="rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-          >
+          <button type="submit" disabled={!isLink(link) || pending} className="rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
             {pending ? "Submitting..." : "Submit for verification"}
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }
 

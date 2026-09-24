@@ -58,21 +58,33 @@ const ADMIN_NAV_GROUPS: ConsoleNavGroup[] = [
   },
 ];
 
+// Same grouped layout and naming as the admin sidebar.
 const MENTOR_NAV_GROUPS: ConsoleNavGroup[] = [
   {
-    label: "Mentor Operations",
+    label: "Teaching & Verification",
     items: [
       { href: "/mentor", label: "Dashboard", icon: LayoutDashboard },
       { href: "/mentor/queue", label: "Verification Queue", icon: Inbox },
       { href: "/mentor/coe-classes", label: "CoE Classes", icon: Calendar },
-      { href: "/mentor/students", label: "Student Progress", icon: TrendingUp },
-      { href: "/mentor/course-catalog", label: "Course Catalog", icon: Library },
+      { href: "/mentor/course-catalog", label: "Courses & Curricula", icon: BookOpen },
       { href: "/mentor/courses", label: "Course Submissions", icon: FileCheck },
-      { href: "/mentor/startups", label: "Student Startups", icon: Briefcase },
-      { href: "/mentor/problems", label: "Problem Solutions", icon: FileQuestion },
+    ],
+  },
+  {
+    label: "Programs & Research",
+    items: [
       { href: "/mentor/hackathons", label: "Hackathons", icon: Flag },
-      { href: "/mentor/leaderboard", label: "Leaderboard", icon: Trophy },
+      { href: "/mentor/startups", label: "Startup Launchpad", icon: Rocket },
+      { href: "/mentor/industry-problems", label: "Industry Problems", icon: FileQuestion },
+      { href: "/mentor/problems", label: "Problem Solutions", icon: Lightbulb },
       { href: "/mentor/awards", label: "Awards", icon: Medal },
+    ],
+  },
+  {
+    label: "Students & Analytics",
+    items: [
+      { href: "/mentor/students", label: "Student Progress", icon: TrendingUp },
+      { href: "/mentor/leaderboard", label: "Leaderboard", icon: Trophy },
     ],
   },
 ];
@@ -162,7 +174,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
           <img src="/Eswar.png" alt="" className="h-8 w-8 shrink-0 object-contain" />
           <div className="min-w-0 leading-tight">
             <div className="truncate text-[13px] font-black tracking-tight text-slate-900">Sri Eshwar NVIDIA</div>
-            <div className="truncate text-[10px] font-bold text-[#1755A7]">{role === "ADMIN" ? "Admin Console" : "Mentor Console"}</div>
+            <div className="truncate text-[10px] font-bold text-[#1755A7]">{role === "ADMIN" ? "Admin Console" : "Faculty Console"}</div>
           </div>
         </div>
         <div
@@ -202,7 +214,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="inline-flex items-center gap-1 rounded-full bg-[#1755A7]/10 px-2 py-0.5 text-[10px] font-bold text-[#1755A7]">
                 <Shield className="h-2.5 w-2.5" />
-                {role === "ADMIN" ? "Admin Console" : "Mentor Console"}
+                {role === "ADMIN" ? "Admin Console" : "Faculty Console"}
               </span>
             </div>
           </div>
@@ -280,7 +292,7 @@ export function ConsoleShell({ role, children }: { role: "MENTOR" | "ADMIN"; chi
               )}
               {otherRoles.includes("MENTOR") && role !== "MENTOR" && (
                 <Link href="/mentor" className="flex-1 rounded-md px-2 py-1 text-center text-[#1755A7] hover:bg-[#1755A7]/10 transition-colors">
-                  Mentor
+                  Faculty
                 </Link>
               )}
               <Link href="/dashboard" className="flex-1 rounded-md px-2 py-2 text-center text-slate-600 hover:bg-slate-100 transition-colors lg:py-1">

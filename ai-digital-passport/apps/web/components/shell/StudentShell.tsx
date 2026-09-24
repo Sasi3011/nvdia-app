@@ -50,7 +50,7 @@ const NAV_GROUPS: StudentNavGroup[] = [
     label: "Innovation & Labs",
     items: [
       { href: "/problems", label: "Industry Problems", icon: Lightbulb },
-      { href: "/hackathons", label: "Hackathons & Challenges", icon: Flag, badge: "Active" },
+      { href: "/hackathons", label: "Hackathons", icon: Flag, badge: "Active" },
       { href: "/startup", label: "Startup Launchpad", icon: Rocket },
     ],
   },

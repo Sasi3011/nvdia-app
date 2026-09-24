@@ -82,7 +82,7 @@ function SubmitClaimForm() {
             </Link>
             <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Submit Evidence & Claim Points</h1>
             <p className="text-sm text-slate-600 max-w-2xl">
-              File authentic proof for courses, hackathons, research publications, or startup milestones. Your submission will be routed directly to your faculty mentor queue.
+              File authentic proof for courses, hackathons, research publications, or startup milestones. Your submission will be routed directly to your faculty queue.
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ function SubmitClaimForm() {
                 className="inline-flex items-center gap-2 rounded-xl bg-[#1755A7] px-6 py-3 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#134486] hover:shadow-md hover:shadow-[#1755A7]/20 disabled:opacity-50 active:scale-95"
               >
                 <Send className="h-4 w-4" />
-                {submit.isPending ? "Uploading & Submitting…" : "Submit Claim for Mentor Review"}
+                {submit.isPending ? "Uploading & Submitting…" : "Submit Claim for Faculty Review"}
               </button>
             </div>
           </form>
@@ -216,7 +216,7 @@ function SubmitClaimForm() {
                 <ShieldCheck className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-slate-900">Mentor Verification SLA</h3>
+                <h3 className="text-sm font-black text-slate-900">Faculty Verification SLA</h3>
                 <p className="text-[11px] text-slate-500">Fast-track quality assurance</p>
               </div>
             </div>
@@ -225,19 +225,19 @@ function SubmitClaimForm() {
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-slate-900">24-Hour Review Turnaround:</strong> Assigned faculty mentors review submissions daily during working hours.
+                  <strong className="text-slate-900">24-Hour Review Turnaround:</strong> Assigned faculty review submissions daily during working hours.
                 </div>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-slate-900">Instant Points Crediting:</strong> Upon mentor approval, points immediately recalculate your level and leaderboard rank.
+                  <strong className="text-slate-900">Instant Points Crediting:</strong> Upon faculty approval, points immediately recalculate your level and leaderboard rank.
                 </div>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-slate-900">Constructive Feedback:</strong> If changes are required, mentors provide specific actionable feedback for resubmission.
+                  <strong className="text-slate-900">Constructive Feedback:</strong> If changes are required, faculty provide specific actionable feedback for resubmission.
                 </div>
               </li>
             </ul>

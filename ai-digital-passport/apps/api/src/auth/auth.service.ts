@@ -37,6 +37,59 @@ export class AuthService {
   }
 
 
+  // First sign-in creates the profile straight from the access list (role,
+  // department, year), so no onboarding step is needed. No-op when the user
+  // already exists.
+  async ensureUser(email: string, fullName: string) {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return existing;
+
+    const entry = await prisma.accessWhitelist.findUnique({ where: { email } });
+    const role = (entry?.role as UserRole | undefined) ?? UserRole.STUDENT;
+    const idNumber = (email.split("@")[0] ?? email).toUpperCase();
+    const department = entry?.department ?? "";
+    // "2nd Year" -> joined one year before the current cohort.
+    const yearNum = Number.parseInt(entry?.year ?? "", 10);
+    const cohortYear = new Date().getFullYear() - (Number.isFinite(yearNum) && yearNum > 0 ? yearNum - 1 : 0);
+
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email,
+          full_name: entry?.full_name || fullName,
+          user_roles: { create: { role: { connect: { name: role } } } },
+          ...(role === UserRole.STUDENT && {
+            student: {
+              create: {
+                register_num: idNumber,
+                department,
+                cohort_year: cohortYear,
+                current_level_id: 1,
+                total_points: 0,
+                gpu_credit_balance: 0,
+              },
+            },
+          }),
+          ...(role === UserRole.MENTOR && {
+            faculty: { create: { employee_id: idNumber, department } },
+          }),
+          ...(role === UserRole.ADMIN && {
+            admin: { create: { employee_id: idNumber } },
+          }),
+        },
+      });
+    } catch (err) {
+      // Two concurrent first logins: the other request created it.
+      const raced = await prisma.user.findUnique({ where: { email } });
+      if (raced) return raced;
+      throw err;
+    }
+
+    if (role === UserRole.STUDENT) await this.leaderboardService.setScore(user.user_id, 0);
+    return user;
+  }
+
   // BR-02 / FR-AUTH-03: new profile always starts at Level 1, 0 points,
   // 0 GPU credits. Returning users skip onboarding entirely (Page 2).
   async onboard(email: string, fullName: string, input: OnboardUserInput) {

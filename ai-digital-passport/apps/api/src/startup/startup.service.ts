@@ -2,10 +2,18 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { ClaimStatus, Prisma, prisma } from "@ai-digital-passport/database";
 import { NotificationType } from "@ai-digital-passport/shared-types";
 import { NotificationsService } from "../notifications/notifications.service";
+import { PointsService } from "../points/points.service";
+
+// Every approved Startup Launchpad stage awards points from the Scoring
+// Matrix, so admins can tune the value under Admin → Scoring.
+const STAGE_RULE = { category: "startup_stage_approval", label: "Startup Launchpad stage approval", points: 50 };
 
 @Injectable()
 export class StartupService {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly pointsService: PointsService,
+  ) {}
 
   async listOwn(userId: string) {
     return prisma.startupProject.findMany({
@@ -15,8 +23,21 @@ export class StartupService {
     });
   }
 
-  // BR-09: projects always start at Stage 1 (Idea).
+  // BR-09: projects always start at Stage 1 (Idea). A student has one
+  // startup: if a previous attempt already created it (e.g. the idea
+  // submission failed afterwards), reuse it instead of creating a duplicate.
   async create(userId: string, title: string) {
+    const existing = await prisma.startupProject.findFirst({
+      where: { lead_student_id: userId },
+      orderBy: { created_at: "asc" },
+    });
+    if (existing) {
+      const hasMilestones = await prisma.startupMilestone.count({ where: { project_id: existing.project_id } });
+      // Nothing submitted yet, so the student may still rename the idea.
+      return hasMilestones || existing.title === title
+        ? existing
+        : prisma.startupProject.update({ where: { project_id: existing.project_id }, data: { title } });
+    }
     return prisma.startupProject.create({
       data: { lead_student_id: userId, title, current_stage: 1 },
     });
@@ -29,10 +50,23 @@ export class StartupService {
     if (project.lead_student_id !== userId) {
       throw new ForbiddenException({ code: "NOT_YOUR_PROJECT" });
     }
-    if (targetStage !== project.current_stage + 1) {
+    // The next stage is the one after the highest faculty-approved stage, so
+    // a new project submits Stage 1 (Idea) first — same rule the student UI uses.
+    const milestones = await prisma.startupMilestone.findMany({
+      where: { project_id: projectId },
+      select: { target_stage: true, status: true },
+    });
+    if (milestones.some((m) => m.status === ClaimStatus.PENDING)) {
+      throw new ConflictException({
+        code: "MILESTONE_ALREADY_PENDING",
+        message: "Your previous stage submission is still awaiting faculty review.",
+      });
+    }
+    const verified = Math.max(0, ...milestones.filter((m) => m.status === ClaimStatus.APPROVED).map((m) => m.target_stage));
+    if (targetStage !== verified + 1) {
       throw new BadRequestException({
         code: "INVALID_STAGE_TRANSITION",
-        message: `Stages advance sequentially — expected stage ${project.current_stage + 1}.`,
+        message: `Stages advance sequentially — expected stage ${verified + 1}.`,
       });
     }
 
@@ -71,21 +105,38 @@ export class StartupService {
 
     const project = await prisma.startupProject.findUniqueOrThrow({ where: { project_id: milestone.project_id } });
 
+    let pointsAwarded = 0;
     if (decision === ClaimStatus.APPROVED) {
       await prisma.startupProject.update({
         where: { project_id: milestone.project_id },
         data: { current_stage: milestone.target_stage },
       });
+      // The conditional update above lets only one reviewer approve, so the
+      // points are credited exactly once per stage.
+      const rule = await prisma.scoringRule.upsert({
+        where: { category: STAGE_RULE.category },
+        create: STAGE_RULE,
+        update: {},
+      });
+      pointsAwarded = rule.points;
+      if (pointsAwarded > 0) {
+        await this.pointsService.awardGeneric({
+          userId: project.lead_student_id,
+          points: pointsAwarded,
+          reason: `Startup Launchpad: "${project.title}" Stage ${milestone.target_stage} approved`,
+        });
+      }
     }
 
+    const approved = decision === ClaimStatus.APPROVED;
     await this.notificationsService.create({
       userId: project.lead_student_id,
-      type: decision === ClaimStatus.APPROVED ? NotificationType.CLAIM_APPROVED : NotificationType.CLAIM_REJECTED,
-      title: decision === ClaimStatus.APPROVED ? "Startup milestone approved" : "Startup milestone rejected",
-      message: feedback ?? `Stage ${milestone.target_stage} ${decision === ClaimStatus.APPROVED ? "approved" : "rejected"}.`,
+      type: approved ? NotificationType.CLAIM_APPROVED : NotificationType.CLAIM_REJECTED,
+      title: approved ? `Startup Stage ${milestone.target_stage} approved${pointsAwarded ? ` (+${pointsAwarded} pts)` : ""}` : "Startup milestone rejected",
+      message: feedback ?? `Stage ${milestone.target_stage} ${approved ? "approved" : "rejected"}.`,
     });
 
-    return { milestoneId, status: decision };
+    return { milestoneId, status: decision, pointsAwarded };
   }
 
   // ---- Admin (read-only) --------------------------------------------------

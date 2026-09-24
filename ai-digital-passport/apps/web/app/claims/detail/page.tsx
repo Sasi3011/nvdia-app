@@ -71,7 +71,7 @@ function ClaimDetailContent() {
 
       {c.status === "REJECTED" && c.mentorFeedback ? (
         <Card className="border-rejected/30 bg-rejected/5">
-          <h3 className="text-h2 text-rejected">Mentor feedback</h3>
+          <h3 className="text-h2 text-rejected">Faculty feedback</h3>
           <p className="mt-2 text-body text-ink">{c.mentorFeedback}</p>
         </Card>
       ) : null}

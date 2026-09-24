@@ -22,18 +22,31 @@ const AddExternalHackathonSchema = z.object({
   deadlineAt: z.string().optional(),
 });
 
-const RegisterProofSchema = z
-  .object({
-    proofType: z.enum(["PDF_FILE", "DOI_LINK"]),
-    proofUrl: z.string().trim().url().max(1000).optional(),
-    fileKey: z.string().trim().min(1).optional(),
-    fileName: z.string().trim().min(1).max(200).optional(),
-    mimeType: z.string().trim().min(1).optional(),
-    sizeBytes: z.coerce.number().int().positive().optional(),
-  })
-  .refine((d) => (d.proofType === "PDF_FILE" ? !!d.fileKey : !!d.proofUrl), {
-    message: "Proof of registration is required (a PDF/screenshot file or a link).",
-  });
+const ProofFields = z.object({
+  proofType: z.enum(["PDF_FILE", "DOI_LINK"]),
+  proofUrl: z.string().trim().url().max(1000).optional(),
+  fileKey: z.string().trim().min(1).optional(),
+  fileName: z.string().trim().min(1).max(200).optional(),
+  mimeType: z.string().trim().min(1).optional(),
+  sizeBytes: z.coerce.number().int().positive().optional(),
+});
+const hasProof = (d: z.infer<typeof ProofFields>) => (d.proofType === "PDF_FILE" ? !!d.fileKey : !!d.proofUrl);
+
+const TeamMemberSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  registerNum: z.string().trim().max(50).optional(),
+  email: z.string().trim().email().max(200).optional().or(z.literal("").transform(() => undefined)),
+  department: z.string().trim().max(120).optional(),
+});
+
+const RegisterProofSchema = ProofFields.extend({
+  teamName: z.string().trim().min(1, "Team name is required.").max(120),
+  teamMembers: z.array(TeamMemberSchema).min(1, "Add at least one team member.").max(10),
+}).refine(hasProof, { message: "Proof of registration is required (a PDF/screenshot file or a link)." });
+
+const ResultProofSchema = ProofFields.extend({
+  resultType: z.enum(["PARTICIPATION", "WINNER"]),
+}).refine(hasProof, { message: "Proof of participation or winning is required (a PDF/screenshot file or a link)." });
 
 const UpdateExternalHackathonSchema = AddExternalHackathonSchema.partial().extend({
 });
@@ -61,6 +74,16 @@ export class ExternalHackathonsController {
     @Body(new ZodValidationPipe(RegisterProofSchema)) body: z.infer<typeof RegisterProofSchema>,
   ) {
     return this.service.register(user.userId, id, body);
+  }
+
+  @Post(":id/result")
+  @HttpCode(200)
+  submitResult(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(ResultProofSchema)) body: z.infer<typeof ResultProofSchema>,
+  ) {
+    return this.service.submitResult(user.userId, id, body);
   }
 
   @Patch(":id")

@@ -160,47 +160,6 @@ export default function CoursesPage() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-              <Briefcase className="h-3.5 w-3.5 text-slate-400" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-              <ShieldCheck className="h-3.5 w-3.5 text-[#1755A7]" />
-              <select
-                value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
-              >
-                {difficulties.map((diff) => (
-                  <option key={diff} value={diff}>{diff === "All" ? "All Difficulties" : diff}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-              <Filter className="h-3.5 w-3.5 text-slate-400" />
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as "All" | EnrollmentStatusValue)}
-                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
-              >
-                <option value="All">All Statuses</option>
-                <option value="NOT_STARTED">Not Started</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="APPROVED">Completed</option>
-              </select>
-            </div>
-          </div>
         </div>
 
         {/* Courses Grid */}

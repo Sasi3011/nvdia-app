@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleShell } from "../../../components/console/ConsoleShell";
 import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader";
@@ -19,6 +19,11 @@ import {
   Link as LinkIcon,
   ExternalLink,
   CheckCircle2,
+  Search,
+  Filter,
+  ChevronDown,
+  ListChecks,
+  CalendarCog,
 } from "lucide-react";
 import Select from "react-select";
 import { EventsManager } from "../../admin/events/page";
@@ -26,6 +31,23 @@ import { EventsManager } from "../../admin/events/page";
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]";
 const labelClass = "text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-1";
+
+type Period = "ALL" | "THIS_MONTH" | "LAST_30" | "LAST_90";
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: "ALL", label: "All Time" },
+  { value: "THIS_MONTH", label: "This Month" },
+  { value: "LAST_30", label: "Last 30 Days" },
+  { value: "LAST_90", label: "Last 90 Days" },
+];
+
+function inPeriod(iso: string, period: Period) {
+  if (period === "ALL") return true;
+  const d = new Date(iso);
+  const now = new Date();
+  if (period === "THIS_MONTH") return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  const days = period === "LAST_30" ? 30 : 90;
+  return now.getTime() - d.getTime() <= days * 24 * 60 * 60 * 1000;
+}
 
 function toLocalDateInput(iso: string) {
   const d = new Date(iso);
@@ -48,6 +70,21 @@ export default function MentorCoeClassesPage() {
   const [notes, setNotes] = useState("");
   const [coMentorIds, setCoMentorIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"MANAGE" | "LOGS">("LOGS");
+  const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [yearFilter, setYearFilter] = useState<string | null>(null);
+  const [periodFilter, setPeriodFilter] = useState<Period>("ALL");
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowFilters(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const mentors = useQuery({ queryKey: ["users", "mentors"], queryFn: mentorCoeClassesApi.listMentors });
 
@@ -102,20 +139,44 @@ export default function MentorCoeClassesPage() {
   const rawLogs = logs.data ?? [];
   const rawEvents = events.data ?? [];
 
+  const logYears = useMemo(
+    () => Array.from(new Set(rawLogs.map((l) => l.eventYear).filter((y): y is string => !!y))).sort(),
+    [rawLogs],
+  );
+
+  const filteredLogs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rawLogs.filter((l) => {
+      const matchesSearch =
+        !q ||
+        [l.eventTitle, l.eventDepartment, l.eventYear, l.topicsCovered, l.notes, ...(l.coMentors?.map((m) => m.name) ?? [])]
+          .some((v) => v?.toLowerCase().includes(q));
+      const matchesYear = yearFilter ? l.eventYear === yearFilter : true;
+      return matchesSearch && matchesYear && inPeriod(l.classDate, periodFilter);
+    });
+  }, [rawLogs, search, yearFilter, periodFilter]);
+
+  const activeFilterCount = (yearFilter ? 1 : 0) + (periodFilter !== "ALL" ? 1 : 0);
+
+  const tabButton = (tab: "LOGS" | "MANAGE", label: string, Icon: typeof ListChecks) => (
+    <button
+      type="button"
+      onClick={() => setActiveTab(tab)}
+      className={`inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
+        activeTab === tab
+          ? "bg-[#1755A7] text-white shadow-sm shadow-[#1755A7]/25"
+          : "text-slate-600 hover:bg-white hover:text-slate-900"
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+
   const tabs = (
-    <div className="flex items-center gap-6 pr-4">
-      <button
-        onClick={() => setActiveTab("LOGS")}
-        className={`pb-4 -mb-4 text-sm font-bold transition-colors border-b-2 ${activeTab === "LOGS" ? "border-[#1755A7] text-[#1755A7]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-      >
-        My Teaching Logs
-      </button>
-      <button
-        onClick={() => setActiveTab("MANAGE")}
-        className={`pb-4 -mb-4 text-sm font-bold transition-colors border-b-2 ${activeTab === "MANAGE" ? "border-[#1755A7] text-[#1755A7]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-      >
-        Manage CoE Classes
-      </button>
+    <div className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-slate-100/80 p-1">
+      {tabButton("LOGS", "My Teaching Logs", ListChecks)}
+      {tabButton("MANAGE", "Manage CoE Classes", CalendarCog)}
     </div>
   );
 
@@ -213,8 +274,77 @@ export default function MentorCoeClassesPage() {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-          <div className="flex flex-1 items-center gap-6">
+          <div className="flex flex-1 flex-wrap items-center gap-3 sm:gap-6">
             {tabs}
+            <div className="relative w-full flex-1 sm:w-auto sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search classes, topics or co-faculty..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]"
+              />
+            </div>
+          </div>
+
+          <div ref={filterRef} className="relative ml-auto">
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex w-36 items-center justify-between gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold shadow-xs transition-colors ${showFilters || activeFilterCount ? "border-[#1755A7] bg-[#1755A7]/5 text-[#1755A7]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
+            >
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filters {activeFilterCount > 0 && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1755A7] text-[9px] text-white">{activeFilterCount}</span>}
+              </div>
+              <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+            </button>
+
+            {showFilters && (
+              <div className="absolute right-0 top-full z-10 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Date</div>
+                {PERIOD_OPTIONS.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setPeriodFilter(p.value)}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold transition-colors ${periodFilter === p.value ? "bg-[#1755A7]/10 text-[#1755A7]" : "text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+
+                <div className="mb-1 mt-2 border-t border-slate-100 px-2 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Year</div>
+                <button
+                  type="button"
+                  onClick={() => setYearFilter(null)}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold transition-colors ${!yearFilter ? "bg-[#1755A7]/10 text-[#1755A7]" : "text-slate-600 hover:bg-slate-50"}`}
+                >
+                  All Years
+                </button>
+                {logYears.map((year) => (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => setYearFilter(year)}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold transition-colors ${yearFilter === year ? "bg-[#1755A7]/10 text-[#1755A7]" : "text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {year}
+                  </button>
+                ))}
+
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setYearFilter(null); setPeriodFilter("ALL"); setShowFilters(false); }}
+                    className="mt-2 w-full rounded-lg border-t border-slate-100 px-3 py-2 text-left text-xs font-bold text-rose-500 hover:bg-rose-50"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -226,6 +356,10 @@ export default function MentorCoeClassesPage() {
         ) : rawLogs.length === 0 ? (
           <div className="rounded-2xl border border-slate-200/90 bg-white p-10 text-center text-sm text-slate-500">
             You haven't logged any classes yet. Click "Log a Class" to record what you taught in a CoE Class session.
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-10 text-center text-sm text-slate-500">
+            No teaching logs match your search or filters.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -240,7 +374,7 @@ export default function MentorCoeClassesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rawLogs.map((log) => (
+                {filteredLogs.map((log) => (
                   <tr key={log.logId} className="hover:bg-slate-50/70 transition-colors align-top">
                     <td className="px-6 py-4">
                       <span className="font-bold text-slate-900">{log.eventTitle ?? "—"}</span>
@@ -300,25 +434,25 @@ export default function MentorCoeClassesPage() {
 
         {/* Log / Edit Modal */}
         {formOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-            <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1755A7]/10 text-[#1755A7]">
-                    <BookOpen className="h-4 w-4" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+            <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#1755A7] via-[#1E40AF] to-[#2563EB] px-4 py-4 text-white sm:px-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#F8C401]">
+                    <BookOpen className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-900">{editing ? "Edit Teaching Log" : "Log a CoE Class"}</h3>
-                    <p className="text-[11px] text-slate-500">{editing ? editing.eventTitle : "Record what you taught"}</p>
+                    <h3 className="text-sm font-bold">{editing ? "Edit Teaching Log" : "Log a CoE Class"}</h3>
+                    <p className="text-xs text-blue-100">{editing ? editing.eventTitle : "Record what you taught"}</p>
                   </div>
                 </div>
-                <button type="button" onClick={closeForm} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-                  <X className="h-5 w-5" />
+                <button type="button" onClick={closeForm} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
               {submit.isSuccess ? (
-                <div className="p-6 text-center space-y-3">
+                <div className="p-6 text-center space-y-3 bg-white">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
@@ -334,12 +468,12 @@ export default function MentorCoeClassesPage() {
                     e.preventDefault();
                     submit.mutate();
                   }}
-                  className="space-y-4"
+                  className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 pb-8 minute-scrollbar sm:p-6 bg-white"
                 >
-                  {submit.isError && <ErrorBanner error={submit.error} />}
+                  {submit.isError && <div className="sm:col-span-1"><ErrorBanner error={submit.error} /></div>}
 
                   {!editing && (
-                    <div>
+                    <div className="flex flex-col gap-1.5 sm:col-span-1">
                       <label className={labelClass}>CoE Class</label>
                       <select required value={eventId} onChange={(e) => setEventId(e.target.value)} className={inputClass}>
                         <option value="" disabled>Select a CoE Class…</option>
@@ -352,7 +486,7 @@ export default function MentorCoeClassesPage() {
                     </div>
                   )}
                   
-                  <div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-1">
                     <label className={labelClass}>Co-Faculty</label>
                     <Select
                       isMulti
@@ -369,12 +503,12 @@ export default function MentorCoeClassesPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-1">
                     <label className={labelClass}>Class Date</label>
                     <input type="date" required value={classDate} onChange={(e) => setClassDate(e.target.value)} className={inputClass} />
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-1">
                     <label className={labelClass}>Topics Covered</label>
                     <textarea
                       required
@@ -386,7 +520,7 @@ export default function MentorCoeClassesPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-1">
                     <label className={labelClass}><LinkIcon className="h-3.5 w-3.5" /> Materials Link (optional)</label>
                     <input
                       type="url"
@@ -397,7 +531,7 @@ export default function MentorCoeClassesPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-1.5 sm:col-span-1">
                     <label className={labelClass}>Notes (optional)</label>
                     <input
                       type="text"
@@ -408,14 +542,14 @@ export default function MentorCoeClassesPage() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <button type="button" onClick={closeForm} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">
+                  <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-3 sm:col-span-1 sm:flex-row sm:items-center sm:justify-end">
+                    <button type="button" onClick={closeForm} className="rounded-xl border border-slate-200 px-5 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95 sm:py-2.5">
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={submit.isPending}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white hover:bg-[#134486] transition-all shadow-xs disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1755A7] to-[#2563EB] px-6 py-3 text-xs font-bold text-white shadow-sm shadow-[#1755A7]/25 hover:from-[#124282] hover:to-[#1E40AF] transition-all disabled:opacity-50 active:scale-95 sm:py-2.5"
                     >
                       <Send className="h-3.5 w-3.5" />
                       {submit.isPending ? "Saving…" : editing ? "Save Changes" : "Log Class"}

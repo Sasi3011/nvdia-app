@@ -59,8 +59,10 @@ function problemDto(p: IndustryProblem) {
 
 // Problem Bank Management (Page 26) — full CRUD including drafts, unlike
 // the student-facing GET /problems (published + level-gated only).
+// Industry Problem Bank management, shared by the admin and faculty portals
+// (same access for both roles).
 @Controller("admin/problems")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.MENTOR)
 export class AdminProblemsController {
   constructor(private readonly auditLogService: AuditLogService) {}
 

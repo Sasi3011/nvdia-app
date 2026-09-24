@@ -89,11 +89,11 @@ export default function ClaimsPage() {
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Under Review</div>
             <div className="mt-2 text-2xl font-black text-amber-600">{pendingCount} Claims</div>
-            <div className="mt-1 text-xs text-slate-500">Assigned to faculty mentors</div>
+            <div className="mt-1 text-xs text-slate-500">Assigned to faculty</div>
           </div>
 
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:shadow-md">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mentor Review SLA</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Faculty Review SLA</div>
             <div className="mt-2 text-2xl font-black text-[#1755A7]">&lt; 24 Hours</div>
             <div className="mt-1 text-xs text-slate-500">Target turnaround time</div>
           </div>
@@ -204,7 +204,7 @@ export default function ClaimsPage() {
 
                         {isRejected && c.mentorFeedback && (
                           <div className="mt-2 rounded-xl bg-rose-50 border border-rose-200/60 p-2.5 text-xs text-rose-800 space-y-0.5">
-                            <strong className="block font-bold">Mentor Feedback:</strong>
+                            <strong className="block font-bold">Faculty Feedback:</strong>
                             <p>{c.mentorFeedback}</p>
                           </div>
                         )}
