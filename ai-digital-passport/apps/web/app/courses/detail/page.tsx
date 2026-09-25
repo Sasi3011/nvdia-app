@@ -24,6 +24,7 @@ import {
   ExternalLink,
   AlertCircle
 } from "lucide-react";
+import { safeUrl } from "../../../lib/safe-url";
 
 // Course Detail (student) — course info, external link and proof submission.
 export default function CourseDetailPage() {
@@ -120,7 +121,7 @@ function CourseDetailContent() {
         
         {c.externalUrl && (
           <a
-            href={c.externalUrl}
+            href={safeUrl(c.externalUrl)}
             target="_blank"
             rel="noreferrer"
             className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#1755A7] hover:underline bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 w-fit"

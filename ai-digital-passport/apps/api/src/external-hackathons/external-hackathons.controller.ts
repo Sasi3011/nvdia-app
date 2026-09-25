@@ -7,16 +7,21 @@ import type { RequestUser } from "../common/auth/types";
 import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
 import { ExternalHackathonsService } from "./external-hackathons.service";
 
+// Links must be http(s): a plain .url() also accepts javascript: and data:
+// URLs, which would run script when a reviewer clicks the link.
+const HTTP_URL = /^https?:\/\//i;
+const HTTP_URL_MESSAGE = "Link must start with http:// or https://";
+
 const AddExternalHackathonSchema = z.object({
   title: z.string().trim().min(2).max(200),
-  url: z.string().trim().url().max(1000),
+  url: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).max(1000),
   description: z.string().trim().max(4000).optional(),
   organizer: z.string().trim().max(200).optional(),
   location: z.string().trim().max(200).optional(),
   isOnline: z.boolean().optional(),
   prize: z.string().trim().max(100).optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
-  imageUrl: z.string().trim().url().max(1000).optional(),
+  imageUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).max(1000).optional(),
   startsAt: z.string().optional(),
   endsAt: z.string().optional(),
   deadlineAt: z.string().optional(),
@@ -24,7 +29,7 @@ const AddExternalHackathonSchema = z.object({
 
 const ProofFields = z.object({
   proofType: z.enum(["PDF_FILE", "DOI_LINK"]),
-  proofUrl: z.string().trim().url().max(1000).optional(),
+  proofUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).max(1000).optional(),
   fileKey: z.string().trim().min(1).optional(),
   fileName: z.string().trim().min(1).max(200).optional(),
   mimeType: z.string().trim().min(1).optional(),

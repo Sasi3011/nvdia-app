@@ -7,6 +7,7 @@ import { Check, ChevronDown, ChevronRight, ExternalLink, Medal, Search, Trophy, 
 import { externalHackathonsApi, mentorApi, type HackathonApplicationsRow, type HackathonProofInfo } from "../../lib/api";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
+import { safeUrl } from "../../lib/safe-url";
 
 const STATUS_STYLE: Record<string, string> = {
   APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -293,7 +294,7 @@ function ProofStep({
       </div>
       <div className="mt-2 text-[11px]">
         {proof.proofUrl ? (
-          <a href={proof.proofUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 break-all font-bold text-[#1755A7] hover:underline">
+          <a href={safeUrl(proof.proofUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 break-all font-bold text-[#1755A7] hover:underline">
             View proof <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
         ) : proof.proofFileName ? (

@@ -23,6 +23,11 @@ import {
   ViolationType,
 } from "./enums";
 
+// Links must be http(s): a plain .url() also accepts javascript: and data:
+// URLs, which would run script when a reviewer clicks the link.
+const HTTP_URL = /^https?:\/\//i;
+const HTTP_URL_MESSAGE = "Link must start with http:// or https://";
+
 // ---------------------------------------------------------------------------
 // Pagination (API Design Rules, spec 04 Section 9 — paginate large
 // collections: claims, problems, leaderboard).
@@ -88,7 +93,7 @@ export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
 export const CreateActivityClaimSchema = z.object({
   category: z.string().trim().min(1),
   proofType: z.enum([ProofType.PDF_FILE, ProofType.GITHUB_LINK, ProofType.DOI_LINK]),
-  proofUrl: z.string().trim().url().optional(),
+  proofUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
   // fileKey comes from a prior POST /uploads/presign call; the file/mime/
   // size fields describe that same upload for the claim_attachments row.
   fileKey: z.string().trim().min(1).optional(),
@@ -145,7 +150,7 @@ export type CreateStartupProjectInput = z.infer<typeof CreateStartupProjectSchem
 
 export const SubmitStartupMilestoneSchema = z.object({
   targetStage: z.coerce.number().int().min(1).max(6),
-  evidenceUrl: z.string().trim().url().optional(),
+  evidenceUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
   // Stage-specific text fields plus uploaded file keys (see STARTUP_STAGE_FORMS in the web app).
   details: z.record(z.string().max(4000)).optional(),
   documents: z.array(z.object({ fileKey: z.string().min(1), fileName: z.string().min(1).max(255) })).max(5).optional(),
@@ -171,7 +176,7 @@ export type CreateProblemProjectInput = z.infer<typeof CreateProblemProjectSchem
 
 export const SubmitProblemMilestoneSchema = z.object({
   targetStage: z.coerce.number().int().min(1).max(6),
-  evidenceUrl: z.string().trim().url().optional(),
+  evidenceUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
   // Stage-specific text fields (see PROBLEM_STAGE_FORMS in the web app).
   details: z.record(z.string().max(4000)).optional(),
 });
@@ -241,7 +246,7 @@ export const CreateClassTeachingLogSchema = z.object({
   eventId: z.string().trim().min(1),
   classDate: z.coerce.date(),
   topicsCovered: z.string().trim().min(1).max(4000),
-  materialsUrl: z.string().trim().url().optional(),
+  materialsUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
   notes: z.string().trim().max(2000).optional(),
   coMentorIds: z.array(z.string()).optional(),
 });
@@ -350,7 +355,7 @@ export const UpsertCourseSchema = z.object({
   toolsRequired: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
   targetAudience: z.string().trim().max(500).optional(),
   provider: z.string().trim().min(1).max(100),
-  externalUrl: z.string().trim().url(),
+  externalUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE),
   pointsValue: z.coerce.number().int().nonnegative(),
   levelRequirement: z.coerce.number().int().min(1).max(6).nullable().optional(),
   status: z.nativeEnum(CourseStatus).default(CourseStatus.DRAFT),
@@ -371,7 +376,7 @@ export type UpsertCourseTaskInput = z.infer<typeof UpsertCourseTaskSchema>;
 // same two proof mechanisms, same validation rule.
 export const SubmitCourseProofSchema = z
   .object({
-    proofUrl: z.string().trim().url().optional(),
+    proofUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
     fileKey: z.string().trim().min(1).optional(),
     fileName: z.string().trim().min(1).max(200).optional(),
     mimeType: z.string().trim().min(1).optional(),
@@ -442,8 +447,8 @@ export type CreateHackathonTeamInput = z.infer<typeof CreateHackathonTeamSchema>
 export const SubmitHackathonSchema = z.object({
   title: z.string().trim().min(1).max(200),
   summary: z.string().trim().min(1).max(5000),
-  githubUrl: z.string().trim().url().optional(),
-  demoUrl: z.string().trim().url().optional(),
+  githubUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
+  demoUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
   fileKey: z.string().trim().min(1).optional(),
 });
 export type SubmitHackathonInput = z.infer<typeof SubmitHackathonSchema>;
@@ -464,8 +469,8 @@ export const CreateProjectRecordSchema = z.object({
   projectType: z.string().trim().min(1).max(100),
   mentorId: z.string().trim().min(1).optional(),
   industryProblemId: z.string().trim().min(1).optional(),
-  githubUrl: z.string().trim().url().optional(),
-  demoUrl: z.string().trim().url().optional(),
+  githubUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
+  demoUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
   reportFileKey: z.string().trim().min(1).optional(),
 });
 export type CreateProjectRecordInput = z.infer<typeof CreateProjectRecordSchema>;
@@ -474,7 +479,7 @@ export const CreateProjectMilestoneSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(5000),
   dueAt: z.coerce.date().optional(),
-  evidenceUrl: z.string().trim().url().optional(),
+  evidenceUrl: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
 });
 export type CreateProjectMilestoneInput = z.infer<typeof CreateProjectMilestoneSchema>;
 
@@ -488,7 +493,7 @@ export const CreateIndustryPartnerSchema = z.object({
   userId: z.string().trim().min(1),
   companyName: z.string().trim().min(1).max(200),
   contactPerson: z.string().trim().min(1).max(200),
-  website: z.string().trim().url().optional(),
+  website: z.string().trim().url().regex(HTTP_URL, HTTP_URL_MESSAGE).optional(),
 });
 export type CreateIndustryPartnerInput = z.infer<typeof CreateIndustryPartnerSchema>;
 

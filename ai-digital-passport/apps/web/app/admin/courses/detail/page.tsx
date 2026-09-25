@@ -25,6 +25,7 @@ import {
   Sparkles,
   Briefcase
 } from "lucide-react";
+import { safeUrl } from "../../../../lib/safe-url";
 
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7] transition-colors";
 
@@ -161,7 +162,7 @@ function Content() {
         {c.externalUrl && (
           <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Course Link</div>
-            <a href={c.externalUrl} target="_blank" rel="noopener noreferrer" className="mt-1 block break-all text-xs font-bold text-[#1755A7] hover:underline">
+            <a href={safeUrl(c.externalUrl)} target="_blank" rel="noopener noreferrer" className="mt-1 block break-all text-xs font-bold text-[#1755A7] hover:underline">
               {c.externalUrl}
             </a>
           </div>

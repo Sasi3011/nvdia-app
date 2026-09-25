@@ -22,6 +22,7 @@ import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
 import { API_BASE_URL, adminStartupsApi, mentorStartupApi, type AdminStartupListItem, type AdminStartupMilestone } from "../../lib/api";
 import { STARTUP_STAGE_FORMS } from "../../lib/startup-stages";
+import { safeUrl } from "../../lib/safe-url";
 
 // One list, no paging (the API caps a page at 100).
 const PAGE_SIZE = 100;
@@ -432,7 +433,7 @@ function MilestoneCard({ m, projectId }: { m: AdminStartupMilestone; projectId: 
         <div className="mt-3 flex flex-wrap gap-2">
           {m.evidenceUrl && (
             <a
-              href={m.evidenceUrl}
+              href={safeUrl(m.evidenceUrl)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-[#1755A7] hover:bg-slate-50"

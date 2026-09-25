@@ -234,7 +234,7 @@ function MentorDashboardContent() {
             <h3 className="text-sm font-black text-slate-900">Submission Category Share</h3>
           </div>
           <p className="text-[11px] text-slate-400 mb-5">Distribution of 356 total review requests by track</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
             <div className="relative shrink-0">
               <ResponsiveContainer width={150} height={150}>
                 <PieChart>
@@ -248,7 +248,7 @@ function MentorDashboardContent() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Claims</span>
               </div>
             </div>
-            <div className="flex-1 space-y-2.5">
+            <div className="w-full min-w-0 flex-1 space-y-2.5">
               {CATEGORY_DONUT.map((d) => {
                 const pct = Math.round((d.value / totalClaims) * 100);
                 return (

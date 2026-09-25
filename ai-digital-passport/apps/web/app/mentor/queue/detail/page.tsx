@@ -12,6 +12,7 @@ import { ErrorBanner } from "../../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../../components/ui/Spinner";
 import { StatusChip, type Status } from "../../../../components/ui/StatusChip";
 import { claimsApi, mentorApi } from "../../../../lib/api";
+import { safeUrl } from "../../../../lib/safe-url";
 
 // Page 22 — Mentor Claim Review Detail (spec 02 Section 6.3). Evidence
 // viewer on one side, approve/reject on the other (design system 18.6);
@@ -83,7 +84,7 @@ function ReviewContent() {
               <Field
                 label="Link"
                 value={
-                  <a href={c.proofUrl} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">
+                  <a href={safeUrl(c.proofUrl)} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">
                     {c.proofUrl}
                   </a>
                 }

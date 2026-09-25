@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import type { Request } from "express";
 
@@ -22,8 +23,10 @@ export class OtaApiKeyGuard implements CanActivate {
     }
 
     const req = context.switchToHttp().getRequest<Request>();
-    const provided = req.header("x-ota-api-key");
-    if (!provided || provided !== configuredKey) {
+    const provided = req.header("x-ota-api-key") ?? "";
+    // Constant-time comparison (hash first so lengths always match).
+    const same = timingSafeEqual(createHash("sha256").update(provided).digest(), createHash("sha256").update(configuredKey).digest());
+    if (!provided || !same) {
       throw new UnauthorizedException({ code: "INVALID_OTA_API_KEY" });
     }
     return true;

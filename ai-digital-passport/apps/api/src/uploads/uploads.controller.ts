@@ -31,11 +31,15 @@ export class UploadsController {
 
   @Get("files/:fileKey")
   @Header("Cache-Control", "private, max-age=300")
-  async download(@Param("fileKey") fileKey: string, @Res() res: Response) {
-    const file = await this.uploadsService.getStoredFile(fileKey);
+  async download(@CurrentUser() user: RequestUser, @Param("fileKey") fileKey: string, @Res() res: Response) {
+    const file = await this.uploadsService.getStoredFileForViewer(fileKey, user);
     res.setHeader("Content-Type", file.mime_type);
     res.setHeader("Content-Length", String(file.size_bytes));
-    res.setHeader("Content-Disposition", `inline; filename="${file.original_name.replace(/"/g, "")}"`);
+    // Only safe filename characters in the header. Uploads are limited to an
+    // allow-list of document/image types and helmet sends nosniff, so a file
+    // is never rendered as an HTML page.
+    const safeName = file.original_name.replace(/[^\w.\- ()]/g, "_");
+    res.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
     res.send(Buffer.from(file.file_data));
   }
 

@@ -21,6 +21,7 @@ import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
 import { adminProblemProjectsApi, mentorProblemsApi, type AdminProblemProjectListItem, type AdminProblemMilestone } from "../../lib/api";
 import { PROBLEM_STAGE_FORMS } from "../../lib/problem-stages";
+import { safeUrl } from "../../lib/safe-url";
 
 // One list, no paging (the API caps a page at 100).
 const PAGE_SIZE = 100;
@@ -402,7 +403,7 @@ function MilestoneCard({ m, projectId }: { m: AdminProblemMilestone; projectId: 
               <dt className="font-bold text-slate-700">{f.label}</dt>
               <dd className="whitespace-pre-wrap break-words text-slate-600">
                 {f.type === "url" ? (
-                  <a href={m.fields[f.key]} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#1755A7] hover:underline">
+                  <a href={safeUrl(m.fields[f.key])} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#1755A7] hover:underline">
                     {m.fields[f.key]} <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : (
@@ -423,7 +424,7 @@ function MilestoneCard({ m, projectId }: { m: AdminProblemMilestone; projectId: 
       {m.evidenceUrl && (
         <div className="mt-3">
           <a
-            href={m.evidenceUrl}
+            href={safeUrl(m.evidenceUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-[#1755A7] hover:bg-slate-50"

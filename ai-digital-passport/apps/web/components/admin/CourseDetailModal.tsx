@@ -6,6 +6,7 @@ import { BookOpen, X } from "lucide-react";
 import { adminCoursesApi } from "../../lib/api";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
+import { safeUrl } from "../../lib/safe-url";
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
@@ -85,7 +86,7 @@ export function CourseDetailModal({ courseId, onClose }: { courseId: string; onC
                 <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">External Course / Enrollment URL</div>
                   <a
-                    href={c.externalUrl}
+                    href={safeUrl(c.externalUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-1 block break-all text-xs font-bold text-[#1755A7] hover:underline"

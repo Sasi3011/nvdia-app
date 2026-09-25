@@ -8,6 +8,7 @@ import { staffStudentsApi, type StudentProgressResponse } from "../../lib/api";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { LevelBadge } from "../ui/LevelBadge";
 import { Spinner } from "../ui/Spinner";
+import { safeUrl } from "../../lib/safe-url";
 
 const fmtDate = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-";
@@ -340,8 +341,8 @@ export function StudentProgressView({ userId, backHref }: { userId: string | nul
                     <td className="px-5 py-3 text-slate-600">{r.milestones.length ? `${r.milestones.filter((m) => m.status === "APPROVED" || m.status === "COMPLETED").length} of ${r.milestones.length} done` : "-"}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2 text-[11px] font-bold text-[#1755A7]">
-                        {r.githubUrl && <a href={r.githubUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">GitHub</a>}
-                        {r.demoUrl && <a href={r.demoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Demo</a>}
+                        {r.githubUrl && <a href={safeUrl(r.githubUrl)} target="_blank" rel="noopener noreferrer" className="hover:underline">GitHub</a>}
+                        {r.demoUrl && <a href={safeUrl(r.demoUrl)} target="_blank" rel="noopener noreferrer" className="hover:underline">Demo</a>}
                         {!r.githubUrl && !r.demoUrl && <span className="text-slate-400">-</span>}
                       </div>
                     </td>

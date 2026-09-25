@@ -8,6 +8,7 @@ import { ConsolePageHeader } from "../../../components/console/ConsolePageHeader
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { Spinner } from "../../../components/ui/Spinner";
 import { adminCoeClassLogsApi, type AdminClassTeachingLogResponse } from "../../../lib/api";
+import { safeUrl } from "../../../lib/safe-url";
 
 const detailLabel = "text-[10px] font-bold uppercase tracking-wider text-slate-400";
 
@@ -158,7 +159,7 @@ export default function FacultyTeachingLogsPage() {
                     <td className="px-6 py-4 max-w-md">
                       <p className="text-slate-700 whitespace-pre-wrap">{l.topicsCovered}</p>
                       {l.materialsUrl && (
-                        <a href={l.materialsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
+                        <a href={safeUrl(l.materialsUrl)} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
                           Materials <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
@@ -248,7 +249,7 @@ export default function FacultyTeachingLogsPage() {
               {viewing.materialsUrl && (
                 <div>
                   <div className={detailLabel}>Materials</div>
-                  <a href={viewing.materialsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-xs font-bold text-[#1755A7] hover:underline">
+                  <a href={safeUrl(viewing.materialsUrl)} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 break-all text-xs font-bold text-[#1755A7] hover:underline">
                     <LinkIcon className="h-3 w-3 shrink-0" /> {viewing.materialsUrl} <ExternalLink className="h-3 w-3 shrink-0" />
                   </a>
                 </div>

@@ -26,7 +26,8 @@ import {
   CalendarCog,
 } from "lucide-react";
 import Select from "react-select";
-import { EventsManager } from "../../admin/events/page";
+import { EventsManager } from "../../../components/modules/EventsManager";
+import { safeUrl } from "../../../lib/safe-url";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1755A7] focus:outline-none focus:ring-1 focus:ring-[#1755A7]";
@@ -386,7 +387,7 @@ export default function MentorCoeClassesPage() {
                     <td className="px-6 py-4 max-w-md">
                       <p className="text-slate-700 whitespace-pre-wrap">{log.topicsCovered}</p>
                       {log.materialsUrl && (
-                        <a href={log.materialsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
+                        <a href={safeUrl(log.materialsUrl)} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-bold text-[#1755A7] hover:underline">
                           <LinkIcon className="h-3 w-3" /> Materials <ExternalLink className="h-3 w-3" />
                         </a>
                       )}

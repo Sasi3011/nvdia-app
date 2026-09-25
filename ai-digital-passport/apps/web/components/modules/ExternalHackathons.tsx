@@ -15,6 +15,7 @@ import { useSession } from "../../lib/session";
 import { ErrorBanner } from "../ui/ErrorBanner";
 import { Spinner } from "../ui/Spinner";
 import { useConfirm } from "../ui/ConfirmDialogProvider";
+import { safeUrl } from "../../lib/safe-url";
 
 const SOURCES: { key: string; label: string; badge: string }[] = [
   { key: "ALL", label: "All", badge: "" },
@@ -320,7 +321,7 @@ function HackathonCard({
         </button>
       ) : (
         <a
-          href={h.url}
+          href={safeUrl(h.url)}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1755A7] px-4 py-2 text-xs font-bold text-white hover:bg-[#134486]"

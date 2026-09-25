@@ -1,4 +1,6 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { AuthGuard } from "@nestjs/passport";
 import type { Request, Response } from "express";
 import { z } from "zod";
@@ -12,6 +14,13 @@ import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
 import { WhitelistService } from "../whitelist/whitelist.service";
 import { AuthService } from "./auth.service";
 import { SessionService } from "./session.service";
+
+// Constant-time comparison so response timing doesn't leak the password.
+function safeEqual(a: string, b: string): boolean {
+  const x = createHash("sha256").update(a).digest();
+  const y = createHash("sha256").update(b).digest();
+  return timingSafeEqual(x, y);
+}
 
 function frontendUrl(path: string): string {
   const origin = process.env.WEB_ORIGIN?.split(",")[0]?.trim() ?? "http://localhost:1001";
@@ -132,17 +141,23 @@ export class AuthController {
    * handshake itself is skipped.
    */
   @Public()
+  // Stricter than the global limit: slows password guessing to 10 tries/min per client.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("dev-login")
   async devLogin(
     @Res() res: Response,
     @Body(new ZodValidationPipe(z.object({ email: z.string().trim().toLowerCase().email(), fullName: z.string().trim().min(1).max(200), password: z.string().min(1) })))
     body: { email: string; fullName: string; password: string },
   ) {
-    if (process.env.NODE_ENV === "production") {
-      res.status(404).send();
+    // Shared-password login is a local-development convenience only. It is
+    // off unless DEV_LOGIN_ENABLED=true AND a DEV_LOGIN_PASSWORD is set, and
+    // it can never run in production — real sign-in is Google OAuth.
+    const devPassword = process.env.DEV_LOGIN_PASSWORD ?? "";
+    if (process.env.NODE_ENV === "production" || process.env.DEV_LOGIN_ENABLED !== "true" || !devPassword) {
+      res.status(404).send({ message: "Password sign-in is disabled on this server." });
       return;
     }
-    if (body.password !== (process.env.DEV_LOGIN_PASSWORD || "password123")) {
+    if (!safeEqual(body.password, devPassword)) {
       res.status(401).send({ message: "Invalid email or password." });
       return;
     }

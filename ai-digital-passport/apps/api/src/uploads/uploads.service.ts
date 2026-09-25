@@ -49,6 +49,22 @@ export class UploadsService {
     return { fileKey: file.file_id, fileName: file.original_name, mimeType: file.mime_type, sizeBytes: file.size_bytes };
   }
 
+  /**
+   * Download authorization: files are private to the person who uploaded
+   * them (claim/course/startup proofs), plus faculty and admins who review
+   * them. Industry-problem attachments are meant for every student, so any
+   * signed-in user may open those. Anyone else gets "not found" so file ids
+   * can't be probed.
+   */
+  async getStoredFileForViewer(fileKey: string, viewer: { userId: string; roles: string[] }) {
+    const file = await this.getStoredFile(fileKey);
+    const isStaff = viewer.roles.includes("ADMIN") || viewer.roles.includes("MENTOR");
+    if (isStaff || file.uploaded_by === viewer.userId || file.entity_type === "industry_problem") return file;
+    const sharedProblemFile = await prisma.industryProblem.count({ where: { attachment_file_key: fileKey } });
+    if (sharedProblemFile > 0) return file;
+    throw new NotFoundException({ code: "FILE_NOT_FOUND" });
+  }
+
   async getStoredFile(fileKey: string) {
     const file = await prisma.storedFile.findUnique({ where: { file_id: fileKey } });
     if (!file) throw new NotFoundException({ code: "FILE_NOT_FOUND" });

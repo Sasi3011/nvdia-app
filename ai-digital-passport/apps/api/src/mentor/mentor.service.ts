@@ -1,9 +1,17 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ClaimStatus, prisma } from "@ai-digital-passport/database";
 import { NotificationType } from "@ai-digital-passport/shared-types";
 import { AuditLogService } from "../common/audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PointsService } from "../points/points.service";
+
+// Separation of duties: a reviewer who also holds a student profile can
+// never decide (and award points on) their own claim.
+function assertNotOwnClaim(claimantId: string, reviewerId: string) {
+  if (claimantId === reviewerId) {
+    throw new ForbiddenException({ code: "CANNOT_REVIEW_OWN_CLAIM", message: "You cannot review your own claim." });
+  }
+}
 
 @Injectable()
 export class MentorService {
@@ -41,6 +49,7 @@ export class MentorService {
   async approve(claimId: string, reviewerId: string, pointsAwardedOverride: number | undefined) {
     const claim = await prisma.activityClaim.findUnique({ where: { claim_id: claimId } });
     if (!claim) throw new NotFoundException({ code: "CLAIM_NOT_FOUND" });
+    assertNotOwnClaim(claim.user_id, reviewerId);
 
     const pointsAwarded = pointsAwardedOverride ?? claim.points_requested;
 
@@ -92,6 +101,7 @@ export class MentorService {
   async reject(claimId: string, reviewerId: string, feedback: string) {
     const claim = await prisma.activityClaim.findUnique({ where: { claim_id: claimId } });
     if (!claim) throw new NotFoundException({ code: "CLAIM_NOT_FOUND" });
+    assertNotOwnClaim(claim.user_id, reviewerId);
 
     const { count } = await prisma.activityClaim.updateMany({
       where: { claim_id: claimId, status: ClaimStatus.PENDING },

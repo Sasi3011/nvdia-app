@@ -11,6 +11,7 @@ import { PageHeader } from "../../../components/ui/PageHeader";
 import { Spinner } from "../../../components/ui/Spinner";
 import { StatusChip, type Status } from "../../../components/ui/StatusChip";
 import { claimsApi } from "../../../lib/api";
+import { safeUrl } from "../../../lib/safe-url";
 
 // Page 16 — Claim Detail (spec 02 Section 6.2). Query-param route
 // (?id=) rather than a [id] path segment — apps/web is a static export,
@@ -50,7 +51,7 @@ function ClaimDetailContent() {
           <Field
             label="Proof"
             value={
-              <a href={c.proofUrl} target="_blank" rel="noreferrer" className="text-navy-700 underline underline-offset-2">
+              <a href={safeUrl(c.proofUrl)} target="_blank" rel="noreferrer" className="text-navy-700 underline underline-offset-2">
                 {c.proofUrl}
               </a>
             }

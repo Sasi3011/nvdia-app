@@ -28,6 +28,7 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { safeUrl } from "../../lib/safe-url";
 
 // Same layout as the admin Industry Problem Bank page (header, KPI cards,
 // search, table, view modal); students get Start/Continue Solution instead
@@ -578,7 +579,7 @@ function ProblemSolutionPanel({ problem, onClose }: { problem: ProblemResponse; 
                             <td className="px-4 py-2.5 font-mono text-slate-600">
                               {new Date(m.createdAt).toLocaleDateString()}
                               {m.details?.fields?.documentLink && (
-                                <a href={m.details.fields.documentLink} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 font-sans font-semibold text-[#1755A7] hover:underline">
+                                <a href={safeUrl(m.details.fields.documentLink)} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 font-sans font-semibold text-[#1755A7] hover:underline">
                                   <FileText className="h-3 w-3" /> Link
                                 </a>
                               )}

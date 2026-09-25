@@ -14,8 +14,10 @@ async function bootstrap() {
   const configuredOrigins = process.env.WEB_ORIGIN?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
   const localDevOrigins = ["http://localhost:1001", "http://127.0.0.1:1001"];
 
+  // Credentialed CORS is limited to known web origins. Never reflect an
+  // arbitrary Origin: that would let any website make logged-in requests.
   app.enableCors({
-    origin: configuredOrigins.length > 0 ? [...new Set([...configuredOrigins, ...localDevOrigins])] : true,
+    origin: [...new Set([...configuredOrigins, ...localDevOrigins])],
     credentials: true,
   });
 

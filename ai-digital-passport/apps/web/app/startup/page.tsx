@@ -27,6 +27,7 @@ import {
   Building
 } from "lucide-react";
 import Link from "next/link";
+import { safeUrl } from "../../lib/safe-url";
 
 export default function StartupPage() {
   return (
@@ -292,7 +293,7 @@ function StartupContent() {
                         <td className="px-5 py-3 font-mono text-slate-600">
                           {new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           {m.details?.fields?.documentLink && (
-                            <a href={m.details.fields.documentLink} target="_blank" rel="noreferrer" className="mt-1 block truncate font-sans font-semibold text-[#1755A7] hover:underline">
+                            <a href={safeUrl(m.details.fields.documentLink)} target="_blank" rel="noreferrer" className="mt-1 block truncate font-sans font-semibold text-[#1755A7] hover:underline">
                               Document Link
                             </a>
                           )}
