@@ -19,6 +19,9 @@
     "ota:publish": "node scripts/ota-publish.mjs",
     "prepare": "husky"
   },
+  "dependencies": {
+    "express": "^4.22.1"
+  },
   "devDependencies": {
     "adm-zip": "^0.5.16",
     "husky": "^9.1.6",
