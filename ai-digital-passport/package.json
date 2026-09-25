@@ -14,6 +14,7 @@
     "test": "turbo run test",
     "db:migrate": "pnpm --filter @ai-digital-passport/database run migrate",
     "db:seed": "pnpm --filter @ai-digital-passport/database run seed",
+    "db:reset": "pnpm --filter @ai-digital-passport/database run reset",
     "db:studio": "pnpm --filter @ai-digital-passport/database exec prisma studio",
     "env:sync": "node scripts/sync-env.mjs",
     "ota:publish": "node scripts/ota-publish.mjs",

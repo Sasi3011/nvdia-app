@@ -12,6 +12,7 @@
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "seed": "pnpm --filter @ai-digital-passport/shared-types run build && prisma db seed",
+    "reset": "tsx prisma/reset.ts && pnpm run seed",
     "typecheck": "prisma generate && tsc --noEmit",
     "lint": "eslint . --ext .ts"
   },
